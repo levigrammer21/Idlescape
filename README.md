@@ -1,8 +1,11 @@
-# Idle Wanderer v0.7.1 — Visual Equipment & Crafting Lists
+# Idle Wanderer v0.8.0 — Living Towns & Cooking
 
-- Crafting categories now start collapsed and expand on tap.
-- Fishing spot creatures now use distinct silhouettes for each fish tier.
-- Equipped helmets, body armour, legs, boots, shields, swords, daggers, bows, and clubs are drawn on the player.
-- Version number is visible beside the title and bumped with the release.
+- Fixed play-area resizing during movement and gathering.
+- Removed Smithing from the skill list.
+- Added timed fish cooking at every town Cooking Fire.
+- Added unique residents and daily rotating town quests.
+- Added a functional player-owned home upgrade menu, including Farming and Ranching areas near total level 80.
+- Added shops, coins, buying, selling, confirmation for selling, and Merching XP.
+- Removed the Bank town service.
 
-Upload every file in this folder to the root of the GitHub Pages repository.
+Upload all files to the root of the GitHub Pages repository.

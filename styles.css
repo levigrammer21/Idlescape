@@ -18,3 +18,17 @@
 .recipe-group>summary small{margin-left:auto;color:var(--muted);font-size:.56rem;font-weight:650;text-transform:none;letter-spacing:0}
 .recipe-group-body{padding:0 8px 8px}
 .recipe-group .recipe-card:last-child{margin-bottom:0}
+
+/* v0.8.0 layout lock: prevents the play area changing size when action text changes. */
+#app,.topbar,.game-shell,.action-strip,.tabs,.panel-wrap{width:100%;min-width:0;max-width:100%}
+.game-shell{contain:layout paint;isolation:isolate}
+.action-strip{grid-template-columns:minmax(0,145px) minmax(35px,1fr) auto}
+.action-copy,.action-copy strong{min-width:0;max-width:100%}
+.service-dialog{width:min(calc(100% - 18px),520px);max-height:88dvh;overflow:auto}
+.service-content{display:grid;gap:8px}
+.service-card,.quest-card,.shop-row,.npc-card{border:1px solid #354154;border-radius:10px;background:var(--panel-2);padding:10px;text-align:left}
+.service-card{display:grid;gap:8px}.service-card>div>strong,.quest-card strong,.shop-row strong,.npc-card strong{display:block;font-size:.78rem}.service-card span,.service-card small,.quest-card span,.quest-card small,.shop-row span,.npc-card span{display:block;color:var(--muted);font-size:.64rem;line-height:1.35;margin-top:3px}.service-card.locked{opacity:.58}.service-card.built{border-color:#4e8f61}
+.service-card button,.quest-card button,.shop-row button,.service-actions button{border:0;border-radius:7px;padding:8px;background:#806b36;color:#fff7dc;font-size:.65rem;font-weight:800}.service-card button:disabled,.quest-card button:disabled,.shop-row button:disabled{background:#313846;color:#7f8997}
+.service-actions{display:grid;grid-template-columns:1fr 1fr;gap:5px}.cook-progress{height:5px;border-radius:99px;overflow:hidden;background:#0b0e12}.cook-progress i{display:block;height:100%;background:var(--accent);width:0}
+.npc-card{width:100%}.quest-card{display:grid;gap:7px}.shop-row{display:flex;align-items:center;justify-content:space-between;gap:8px}.shop-row>div:first-child{min-width:0}.shop-group{border:1px solid #354154;border-radius:10px;overflow:hidden}.shop-group summary{padding:10px;color:#f0d47a;font-size:.76rem;font-weight:800;cursor:pointer}.shop-group .shop-row{margin:0 8px 8px}
+@media(max-width:390px){.shop-row{align-items:stretch;flex-direction:column}.shop-row button{width:100%}}

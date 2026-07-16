@@ -14,7 +14,7 @@
   <main id="app">
     <header class="topbar">
       <div class="title-block">
-        <h1>Idle Wanderer <span id="headerVersion" class="header-version">v0.7.1</span></h1>
+        <h1>Idle Wanderer <span id="headerVersion" class="header-version">v0.8.0</span></h1>
         <p id="statusText">Tap the ground, a tree, a rock, a fishing spot, or a town.</p>
       </div>
       <button id="saveButton" class="icon-button">Save</button>
@@ -52,7 +52,7 @@
           <button id="resetButton" class="wide-button muted-button">Reset Game</button>
         </div>
         <p class="hint">Town services are opened from the world itself. Skills will be developed one at a time, beginning with Woodcutting.</p>
-        <p class="version">Version 0.7.1 · Visual Equipment & Crafting Lists</p>
+        <p class="version">Version 0.8.0 · Living Towns & Cooking</p>
       </section>
     </section>
   </main>
@@ -74,6 +74,13 @@
     <div class="dialog-head"><div><span class="label">Crafting</span><h2 id="craftingTownName">Town Crafting Table</h2></div><button id="closeCraftingButton" class="close-button" aria-label="Close">×</button></div>
     <p id="craftingLevel" class="item-description"></p>
     <div id="craftingRecipes" class="crafting-recipes"></div>
+  </dialog>
+
+
+  <dialog id="serviceDialog" class="item-dialog service-dialog">
+    <div class="dialog-head"><div><span id="serviceType" class="label">Town Service</span><h2 id="serviceTitle">Service</h2></div><button id="closeServiceButton" class="close-button" aria-label="Close">×</button></div>
+    <p id="serviceDescription" class="item-description"></p>
+    <div id="serviceContent" class="service-content"></div>
   </dialog>
 
   <script src="game.js"></script>

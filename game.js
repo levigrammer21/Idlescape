@@ -1,7 +1,7 @@
 (() => {
   'use strict';
 
-  const VERSION = '0.7.1';
+  const VERSION = '0.8.0';
   const SAVE_KEY = 'idle-wanderer-save-v6';
   const LEGACY_KEYS = ['idle-wanderer-save-v5', 'idle-wanderer-save-v4', 'idle-wanderer-save-v3', 'idle-wanderer-save-v2'];
   const TICK_SECONDS = 0.6;
@@ -18,7 +18,8 @@
     dialog: document.getElementById('itemDialog'), itemType: document.getElementById('itemType'), itemName: document.getElementById('itemName'),
     itemDescription: document.getElementById('itemDescription'), itemStats: document.getElementById('itemStats'), itemAction: document.getElementById('itemActionButton'),
     townDialog: document.getElementById('townDialog'), townName: document.getElementById('townName'), townDescription: document.getElementById('townDescription'), townServices: document.getElementById('townServices'),
-    craftingDialog: document.getElementById('craftingDialog'), craftingTownName: document.getElementById('craftingTownName'), craftingLevel: document.getElementById('craftingLevel'), craftingRecipes: document.getElementById('craftingRecipes')
+    craftingDialog: document.getElementById('craftingDialog'), craftingTownName: document.getElementById('craftingTownName'), craftingLevel: document.getElementById('craftingLevel'), craftingRecipes: document.getElementById('craftingRecipes'),
+    serviceDialog: document.getElementById('serviceDialog'), serviceType: document.getElementById('serviceType'), serviceTitle: document.getElementById('serviceTitle'), serviceDescription: document.getElementById('serviceDescription'), serviceContent: document.getElementById('serviceContent')
   };
 
   const TREE_TYPES = {
@@ -154,13 +155,41 @@
     addRecipe({id:itemKey,category:'Weapons',level,output:itemKey,amount:1,xp:Math.max(10,level*3),materials:{[log]:2}});
   }
 
+
+  defineItem('coins',{name:'Coins',type:'Currency',description:'Used in shops and to improve your player-owned home.',stats:{Currency:'Family world coins'}});
+  const COOKING_DATA = {
+    rawMinnow:{cooked:'cookedMinnow',name:'Cooked Minnow',level:1,xp:8,ticks:1.5,heal:2},
+    rawCrappie:{cooked:'cookedCrappie',name:'Cooked Crappie',level:10,xp:18,ticks:2.5,heal:4},
+    rawBass:{cooked:'cookedBass',name:'Cooked Bass',level:20,xp:32,ticks:3.5,heal:7},
+    rawCatfish:{cooked:'cookedCatfish',name:'Cooked Catfish',level:30,xp:55,ticks:4.5,heal:10},
+    rawTuna:{cooked:'cookedTuna',name:'Cooked Tuna',level:40,xp:90,ticks:6,heal:14},
+    rawGrouper:{cooked:'cookedGrouper',name:'Cooked Grouper',level:50,xp:140,ticks:8,heal:18},
+    rawShark:{cooked:'cookedShark',name:'Cooked Shark',level:70,xp:220,ticks:10,heal:25}
+  };
+  for(const [raw,d] of Object.entries(COOKING_DATA)) defineItem(d.cooked,{name:d.name,type:'Cooked food',description:`A properly cooked ${d.name.replace('Cooked ','').toLowerCase()}.`,stats:{'Cooking level':String(d.level),'Future healing':String(d.heal)}});
+
+  const TOWN_NPCS = {
+    'Starting Town':[['Mira','A cheerful guide who keeps an eye on new wanderers.'],['Old Fen','A retired woodcutter with too many stories.']],
+    'Swamp Town':[['Bogdan','A patient marsh fisher who studies catfish.'],['Reed','A collector of unusual swamp materials.']],
+    'North Town':[['Sera Pine','A cold-weather forester who knows the arctic pines.'],['Kell','A miner searching for crystal seams.']],
+    'Desert Town':[['Asha','A trader who crosses the western sands.'],['Flint','A stoneworker who values simple materials.']],
+    'East Town':[['Rowan','A travelling bowyer who enjoys the open grassland.'],['Pip','A pond watcher who tracks moving fishing spots.']],
+    'South Town':[['Mae','A cook experimenting with fish recipes.'],['Orin','A builder interested in player-owned homes.']],
+    'Jungle Town':[['Tala','A hardwood expert who protects the jungle.'],['Red','A quiet explorer fascinated by redwoods.']]
+  };
+  const POH_UPGRADES = [
+    {id:'workroom',name:'Workroom',total:25,coins:100,items:{stoneBlock:4,cedarLog:8},description:'A private room for future crafting and storage features.'},
+    {id:'kitchen',name:'Kitchen',total:45,coins:250,items:{stoneBlock:8,oakLog:8},description:'A home cooking area for future recipes and bonuses.'},
+    {id:'garden',name:'Garden Plot',total:80,coins:500,items:{stoneBlock:10,willowLog:12},description:'Unlocks the future Farming area.'},
+    {id:'pasture',name:'Small Pasture',total:85,coins:650,items:{stoneBlock:12,beechLog:12},description:'Unlocks the future Ranching area.'},
+    {id:'greatHall',name:'Great Hall',total:140,coins:1500,items:{goldBar:5,mahoganyLog:15},description:'A shared family gathering room for later multiplayer features.'}
+  ];
   const SKILL_DEFS = {
     woodcutting: { name: 'Woodcutting', description: 'Cuts trees. Higher levels unlock better trees and axes will reduce chopping time.' },
     fishing: { name: 'Fishing', description: 'Catches fish. Higher levels unlock better fish and bait that reduces catch time.' },
     mining: { name: 'Mining', description: 'Mines rocks and ores. Higher levels unlock better deposits and pickaxes that reduce mining time.' },
     cooking: { name: 'Cooking', description: 'Cooks raw meat and fish into food that restores health.' },
     crafting: { name: 'Crafting', description: 'Combines materials at crafting stations to create increasingly powerful items.' },
-    smithing: { name: 'Smithing', description: 'Uses metal bars to create tools, armour, and weapons.' },
     melee: { name: 'Melee', description: 'Close-range combat trained with fists, swords, axes, picks, and similar weapons.' },
     range: { name: 'Ranged', description: 'Long-range combat trained with bows, slingshots, rifles, and other ranged weapons.' },
     fortitude: { name: 'Fortitude', description: 'Your health skill. It gains part of the XP earned by your active combat style and increases maximum health.' },
@@ -262,10 +291,10 @@
   const defaultState = () => ({
     version: VERSION,
     player: { x: 1780, y: 2340, targetX: 1780, targetY: 2340 },
-    inventory: { ...defaultInventory(), stoneAxe: 1, stonePickaxe: 1, basicFishingRod: 1 },
+    inventory: { ...defaultInventory(), stoneAxe: 1, stonePickaxe: 1, basicFishingRod: 1, coins: 100 },
     skills: Object.fromEntries(Object.keys(SKILL_DEFS).map(k => [k, { xp: 0 }])),
     equipment: { head: null, body: null, legs: null, boots: null, weapon: null, shield: null, cape: null, ring: null },
-    treeState: {}, fishingState: {}, rockState: {}, lastSavedAt: Date.now()
+    treeState: {}, fishingState: {}, rockState: {}, poh: {}, quests: {}, shopDay: '', lastSavedAt: Date.now()
   });
 
   const camera = { x: 0, y: 0 };
@@ -315,7 +344,7 @@
         if (!fresh.inventory[starter] || fresh.inventory[starter] < 1) fresh.inventory[starter] = 1;
       }
       for(const key of Object.keys(SKILL_DEFS)) if(old.skills?.[key]) fresh.skills[key]=old.skills[key];
-      fresh.equipment={...fresh.equipment,...(old.equipment||{})}; fresh.treeState=old.treeState||{}; fresh.fishingState=old.fishingState||{}; fresh.rockState=old.rockState||{};
+      fresh.equipment={...fresh.equipment,...(old.equipment||{})}; fresh.treeState=old.treeState||{}; fresh.fishingState=old.fishingState||{}; fresh.rockState=old.rockState||{}; fresh.poh=old.poh||{}; fresh.quests=old.quests||{};
       if(old.player && isWalkable(old.player.x,old.player.y)) fresh.player={...fresh.player,x:old.player.x,y:old.player.y,targetX:old.player.x,targetY:old.player.y};
       return fresh;
     } catch(e){ console.error(e); return defaultState(); }
@@ -484,16 +513,48 @@
   }
   function showSkill(key){const def=SKILL_DEFS[key],xp=state.skills[key]?.xp||0,level=levelFromXp(xp),next=level>=100?xpForLevel(100):xpForLevel(level+1);selectedItemKey=null;ui.itemType.textContent='Skill';ui.itemName.textContent=def.name;ui.itemDescription.textContent=def.description;ui.itemStats.innerHTML=`<div><span>Level</span><strong>${level}${level>=100?' · MAX':''}</strong></div><div><span>Experience</span><strong>${xp.toLocaleString()} XP</strong></div>${level<100?`<div><span>Next level</span><strong>${Math.max(0,next-xp).toLocaleString()} XP</strong></div>`:''}`;ui.itemAction.hidden=true;ui.dialog.showModal();}
   let currentTown = null;
+  let cookingTimer=null;
+  function totalLevel(){return Object.values(state.skills).reduce((sum,v)=>sum+levelFromXp(v?.xp||0),0);}
   function openTown(town){
     currentTown=town;ui.townName.textContent=town.name;ui.townDescription.textContent=town.description;
-    const services=[['NPCs','Talk to residents and receive quests.'],['Crafting Table','Create tools, weapons, armour, bows, and refined materials.'],['Cooking Fire','Cook fish and meat into food.'],['Player-Owned Home','Enter and improve your family home.'],['Shop','Buy supplies and sell gathered items.'],['Bank','Store items outside your carried inventory.'],['Notice Board','View town work, requests, and local quests.'],['Inn','Rest, meet travellers, and hear local information.']];
+    const services=[['NPCs','Talk to local residents and view rotating requests.'],['Crafting Table','Create tools, weapons, armour, bows, and refined materials.'],['Cooking Fire','Cook fish over time.'],['Player-Owned Home','Build permanent rooms and family features.'],['Shop','Buy supplies or sell any owned item.'],['Notice Board','View this town’s rotating quests.'],['Inn','Hear a short local rumour and rest.']];
     ui.townServices.innerHTML=services.map(([name,description])=>`<button class="town-service" data-service="${name}"><strong>${name}</strong><span>${description}</span></button>`).join('');
     ui.townServices.querySelectorAll('[data-service]').forEach(b=>b.addEventListener('click',()=>{
-      if(b.dataset.service==='Crafting Table'){ui.townDialog.close();openCrafting(town);return;}
-      showToast(`${b.dataset.service} · coming in a future system update`);
+      const service=b.dataset.service;ui.townDialog.close();
+      if(service==='Crafting Table')return openCrafting(town);
+      if(service==='Cooking Fire')return openCooking(town);
+      if(service==='NPCs')return openNPCs(town);
+      if(service==='Notice Board')return openQuests(town);
+      if(service==='Player-Owned Home')return openPOH(town);
+      if(service==='Shop')return openShop(town);
+      if(service==='Inn')return openInn(town);
     }));
     ui.townDialog.showModal();ui.status.textContent=`Visiting ${town.name}`;ui.actionName.textContent='In town';
   }
+  function openService(type,title,description,html){ui.serviceType.textContent=type;ui.serviceTitle.textContent=title;ui.serviceDescription.textContent=description||'';ui.serviceContent.innerHTML=html;ui.serviceDialog.showModal();}
+  function cookingEntries(){return Object.entries(COOKING_DATA).filter(([raw])=>(state.inventory[raw]||0)>0);}
+  function openCooking(town){
+    const level=levelFromXp(state.skills.cooking?.xp||0),entries=cookingEntries();
+    openService('Cooking Fire',`${town.name} Cooking Fire`,`Cooking level ${level} · Fish take about half their catch time to cook.`,entries.length?entries.map(([raw,d])=>{const ok=level>=d.level;return `<article class="service-card ${ok?'':'locked'}"><div><strong>${d.name}</strong><span>Level ${d.level} · ${d.ticks} ticks · +${d.xp} XP</span><small>${ITEM_DEFS[raw].name} ×${state.inventory[raw]||0}</small></div><div class="service-actions"><button data-cook="${raw}" ${ok?'':'disabled'}>Cook 1</button><button data-cookall="${raw}" ${ok?'':'disabled'}>Cook All</button></div><div class="cook-progress"><i></i></div></article>`}).join(''):'<div class="empty-state"><strong>No raw fish</strong><span>Catch fish before using the fire.</span></div>');
+    ui.serviceContent.querySelectorAll('[data-cook]').forEach(b=>b.addEventListener('click',()=>startCooking(b.dataset.cook,1,town)));
+    ui.serviceContent.querySelectorAll('[data-cookall]').forEach(b=>b.addEventListener('click',()=>startCooking(b.dataset.cook,state.inventory[b.dataset.cook]||0,town)));
+  }
+  function startCooking(raw,count,town){
+    if(cookingTimer)return showToast('Already cooking');const d=COOKING_DATA[raw],level=levelFromXp(state.skills.cooking?.xp||0);if(!d||level<d.level||count<1)return;
+    let left=Math.min(count,state.inventory[raw]||0);const duration=d.ticks*TICK_SECONDS*1000;ui.actionName.textContent=`Cooking ${d.name.replace('Cooked ','')}`;ui.status.textContent=`Cooking at ${town.name}...`;
+    const cookOne=()=>{if(left<=0||(state.inventory[raw]||0)<=0){clearInterval(cookingTimer);cookingTimer=null;ui.actionProgress.style.width='0%';ui.actionName.textContent='In town';openCooking(town);renderAll();saveGame(false);return;}let elapsed=0;const start=performance.now();cookingTimer=setInterval(()=>{elapsed=performance.now()-start;ui.actionProgress.style.width=`${Math.min(100,elapsed/duration*100)}%`;if(elapsed>=duration){clearInterval(cookingTimer);cookingTimer=null;state.inventory[raw]--;state.inventory[d.cooked]=(state.inventory[d.cooked]||0)+1;state.skills.cooking.xp=(state.skills.cooking.xp||0)+d.xp;left--;showToast(`Cooked ${d.name.replace('Cooked ','')}`);renderInventory();renderSkills();cookOne();}},100);};cookOne();
+  }
+  function dayKey(){return new Date().toISOString().slice(0,10);}
+  function townQuest(town,index=0){const pool=[['Gather cedar logs','cedarLog',8,45],['Catch minnows','rawMinnow',6,50],['Mine stone','stone',8,55],['Bring copper ore','copperOre',4,75],['Bring cooked fish','cookedMinnow',4,80]];let seed=[...town.name+dayKey()].reduce((a,c)=>a+c.charCodeAt(0),index*17);const q=pool[seed%pool.length];return{id:`${town.name}-${dayKey()}-${index}`,title:q[0],item:q[1],amount:q[2],reward:q[3]};}
+  function openNPCs(town){const npcs=TOWN_NPCS[town.name]||[];openService('Residents',town.name,'Each town has its own residents. Their daily requests rotate with time.',npcs.map(([name,text],i)=>`<button class="npc-card" data-npc="${i}"><strong>${name}</strong><span>${text}</span></button>`).join(''));ui.serviceContent.querySelectorAll('[data-npc]').forEach(b=>b.addEventListener('click',()=>{const [name,text]=npcs[+b.dataset.npc],q=townQuest(town,+b.dataset.npc);openService('Conversation',name,text,questCard(q,town));bindQuestButtons(town);}));}
+  function questCard(q,town){const done=state.quests[q.id]==='done',accepted=state.quests[q.id]==='accepted',owned=state.inventory[q.item]||0;return `<article class="quest-card"><strong>${q.title}</strong><span>Bring ${ITEM_DEFS[q.item]?.name||q.item} ${owned}/${q.amount}</span><small>Reward: ${q.reward} coins · Merching XP</small>${done?'<button disabled>Completed today</button>':accepted?`<button data-claim="${q.id}" ${owned>=q.amount?'':'disabled'}>Turn In</button>`:`<button data-accept="${q.id}">Accept Quest</button>`}</article>`;}
+  function bindQuestButtons(town){ui.serviceContent.querySelectorAll('[data-accept]').forEach(b=>b.addEventListener('click',()=>{state.quests[b.dataset.accept]='accepted';openQuests(town);saveGame(false);}));ui.serviceContent.querySelectorAll('[data-claim]').forEach(b=>b.addEventListener('click',()=>{const quests=[townQuest(town,0),townQuest(town,1)],q=quests.find(x=>x.id===b.dataset.claim);if(!q||(state.inventory[q.item]||0)<q.amount)return;state.inventory[q.item]-=q.amount;state.inventory.coins=(state.inventory.coins||0)+q.reward;state.skills.merching.xp=(state.skills.merching.xp||0)+q.reward;state.quests[q.id]='done';renderAll();openQuests(town);saveGame(false);}));}
+  function openQuests(town){const quests=[townQuest(town,0),townQuest(town,1)];openService('Notice Board',`${town.name} Requests`,'These requests rotate daily.',quests.map(q=>questCard(q,town)).join(''));bindQuestButtons(town);}
+  function openPOH(town){const total=totalLevel();openService('Player-Owned Home','Your Home',`Total level ${total} · Coins ${state.inventory.coins||0}`,POH_UPGRADES.map(u=>{const built=state.poh[u.id],items=Object.entries(u.items).map(([k,n])=>`${ITEM_DEFS[k]?.name||k} ${state.inventory[k]||0}/${n}`).join(' · '),can=total>=u.total&&(state.inventory.coins||0)>=u.coins&&Object.entries(u.items).every(([k,n])=>(state.inventory[k]||0)>=n);return `<article class="service-card ${built?'built':can?'':'locked'}"><div><strong>${u.name}</strong><span>Total level ${u.total} · ${u.coins} coins</span><small>${u.description}<br>${items}</small></div><button data-build="${u.id}" ${built||!can?'disabled':''}>${built?'Built':'Build'}</button></article>`}).join(''));ui.serviceContent.querySelectorAll('[data-build]').forEach(b=>b.addEventListener('click',()=>{const u=POH_UPGRADES.find(x=>x.id===b.dataset.build);if(!u)return;state.inventory.coins-=u.coins;for(const[k,n]of Object.entries(u.items))state.inventory[k]-=n;state.poh[u.id]=true;renderAll();openPOH(town);saveGame(false);}));}
+  function itemValue(key){const item=ITEM_DEFS[key];if(!item||key==='coins')return 0;const name=item.name.toLowerCase();let v=2;if(name.includes('crystal'))v=240;else if(name.includes('gold'))v=120;else if(name.includes('pyrite'))v=80;else if(name.includes('silver'))v=55;else if(name.includes('iron'))v=30;else if(name.includes('copper'))v=16;else if(name.includes('redwood'))v=90;else if(name.includes('mahogany'))v=65;else if(name.includes('shark'))v=75;else if(name.includes('grouper'))v=45;else if(name.includes('tuna'))v=30;else if(item.slot)v=20;return v;}
+  function merchModifiers(){const level=levelFromXp(state.skills.merching?.xp||0);return{level,buy:Math.max(.75,1-level*.0025),sell:Math.min(1.25,.5+level*.005)};}
+  function openShop(town){const m=merchModifiers(),stock=['stoneAxe','stonePickaxe','basicFishingRod','cedarLog','stone','rawMinnow','copperOre'];const buy=stock.map(k=>{const price=Math.max(1,Math.ceil(itemValue(k)*2*m.buy));return `<article class="shop-row"><div><strong>${ITEM_DEFS[k].name}</strong><span>${price} coins</span></div><button data-buy="${k}" data-price="${price}">Buy</button></article>`}).join('');const sell=Object.entries(state.inventory).filter(([k,q])=>q>0&&k!=='coins'&&ITEM_DEFS[k]).map(([k,q])=>{const price=Math.max(1,Math.floor(itemValue(k)*m.sell));return `<article class="shop-row"><div><strong>${ITEM_DEFS[k].name} ×${q}</strong><span>${price} coins each</span></div><div class="service-actions"><button data-sell="${k}" data-price="${price}">Sell 1</button><button data-sellall="${k}" data-price="${price}">Sell All</button></div></article>`}).join('');openService('Shop',`${town.name} Shop`,`Merching level ${m.level} · ${state.inventory.coins||0} coins`,`<details class="shop-group" open><summary>Buy basic supplies</summary>${buy}</details><details class="shop-group"><summary>Sell owned items</summary>${sell||'<p class="item-description">Nothing to sell.</p>'}</details>`);ui.serviceContent.querySelectorAll('[data-buy]').forEach(b=>b.addEventListener('click',()=>{const p=+b.dataset.price;if((state.inventory.coins||0)<p)return showToast('Not enough coins');state.inventory.coins-=p;state.inventory[b.dataset.buy]=(state.inventory[b.dataset.buy]||0)+1;state.skills.merching.xp=(state.skills.merching.xp||0)+p;renderAll();openShop(town);saveGame(false);}));const sellFn=(b,all)=>{const k=b.dataset.sell||b.dataset.sellall,q=all?(state.inventory[k]||0):1;if(q<1||!confirm(`Sell ${all?'all ':''}${ITEM_DEFS[k].name}${all?` ×${q}`:''}?`))return;const gain=q*(+b.dataset.price);state.inventory[k]-=q;state.inventory.coins=(state.inventory.coins||0)+gain;state.skills.merching.xp=(state.skills.merching.xp||0)+gain;renderAll();openShop(town);saveGame(false);};ui.serviceContent.querySelectorAll('[data-sell]').forEach(b=>b.addEventListener('click',()=>sellFn(b,false)));ui.serviceContent.querySelectorAll('[data-sellall]').forEach(b=>b.addEventListener('click',()=>sellFn(b,true)));}
+  function openInn(town){const rumours={"Starting Town":'Mira says the cedar pond is the safest place to begin.',"Swamp Town":'The catfish bite more often when the marsh is quiet.',"North Town":'Crystal deposits glitter beyond the arctic pines.',"Desert Town":'Pyrite is often mistaken for gold by hurried travellers.',"East Town":'Willows favour the wet ground near the eastern water.',"South Town":'The jungle trees provide the most valuable hardwood.',"Jungle Town":'Ancient redwoods grow slowly, but their timber is prized.'};openService('Inn',`${town.name} Inn`,'A quiet place to rest.',`<article class="service-card"><strong>Local rumour</strong><span>${rumours[town.name]||'Travellers speak of resources across the continent.'}</span></article>`);}
   function materialText(materials){
     return Object.entries(materials).map(([key,need])=>`${ITEM_DEFS[key]?.name||key} ${state.inventory[key]||0}/${need}`).join(' · ');
   }
@@ -549,6 +610,6 @@
   function renderAll(){renderInventory();renderSkills();renderEquipment();renderMapPanel();}
   function frame(now){const dt=Math.min((now-lastFrame)/1000,.05);lastFrame=now;update(dt);draw();if(now-miniMapView.lastDraw>180&&document.getElementById('map')?.classList.contains('active')){miniMapView.lastDraw=now;drawMiniMap();}requestAnimationFrame(frame);}
 
-  canvas.addEventListener('pointerdown',handlePointer,{passive:false});document.getElementById('saveButton').addEventListener('click',()=>saveGame(true));document.getElementById('stopButton').addEventListener('click',()=>stopAction(true));document.querySelectorAll('.tab').forEach(t=>t.addEventListener('click',()=>openPanel(t.dataset.panel)));document.getElementById('closeItemButton').addEventListener('click',()=>ui.dialog.close());document.getElementById('closeTownButton').addEventListener('click',()=>ui.townDialog.close());document.getElementById('closeCraftingButton').addEventListener('click',()=>ui.craftingDialog.close());ui.itemAction.addEventListener('click',toggleSelectedEquipment);ui.dialog.addEventListener('click',e=>{if(e.target===ui.dialog)ui.dialog.close();});ui.townDialog.addEventListener('click',e=>{if(e.target===ui.townDialog)ui.townDialog.close();});ui.craftingDialog.addEventListener('click',e=>{if(e.target===ui.craftingDialog)ui.craftingDialog.close();});document.getElementById('exportButton').addEventListener('click',()=>{saveGame(false);const blob=new Blob([JSON.stringify(state,null,2)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`idle-wanderer-save-${Date.now()}.json`;a.click();URL.revokeObjectURL(a.href);});document.getElementById('importInput').addEventListener('change',async e=>{const file=e.target.files?.[0];if(!file)return;try{localStorage.setItem(SAVE_KEY,JSON.stringify(JSON.parse(await file.text())));location.reload();}catch{showToast('Invalid save file');}});document.getElementById('resetButton').addEventListener('click',()=>{if(confirm('Reset all progress on this device?')){localStorage.removeItem(SAVE_KEY);location.reload();}});window.addEventListener('pagehide',()=>saveGame(false));setInterval(()=>saveGame(false),15000);if('serviceWorker'in navigator)navigator.serviceWorker.register('./service-worker.js').catch(console.error);
+  canvas.addEventListener('pointerdown',handlePointer,{passive:false});document.getElementById('saveButton').addEventListener('click',()=>saveGame(true));document.getElementById('stopButton').addEventListener('click',()=>stopAction(true));document.querySelectorAll('.tab').forEach(t=>t.addEventListener('click',()=>openPanel(t.dataset.panel)));document.getElementById('closeItemButton').addEventListener('click',()=>ui.dialog.close());document.getElementById('closeTownButton').addEventListener('click',()=>ui.townDialog.close());document.getElementById('closeCraftingButton').addEventListener('click',()=>ui.craftingDialog.close());document.getElementById('closeServiceButton').addEventListener('click',()=>ui.serviceDialog.close());ui.itemAction.addEventListener('click',toggleSelectedEquipment);ui.dialog.addEventListener('click',e=>{if(e.target===ui.dialog)ui.dialog.close();});ui.townDialog.addEventListener('click',e=>{if(e.target===ui.townDialog)ui.townDialog.close();});ui.craftingDialog.addEventListener('click',e=>{if(e.target===ui.craftingDialog)ui.craftingDialog.close();});ui.serviceDialog.addEventListener('click',e=>{if(e.target===ui.serviceDialog)ui.serviceDialog.close();});document.getElementById('exportButton').addEventListener('click',()=>{saveGame(false);const blob=new Blob([JSON.stringify(state,null,2)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`idle-wanderer-save-${Date.now()}.json`;a.click();URL.revokeObjectURL(a.href);});document.getElementById('importInput').addEventListener('change',async e=>{const file=e.target.files?.[0];if(!file)return;try{localStorage.setItem(SAVE_KEY,JSON.stringify(JSON.parse(await file.text())));location.reload();}catch{showToast('Invalid save file');}});document.getElementById('resetButton').addEventListener('click',()=>{if(confirm('Reset all progress on this device?')){localStorage.removeItem(SAVE_KEY);location.reload();}});window.addEventListener('pagehide',()=>saveGame(false));setInterval(()=>saveGame(false),15000);if('serviceWorker'in navigator)navigator.serviceWorker.register('./service-worker.js').catch(console.error);
   camera.x=clamp(state.player.x-canvas.width/2,0,WORLD.width-canvas.width);camera.y=clamp(state.player.y-canvas.height/2,0,WORLD.height-canvas.height);renderAll();requestAnimationFrame(frame);
 })();
