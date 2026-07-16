@@ -1,9 +1,9 @@
 (() => {
   'use strict';
 
-  const VERSION = '0.4.1';
-  const SAVE_KEY = 'idle-wanderer-save-v4';
-  const LEGACY_KEYS = ['idle-wanderer-save-v3', 'idle-wanderer-save-v2'];
+  const VERSION = '0.4.2';
+  const SAVE_KEY = 'idle-wanderer-save-v5';
+  const LEGACY_KEYS = ['idle-wanderer-save-v4', 'idle-wanderer-save-v3', 'idle-wanderer-save-v2'];
   const TICK_SECONDS = 0.6;
   const WORLD = { width: 3800, height: 4300 };
   const canvas = document.getElementById('gameCanvas');
@@ -31,7 +31,16 @@
     redwood: { name: 'Redwood', level: 70, ticks: 20, xp: 220, log: 'redwoodLog', trunk: '#713b2a', leaves: '#2f6542', respawn: 68, capacity: [3, 4] }
   };
 
+  const TOOL_TYPES = {
+    axe: { name: 'axe', skill: 'Woodcutting' },
+    pickaxe: { name: 'pickaxe', skill: 'Mining' },
+    fishingRod: { name: 'fishing rod', skill: 'Fishing' }
+  };
+
   const ITEM_DEFS = {
+    stoneAxe: { name: 'Stone Axe', type: 'Woodcutting tool', description: 'A simple starter axe. Owning it allows you to cut trees; it does not need to be equipped.', tool: 'axe', toolTier: 1, stats: { 'Skill': 'Woodcutting', 'Required level': '1', 'Chopping speed': 'Base speed' } },
+    stonePickaxe: { name: 'Stone Pickaxe', type: 'Mining tool', description: 'A simple starter pickaxe. Owning it will allow you to mine rocks; it does not need to be equipped.', tool: 'pickaxe', toolTier: 1, stats: { 'Skill': 'Mining', 'Required level': '1', 'Mining speed': 'Base speed' } },
+    basicFishingRod: { name: 'Basic Fishing Rod', type: 'Fishing tool', description: 'A basic starter fishing rod. Owning it will allow you to fish; it does not need to be equipped.', tool: 'fishingRod', toolTier: 1, stats: { 'Skill': 'Fishing', 'Required level': '1', 'Fishing speed': 'Base speed' } },
     cedarLog: { name: 'Cedar Log', type: 'Woodcutting material', description: 'A light, fragrant log from a cedar tree.', uses: 'Future Firemaking · Fletching · Construction' },
     oakLog: { name: 'Oak Log', type: 'Woodcutting material', description: 'A dependable hardwood log with a sturdy grain.', uses: 'Future Firemaking · Fletching · Construction' },
     willowLog: { name: 'Willow Log', type: 'Woodcutting material', description: 'A flexible pale log cut near wet ground.', uses: 'Future Firemaking · Fletching · Crafting' },
@@ -110,7 +119,7 @@
   const defaultState = () => ({
     version: VERSION,
     player: { x: 1780, y: 2340, targetX: 1780, targetY: 2340 },
-    inventory: defaultInventory(),
+    inventory: { ...defaultInventory(), stoneAxe: 1, stonePickaxe: 1, basicFishingRod: 1 },
     skills: Object.fromEntries(Object.keys(SKILL_DEFS).map(k => [k, { xp: 0 }])),
     equipment: { head: null, body: null, legs: null, boots: null, weapon: null, shield: null, cape: null, ring: null },
     treeState: {}, lastSavedAt: Date.now()
@@ -133,12 +142,22 @@
   function pointInWater(x,y){ return waters.some(w => ((x-w.x)/w.rx)**2 + ((y-w.y)/w.ry)**2 <= 1); }
   function isWalkable(x,y){ return pointInPolygon(x,y,continent) && !pointInWater(x,y); }
   function regionAt(x,y){ return regions.slice().reverse().find(r=>pointInPolygon(x,y,r.points)) || { name:'Grasslands', color:'#72ae61' }; }
+  function ownedTools(toolType){
+    return Object.entries(state.inventory)
+      .filter(([key, quantity]) => quantity > 0 && ITEM_DEFS[key]?.tool === toolType)
+      .sort((a,b) => (ITEM_DEFS[b[0]].toolTier || 0) - (ITEM_DEFS[a[0]].toolTier || 0));
+  }
+  function bestOwnedTool(toolType){ return ownedTools(toolType)[0]?.[0] || null; }
 
   function loadState(){
     try {
       let raw=localStorage.getItem(SAVE_KEY); if(!raw) for(const key of LEGACY_KEYS){raw=localStorage.getItem(key);if(raw)break;}
       if(!raw)return defaultState(); const old=JSON.parse(raw), fresh=defaultState();
       fresh.inventory={...fresh.inventory,...(old.inventory||{})};
+      // Tool ownership, not equipment, controls gathering access. Existing saves receive the starter set once.
+      for (const starter of ['stoneAxe','stonePickaxe','basicFishingRod']) {
+        if (!fresh.inventory[starter] || fresh.inventory[starter] < 1) fresh.inventory[starter] = 1;
+      }
       for(const key of Object.keys(SKILL_DEFS)) if(old.skills?.[key]) fresh.skills[key]=old.skills[key];
       fresh.equipment={...fresh.equipment,...(old.equipment||{})}; fresh.treeState=old.treeState||{};
       if(old.player && isWalkable(old.player.x,old.player.y)) fresh.player={...fresh.player,x:old.player.x,y:old.player.y,targetX:old.player.x,targetY:old.player.y};
@@ -166,6 +185,7 @@
     if(tree){
       const def=TREE_TYPES[tree.type], level=levelFromXp(state.skills.woodcutting.xp);
       if(level<def.level){showToast(`${def.name} Tree · Woodcutting level ${def.level} required`);return;}
+      if(!bestOwnedTool('axe')){showToast(`${def.name} Tree · An axe is required`);return;}
       queuedTree=tree; const dx=state.player.x-tree.x,dy=state.player.y-tree.y,d=Math.hypot(dx,dy)||1; const stand=58;
       state.player.targetX=tree.x+dx/d*stand;state.player.targetY=tree.y+dy/d*stand;ui.status.textContent=`Walking to ${def.name} tree...`;ui.actionName.textContent='Walking';return;
     }
@@ -174,7 +194,7 @@
   }
 
   function stopAction(stopMovement=true){ activeTree=null;queuedTree=null;queuedTown=null;actionElapsed=0;ui.actionProgress.style.width='0%';if(stopMovement){state.player.targetX=state.player.x;state.player.targetY=state.player.y;}ui.actionName.textContent='Exploring'; }
-  function beginChopping(tree){ activeTree=tree;queuedTree=null;actionElapsed=0;const def=TREE_TYPES[tree.type];ui.actionName.textContent=`Chopping ${def.name}`;ui.status.textContent=`Chopping ${def.name} tree...`; }
+  function beginChopping(tree){ activeTree=tree;queuedTree=null;actionElapsed=0;const def=TREE_TYPES[tree.type], tool=ITEM_DEFS[bestOwnedTool('axe')];ui.actionName.textContent=`Chopping ${def.name}`;ui.status.textContent=`Chopping ${def.name} tree with ${tool?.name || 'an axe'}...`; }
   function awardLog(tree){
     const def=TREE_TYPES[tree.type]; state.inventory[def.log]=(state.inventory[def.log]||0)+1;state.skills.woodcutting.xp+=def.xp;tree.remaining--;
     floaters.push({x:tree.x,y:tree.y-55,text:`+1 ${ITEM_DEFS[def.log].name}  +${def.xp} XP`,life:1.4}); renderInventory();renderSkills();

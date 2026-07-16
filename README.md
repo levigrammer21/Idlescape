@@ -1,4 +1,4 @@
-# Idle Wanderer v0.4.1
+# Idle Wanderer v0.4.2
 
 Mobile-first GitHub Pages build.
 
@@ -19,3 +19,13 @@ Upload every file in this folder to the root of your GitHub Pages repository.
 - Objects identify themselves when tapped.
 - Full planned skill dashboard.
 - Town interaction overlay with contextual services.
+
+
+## 0.4.2 — Starter tools
+
+- New and migrated characters receive a Stone Axe, Stone Pickaxe, and Basic Fishing Rod.
+- Gathering tools only need to be owned; they never need to be equipped.
+- Woodcutting now checks for an owned axe before chopping.
+- The engine automatically selects the best owned tool tier, ready for faster higher-level tools later.
+- Starter tools include inventory descriptions and skill statistics.
+- Replacement starter tools are intended to be cheap shop purchases or easy recipes when those town services are implemented.
