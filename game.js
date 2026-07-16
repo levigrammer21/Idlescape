@@ -1,7 +1,7 @@
 (() => {
   'use strict';
 
-  const VERSION = '0.11.2';
+  const VERSION = '0.11.3';
   const SAVE_KEY = 'idle-wanderer-save-v6';
   const LEGACY_KEYS = ['idle-wanderer-save-v5', 'idle-wanderer-save-v4', 'idle-wanderer-save-v3', 'idle-wanderer-save-v2'];
   const TICK_SECONDS = 0.6;
@@ -503,14 +503,26 @@
       for(const key of Object.keys(SKILL_DEFS)) if(old.skills?.[key]) fresh.skills[key]=old.skills[key];
       if(!old.skills?.fortitude || (old.skills.fortitude.xp||0)<xpForLevel(10)) fresh.skills.fortitude={xp:xpForLevel(10)};
       fresh.equipment={...fresh.equipment,...(old.equipment||{})}; fresh.treeState=old.treeState||{}; fresh.fishingState=old.fishingState||{}; fresh.rockState=old.rockState||{}; fresh.enemyState=old.enemyState||{}; fresh.combat={...fresh.combat,...(old.combat||{})}; fresh.poh=old.poh||{}; fresh.quests=old.quests||{};
-      const expandOldWorld = old.version !== VERSION;
-      if(expandOldWorld){
+      // The world was enlarged once in v0.11.0. Only saves from before that
+      // release need coordinate scaling. The old `old.version !== VERSION`
+      // check scaled positions again on every later update and could leave the
+      // player/camera in an empty part of the map.
+      const versionParts = String(old.version || '0.0.0').split('.').map(n => Number(n) || 0);
+      const predatesWorldExpansion = versionParts[0] === 0 && versionParts[1] < 11;
+      const brokenPopulationSave = old.version === '0.11.2';
+      if(predatesWorldExpansion){
         fresh.enemyState=Object.fromEntries(Object.entries(fresh.enemyState).map(([id,enemy])=>[id,{...enemy,x:typeof enemy.x==='number'?Math.round(enemy.x*MAP_SCALE):enemy.x,y:typeof enemy.y==='number'?Math.round(enemy.y*MAP_SCALE):enemy.y}]));
       }
-      if(old.player){
-        const px=expandOldWorld?Math.round(old.player.x*MAP_SCALE):old.player.x;
-        const py=expandOldWorld?Math.round(old.player.y*MAP_SCALE):old.player.y;
-        if(isWalkable(px,py)) fresh.player={...fresh.player,x:px,y:py,targetX:px,targetY:py};
+      if(brokenPopulationSave){
+        // v0.11.2 may have multiplied already-expanded positions a second time.
+        // Reset only position data; inventory, skills, equipment and resource
+        // progress remain untouched.
+        fresh.enemyState={};
+        fresh.player={...fresh.player};
+      } else if(old.player){
+        const px=predatesWorldExpansion?Math.round(old.player.x*MAP_SCALE):Number(old.player.x);
+        const py=predatesWorldExpansion?Math.round(old.player.y*MAP_SCALE):Number(old.player.y);
+        if(Number.isFinite(px)&&Number.isFinite(py)&&isWalkable(px,py)) fresh.player={...fresh.player,x:px,y:py,targetX:px,targetY:py};
       }
       if(old.version && old.version !== VERSION){
         for(const [id,node] of Object.entries(fresh.treeState||{})){const type=id.replace(/-\d+$/,'');const def=TREE_TYPES[type];if(def&&node.remaining>0){node.remaining=Math.max(node.remaining,def.capacity[0]);node.max=Math.max(node.max||0,def.capacity[1]);}}
@@ -657,7 +669,19 @@
   }
 
   function update(dt){
-    animationClock+=dt; playerAttackAnim=Math.max(0,playerAttackAnim-dt);playerHitFlash=Math.max(0,playerHitFlash-dt);defeatFlash=Math.max(0,defeatFlash-dt);respawnLock=Math.max(0,respawnLock-dt); const now=Date.now(); for(const t of trees){if(t.remaining<=0&&t.respawnAt&&now>=t.respawnAt){const def=TREE_TYPES[t.type];t.max=randomInt(def.capacity[0],def.capacity[1]);t.remaining=t.max;t.respawnAt=0;}}
+    animationClock+=dt;
+    // Recover safely from malformed or out-of-bounds saved coordinates.
+    const pstate=state.player;
+    if(!Number.isFinite(pstate.x)||!Number.isFinite(pstate.y)||!isWalkable(pstate.x,pstate.y)){
+      pstate.x=Math.round(1770*MAP_SCALE);pstate.y=Math.round(2295*MAP_SCALE);
+      pstate.targetX=pstate.x;pstate.targetY=pstate.y;
+      camera.x=clamp(pstate.x-canvas.width/2,0,WORLD.width-canvas.width);
+      camera.y=clamp(pstate.y-canvas.height/2,0,WORLD.height-canvas.height);
+      stopAction(false);
+    }
+    if(!Number.isFinite(pstate.targetX)||!Number.isFinite(pstate.targetY)){
+      pstate.targetX=pstate.x;pstate.targetY=pstate.y;
+    } playerAttackAnim=Math.max(0,playerAttackAnim-dt);playerHitFlash=Math.max(0,playerHitFlash-dt);defeatFlash=Math.max(0,defeatFlash-dt);respawnLock=Math.max(0,respawnLock-dt); const now=Date.now(); for(const t of trees){if(t.remaining<=0&&t.respawnAt&&now>=t.respawnAt){const def=TREE_TYPES[t.type];t.max=randomInt(def.capacity[0],def.capacity[1]);t.remaining=t.max;t.respawnAt=0;}}
     for(const r of rocks){if(r.hp<=0&&r.respawnAt&&now>=r.respawnAt){r.hp=r.maxHp;r.respawnAt=0;}}
     for(const f of fishingSpots){if(f.remaining<=0&&f.respawnAt&&now>=f.respawnAt){f.remaining=randomInt(12,20);f.respawnAt=0;}}
     for(const e of enemies){const d=ENEMY_TYPES[e.type];e.attackAnim=Math.max(0,(e.attackAnim||0)-dt);e.hitFlash=Math.max(0,(e.hitFlash||0)-dt);e.deathAnim=Math.max(0,(e.deathAnim||0)-dt);if(e.hp<=0){if(e.respawnAt&&now>=e.respawnAt){e.hp=e.maxHp;e.respawnAt=0;e.x=e.homeX;e.y=e.homeY;}continue;}e.wanderElapsed-=dt;if(!e.target&&d.behaviour==='aggressive'&&Math.hypot(e.x-state.player.x,e.y-state.player.y)<d.aggro&&regionAt(e.x,e.y).id===regionAt(state.player.x,state.player.y).id){e.target='player';activeEnemy=e;ui.actionName.textContent=`Attacked by ${d.name}`;}if(e.target==='player'){const dd=Math.hypot(state.player.x-e.x,state.player.y-e.y);if(regionAt(e.x,e.y).id!==regionAt(e.homeX,e.homeY).id||Math.hypot(e.x-e.homeX,e.y-e.homeY)>520){e.target=null;e.returning=true;}else if(dd>52){const step=Math.min(dd-48,135*dt);e.x+=(state.player.x-e.x)/dd*step;e.y+=(state.player.y-e.y)/dd*step;}e.attackElapsed+=dt;if(dd<=62&&e.attackElapsed>=d.ticks*TICK_SECONDS){e.attackElapsed=0;if(enemyAttack(e))break;}}else if(e.returning){const dd=Math.hypot(e.homeX-e.x,e.homeY-e.y);if(dd<5){e.x=e.homeX;e.y=e.homeY;e.returning=false;}else{const step=Math.min(dd,120*dt);e.x+=(e.homeX-e.x)/dd*step;e.y+=(e.homeY-e.y)/dd*step;}}else if(e.wanderElapsed<=0){e.wanderElapsed=randomInt(2,5);const a=Math.random()*Math.PI*2,r=Math.random()*70;e.wanderX=e.homeX+Math.cos(a)*r;e.wanderY=e.homeY+Math.sin(a)*r;}else{const dd=Math.hypot(e.wanderX-e.x,e.wanderY-e.y);if(dd>3){const step=Math.min(dd,45*dt);e.x+=(e.wanderX-e.x)/dd*step;e.y+=(e.wanderY-e.y)/dd*step;}}}

@@ -1,12 +1,7 @@
-# Idle Wanderer v0.11.2 — World Population
+# Idle Wanderer v0.11.3 — World Hotfix
 
-Mobile-first GitHub Pages build.
-
-## New in this version
-- Increased common and mid-tier creature populations across their existing biome zones.
-- Kept elite creatures uncommon and the Frost Dragon unique.
-- Enlarged town visuals with multiple buildings, paths, fencing, lamps, crates, a well, and a central banner.
-- Increased town tap radius to match the larger settlement artwork.
-- Existing progress remains compatible.
-
-Upload every file in this folder to the root of your GitHub Pages repository.
+- Fixes the v0.11.2 save migration that could scale player and enemy positions twice.
+- Affected v0.11.2 saves return safely to Starting Town once while keeping items, skills, equipment, quests, POH, and resource progress.
+- Future releases no longer rescale the expanded world coordinates.
+- Adds runtime recovery for invalid player coordinates.
+- Keeps the expanded monster population and larger town visuals.
