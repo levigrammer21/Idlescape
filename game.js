@@ -1,7 +1,7 @@
 (() => {
   'use strict';
 
-  const VERSION = '0.4.0';
+  const VERSION = '0.4.1';
   const SAVE_KEY = 'idle-wanderer-save-v4';
   const LEGACY_KEYS = ['idle-wanderer-save-v3', 'idle-wanderer-save-v2'];
   const TICK_SECONDS = 0.6;
@@ -16,7 +16,8 @@
     skills: document.getElementById('skills'), equipment: document.getElementById('equipment'),
     map: document.getElementById('map'), toast: document.getElementById('toast'), region: document.getElementById('regionText'),
     dialog: document.getElementById('itemDialog'), itemType: document.getElementById('itemType'), itemName: document.getElementById('itemName'),
-    itemDescription: document.getElementById('itemDescription'), itemStats: document.getElementById('itemStats'), itemAction: document.getElementById('itemActionButton')
+    itemDescription: document.getElementById('itemDescription'), itemStats: document.getElementById('itemStats'), itemAction: document.getElementById('itemActionButton'),
+    townDialog: document.getElementById('townDialog'), townName: document.getElementById('townName'), townDescription: document.getElementById('townDescription'), townServices: document.getElementById('townServices')
   };
 
   const TREE_TYPES = {
@@ -43,6 +44,22 @@
     clothShirt: { name: 'Cloth Shirt', type: 'Body armour', description: 'Basic cloth armour carried over from the earlier test build.', slot: 'body', stats: { 'Defence': '+1', 'Weight': 'Light' } }
   };
 
+  const SKILL_DEFS = {
+    woodcutting: { name: 'Woodcutting', description: 'Cuts trees. Higher levels unlock better trees and axes will reduce chopping time.' },
+    fishing: { name: 'Fishing', description: 'Catches fish. Higher levels unlock better fish and bait that reduces catch time.' },
+    mining: { name: 'Mining', description: 'Mines rocks and ores. Higher levels unlock better deposits and pickaxes that reduce mining time.' },
+    cooking: { name: 'Cooking', description: 'Cooks raw meat and fish into food that restores health.' },
+    crafting: { name: 'Crafting', description: 'Combines materials at crafting stations to create increasingly powerful items.' },
+    smithing: { name: 'Smithing', description: 'Uses metal bars to create tools, armour, and weapons.' },
+    melee: { name: 'Melee', description: 'Close-range combat trained with fists, swords, axes, picks, and similar weapons.' },
+    range: { name: 'Ranged', description: 'Long-range combat trained with bows, slingshots, rifles, and other ranged weapons.' },
+    fortitude: { name: 'Fortitude', description: 'Your health skill. It gains part of the XP earned by your active combat style and increases maximum health.' },
+    summoning: { name: 'Summoning', description: 'Summons animal companions. Pets fight with you and some provide gathering or skill benefits.' },
+    merching: { name: 'Merching', description: 'Gains XP by buying and selling. Higher levels unlock stock and improve selling prices.' },
+    farming: { name: 'Farming', description: 'Grow crops in your player-owned home and return later to harvest them.' },
+    ranching: { name: 'Ranching', description: 'Raise animals by providing food, then collect products or sell livestock.' }
+  };
+
   // One continuous continent. Biomes overlap the base land so there are no black seams.
   const continent = [[680,210],[1450,100],[2250,180],[2920,430],[3240,900],[3160,1420],[3520,1880],[3430,2550],[3090,2920],[3020,3500],[2630,4070],[1840,4210],[1080,4060],[650,3610],[520,3020],[190,2470],[260,1700],[470,1250],[390,740]];
 
@@ -64,10 +81,10 @@
   ];
 
   const towns = [
-    { name: 'Swamp Town', x: 1250, y: 520 }, { name: 'North Town', x: 2600, y: 1270 },
-    { name: 'Desert Town', x: 520, y: 1980 }, { name: 'Starting Town', x: 1770, y: 2190 },
-    { name: 'East Town', x: 3050, y: 1880 }, { name: 'South Town', x: 1350, y: 3100 },
-    { name: 'Jungle Town', x: 2470, y: 3720 }
+    { name: 'Swamp Town', x: 1250, y: 520, description: 'A quiet settlement raised above the wet northern marsh.' }, { name: 'North Town', x: 2600, y: 1270, description: 'A hardy northern stop serving travellers headed toward the cold pines.' },
+    { name: 'Desert Town', x: 520, y: 1980, description: 'A sun-baked trading post near the western sands.' }, { name: 'Starting Town', x: 1770, y: 2190, description: 'The central home town and starting point for your family adventure.' },
+    { name: 'East Town', x: 3050, y: 1880, description: 'A green eastern settlement beside open grassland and water.' }, { name: 'South Town', x: 1350, y: 3100, description: 'A weathered town between the central fields and southern jungle.' },
+    { name: 'Jungle Town', x: 2470, y: 3720, description: 'A warm jungle settlement surrounded by valuable hardwoods.' }
   ];
 
   const treeSeeds = [
@@ -94,7 +111,7 @@
     version: VERSION,
     player: { x: 1780, y: 2340, targetX: 1780, targetY: 2340 },
     inventory: defaultInventory(),
-    skills: { woodcutting: { xp: 0 } },
+    skills: Object.fromEntries(Object.keys(SKILL_DEFS).map(k => [k, { xp: 0 }])),
     equipment: { head: null, body: null, legs: null, boots: null, weapon: null, shield: null, cape: null, ring: null },
     treeState: {}, lastSavedAt: Date.now()
   });
@@ -103,7 +120,7 @@
   let state = loadState();
   let trees = makeTrees(state.treeState);
   let lastFrame = performance.now(), toastTimer = null, selectedItemKey = null;
-  let activeTree = null, queuedTree = null, actionElapsed = 0;
+  let activeTree = null, queuedTree = null, queuedTown = null, actionElapsed = 0;
   const floaters = [];
 
   function randomInt(min,max){ return Math.floor(Math.random()*(max-min+1))+min; }
@@ -122,7 +139,7 @@
       let raw=localStorage.getItem(SAVE_KEY); if(!raw) for(const key of LEGACY_KEYS){raw=localStorage.getItem(key);if(raw)break;}
       if(!raw)return defaultState(); const old=JSON.parse(raw), fresh=defaultState();
       fresh.inventory={...fresh.inventory,...(old.inventory||{})};
-      if(old.skills?.woodcutting) fresh.skills.woodcutting=old.skills.woodcutting;
+      for(const key of Object.keys(SKILL_DEFS)) if(old.skills?.[key]) fresh.skills[key]=old.skills[key];
       fresh.equipment={...fresh.equipment,...(old.equipment||{})}; fresh.treeState=old.treeState||{};
       if(old.player && isWalkable(old.player.x,old.player.y)) fresh.player={...fresh.player,x:old.player.x,y:old.player.y,targetX:old.player.x,targetY:old.player.y};
       return fresh;
@@ -137,21 +154,26 @@
   function worldToScreen(x,y){ return {x:x-camera.x,y:y-camera.y}; }
   function screenToWorld(x,y){ return {x:x+camera.x,y:y+camera.y}; }
 
+  function townAt(x,y){ let best=null,bestD=72; for(const t of towns){const d=Math.hypot(x-t.x,y-t.y);if(d<bestD){best=t;bestD=d;}} return best; }
   function treeAt(x,y){ let best=null,bestD=44; for(const t of trees){if(t.remaining<=0)continue;const d=Math.hypot(x-t.x,y-t.y);if(d<bestD){best=t;bestD=d;}} return best; }
   function handlePointer(event){
     event.preventDefault(); const rect=canvas.getBoundingClientRect(); const sx=(event.clientX-rect.left)*canvas.width/rect.width, sy=(event.clientY-rect.top)*canvas.height/rect.height; const p=screenToWorld(sx,sy);
-    const tree=treeAt(p.x,p.y); stopAction(false);
+    const town=townAt(p.x,p.y), tree=treeAt(p.x,p.y); stopAction(false);
+    if(town){
+      queuedTown=town; queuedTree=null; const dx=state.player.x-town.x,dy=state.player.y-town.y,d=Math.hypot(dx,dy)||1;
+      state.player.targetX=town.x+dx/d*82;state.player.targetY=town.y+dy/d*82;ui.status.textContent=`Walking to ${town.name}...`;ui.actionName.textContent='Walking';showToast(town.name);return;
+    }
     if(tree){
       const def=TREE_TYPES[tree.type], level=levelFromXp(state.skills.woodcutting.xp);
-      if(level<def.level){showToast(`Woodcutting level ${def.level} required`);return;}
+      if(level<def.level){showToast(`${def.name} Tree · Woodcutting level ${def.level} required`);return;}
       queuedTree=tree; const dx=state.player.x-tree.x,dy=state.player.y-tree.y,d=Math.hypot(dx,dy)||1; const stand=58;
       state.player.targetX=tree.x+dx/d*stand;state.player.targetY=tree.y+dy/d*stand;ui.status.textContent=`Walking to ${def.name} tree...`;ui.actionName.textContent='Walking';return;
     }
     if(!isWalkable(p.x,p.y)){showToast(pointInWater(p.x,p.y)?'You cannot walk into the water':'You cannot leave the continent');return;}
-    queuedTree=null;state.player.targetX=p.x;state.player.targetY=p.y;ui.status.textContent='Walking...';ui.actionName.textContent='Exploring';
+    queuedTree=null;queuedTown=null;state.player.targetX=p.x;state.player.targetY=p.y;ui.status.textContent='Walking...';ui.actionName.textContent='Exploring';
   }
 
-  function stopAction(stopMovement=true){ activeTree=null;queuedTree=null;actionElapsed=0;ui.actionProgress.style.width='0%';if(stopMovement){state.player.targetX=state.player.x;state.player.targetY=state.player.y;}ui.actionName.textContent='Exploring'; }
+  function stopAction(stopMovement=true){ activeTree=null;queuedTree=null;queuedTown=null;actionElapsed=0;ui.actionProgress.style.width='0%';if(stopMovement){state.player.targetX=state.player.x;state.player.targetY=state.player.y;}ui.actionName.textContent='Exploring'; }
   function beginChopping(tree){ activeTree=tree;queuedTree=null;actionElapsed=0;const def=TREE_TYPES[tree.type];ui.actionName.textContent=`Chopping ${def.name}`;ui.status.textContent=`Chopping ${def.name} tree...`; }
   function awardLog(tree){
     const def=TREE_TYPES[tree.type]; state.inventory[def.log]=(state.inventory[def.log]||0)+1;state.skills.woodcutting.xp+=def.xp;tree.remaining--;
@@ -162,8 +184,8 @@
   function update(dt){
     const now=Date.now(); for(const t of trees){if(t.remaining<=0&&t.respawnAt&&now>=t.respawnAt){const def=TREE_TYPES[t.type];t.max=randomInt(def.capacity[0],def.capacity[1]);t.remaining=t.max;t.respawnAt=0;}}
     const p=state.player,dx=p.targetX-p.x,dy=p.targetY-p.y,dist=Math.hypot(dx,dy);
-    if(dist>2){const move=Math.min(dist,190*dt),nx=p.x+dx/dist*move,ny=p.y+dy/dist*move;if(isWalkable(nx,ny)){p.x=nx;p.y=ny;}else{p.targetX=p.x;p.targetY=p.y;queuedTree=null;showToast('That route is blocked');}}
-    else {p.x=p.targetX;p.y=p.targetY;if(queuedTree && queuedTree.remaining>0 && Math.hypot(p.x-queuedTree.x,p.y-queuedTree.y)<78)beginChopping(queuedTree);else if(!activeTree){ui.status.textContent='Tap the ground to walk or tap a tree to chop.';ui.actionName.textContent='Exploring';}}
+    if(dist>2){const move=Math.min(dist,190*dt),nx=p.x+dx/dist*move,ny=p.y+dy/dist*move;if(isWalkable(nx,ny)){p.x=nx;p.y=ny;}else{p.targetX=p.x;p.targetY=p.y;queuedTree=null;queuedTown=null;showToast('That route is blocked');}}
+    else {p.x=p.targetX;p.y=p.targetY;if(queuedTown && Math.hypot(p.x-queuedTown.x,p.y-queuedTown.y)<105){const town=queuedTown;queuedTown=null;openTown(town);}else if(queuedTree && queuedTree.remaining>0 && Math.hypot(p.x-queuedTree.x,p.y-queuedTree.y)<78)beginChopping(queuedTree);else if(!activeTree){ui.status.textContent='Tap the ground to walk or tap a tree to chop.';ui.actionName.textContent='Exploring';}}
     if(activeTree){
       if(activeTree.remaining<=0 || Math.hypot(p.x-activeTree.x,p.y-activeTree.y)>85)stopAction(false);
       else {const def=TREE_TYPES[activeTree.type],duration=def.ticks*TICK_SECONDS;actionElapsed+=dt;ui.actionProgress.style.width=`${Math.min(100,actionElapsed/duration*100)}%`;if(actionElapsed>=duration)awardLog(activeTree);}
@@ -187,14 +209,19 @@
 
   function openPanel(name){document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active',t.dataset.panel===name));document.querySelectorAll('.panel').forEach(p=>p.classList.toggle('active',p.id===name));}
   function renderInventory(){const owned=Object.entries(state.inventory).filter(([k,q])=>q>0&&ITEM_DEFS[k]);ui.inventory.innerHTML=owned.length?`<div class="item-grid">${owned.map(([k,q])=>`<button class="item" data-item="${k}"><strong>${ITEM_DEFS[k].name}</strong><span>×${q}</span><small>${ITEM_DEFS[k].type}</small></button>`).join('')}</div>`:`<div class="empty-state"><strong>Your inventory is empty</strong><span>Chop a tree to collect your first log.</span></div>`;ui.inventory.querySelectorAll('[data-item]').forEach(b=>b.addEventListener('click',()=>showItem(b.dataset.item)));}
-  function renderSkills(){const xp=state.skills.woodcutting.xp,level=levelFromXp(xp),next=level>=100?xpForLevel(100):xpForLevel(level+1);ui.skills.innerHTML=`<div class="skill"><div class="skill-head"><strong>Woodcutting</strong><span>Level ${level}${level>=100?' · MAX':''}</span></div><div class="progress-track"><div class="progress-fill" style="width:${currentLevelProgress(xp)*100}%"></div></div><span>${xp.toLocaleString()} XP${level<100?` · ${Math.max(0,next-xp).toLocaleString()} to next level`:''}</span></div><p class="hint">Efficient progression is tuned toward roughly 5–10 hours from level 1 to 100. Higher-tier trees take longer per log but award substantially more XP.</p><div class="region-list">${Object.values(TREE_TYPES).map(d=>`<div><i style="background:${d.leaves}"></i><span>Lv ${d.level} ${d.name} · ${d.ticks} ticks · ${d.xp} XP</span></div>`).join('')}</div>`;}
+  function renderSkills(){
+    ui.skills.innerHTML=`<div class="skill-grid">${Object.entries(SKILL_DEFS).map(([key,def])=>{const xp=state.skills[key]?.xp||0,level=levelFromXp(xp),progress=currentLevelProgress(xp);return `<button class="skill-card ${key==='woodcutting'?'active-skill':''}" data-skill="${key}"><strong>${def.name}</strong><span>Level ${level} · ${xp.toLocaleString()} XP</span><div class="progress-track"><div class="progress-fill" style="width:${progress*100}%"></div></div></button>`}).join('')}</div>`;
+    ui.skills.querySelectorAll('[data-skill]').forEach(b=>b.addEventListener('click',()=>showSkill(b.dataset.skill)));
+  }
+  function showSkill(key){const def=SKILL_DEFS[key],xp=state.skills[key]?.xp||0,level=levelFromXp(xp),next=level>=100?xpForLevel(100):xpForLevel(level+1);selectedItemKey=null;ui.itemType.textContent='Skill';ui.itemName.textContent=def.name;ui.itemDescription.textContent=def.description;ui.itemStats.innerHTML=`<div><span>Level</span><strong>${level}${level>=100?' · MAX':''}</strong></div><div><span>Experience</span><strong>${xp.toLocaleString()} XP</strong></div>${level<100?`<div><span>Next level</span><strong>${Math.max(0,next-xp).toLocaleString()} XP</strong></div>`:''}`;ui.itemAction.hidden=true;ui.dialog.showModal();}
+  function openTown(town){ui.townName.textContent=town.name;ui.townDescription.textContent=town.description;const services=[['NPCs','Talk to residents and receive quests.'],['Crafting Table','Create items from gathered materials.'],['Cooking Fire','Cook fish and meat into food.'],['Player-Owned Home','Enter and improve your family home.'],['Shop','Buy supplies and sell gathered items.'],['Bank','Store items outside your carried inventory.'],['Notice Board','View town work, requests, and local quests.'],['Inn','Rest, meet travellers, and hear local information.']];ui.townServices.innerHTML=services.map(([name,description])=>`<button class="town-service" data-service="${name}"><strong>${name}</strong><span>${description}</span></button>`).join('');ui.townServices.querySelectorAll('[data-service]').forEach(b=>b.addEventListener('click',()=>showToast(`${b.dataset.service} · coming in a future system update`)));ui.townDialog.showModal();ui.status.textContent=`Visiting ${town.name}`;ui.actionName.textContent='In town';}
   function renderEquipment(){const slots=[['head','Head'],['cape','Cape'],['body','Body'],['weapon','Weapon'],['shield','Shield'],['legs','Legs'],['boots','Boots'],['ring','Ring']];ui.equipment.innerHTML=`<div class="equipment-slots">${slots.map(([k,l])=>{const item=state.equipment[k]&&ITEM_DEFS[state.equipment[k]];return `<button class="slot ${item?'filled':''}" data-slot="${k}" ${item?'':'disabled'}><span>${l}</span><strong>${item?item.name:'Empty'}</strong></button>`}).join('')}</div>`;ui.equipment.querySelectorAll('.slot.filled').forEach(b=>b.addEventListener('click',()=>showItem(state.equipment[b.dataset.slot])));}
-  function renderMapPanel(){ui.map.innerHTML=`<div class="map-summary"><strong>Expanded hand-built continent</strong><span>Organic biome transitions, four future fishing waters, seven town sites, and 23 hand-placed trees.</span></div><div class="region-list">${regions.map(r=>`<div><i style="background:${r.color}"></i><span>${r.name}</span></div>`).join('')}${waters.map(w=>`<div><i style="background:${w.color}"></i><span>${w.name}</span></div>`).join('')}</div><p class="hint">This is still intentionally sparse. The current goal is to approve the geography, travel distances, water placement, and Woodcutting tree distribution before adding another skill.</p>`;}
+  function renderMapPanel(){ui.map.innerHTML=`<div class="map-summary"><strong>Expanded hand-built continent</strong><span>Organic biome transitions, four future fishing waters, seven town sites, and 23 hand-placed trees.</span></div><div class="region-list">${regions.map(r=>`<div><i style="background:${r.color}"></i><span>${r.name}</span></div>`).join('')}${waters.map(w=>`<div><i style="background:${w.color}"></i><span>${w.name}</span></div>`).join('')}</div>`;}
   function showItem(key){const item=ITEM_DEFS[key];if(!item)return;selectedItemKey=key;ui.itemType.textContent=item.type;ui.itemName.textContent=item.name;ui.itemDescription.textContent=item.description;const rows=[];if(item.uses)rows.push(['Used for',item.uses]);for(const [k,v] of Object.entries(item.stats||{}))rows.push([k,v]);ui.itemStats.innerHTML=rows.map(([k,v])=>`<div><span>${k}</span><strong>${v}</strong></div>`).join('');const equipped=Object.keys(state.equipment).find(s=>state.equipment[s]===key);if(item.slot&&state.inventory[key]>0){ui.itemAction.hidden=false;ui.itemAction.textContent=equipped?'Unequip':'Equip';}else ui.itemAction.hidden=true;ui.dialog.showModal();}
   function toggleSelectedEquipment(){const key=selectedItemKey,item=ITEM_DEFS[key];if(!item?.slot)return;const existing=Object.keys(state.equipment).find(s=>state.equipment[s]===key);if(existing)state.equipment[existing]=null;else state.equipment[item.slot]=key;ui.dialog.close();renderEquipment();saveGame(false);}
   function renderAll(){renderInventory();renderSkills();renderEquipment();renderMapPanel();}
   function frame(now){const dt=Math.min((now-lastFrame)/1000,.05);lastFrame=now;update(dt);draw();requestAnimationFrame(frame);}
 
-  canvas.addEventListener('pointerdown',handlePointer,{passive:false});document.getElementById('saveButton').addEventListener('click',()=>saveGame(true));document.getElementById('stopButton').addEventListener('click',()=>stopAction(true));document.querySelectorAll('.tab').forEach(t=>t.addEventListener('click',()=>openPanel(t.dataset.panel)));document.getElementById('closeItemButton').addEventListener('click',()=>ui.dialog.close());ui.itemAction.addEventListener('click',toggleSelectedEquipment);ui.dialog.addEventListener('click',e=>{if(e.target===ui.dialog)ui.dialog.close();});document.getElementById('exportButton').addEventListener('click',()=>{saveGame(false);const blob=new Blob([JSON.stringify(state,null,2)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`idle-wanderer-save-${Date.now()}.json`;a.click();URL.revokeObjectURL(a.href);});document.getElementById('importInput').addEventListener('change',async e=>{const file=e.target.files?.[0];if(!file)return;try{localStorage.setItem(SAVE_KEY,JSON.stringify(JSON.parse(await file.text())));location.reload();}catch{showToast('Invalid save file');}});document.getElementById('resetButton').addEventListener('click',()=>{if(confirm('Reset all progress on this device?')){localStorage.removeItem(SAVE_KEY);location.reload();}});window.addEventListener('pagehide',()=>saveGame(false));setInterval(()=>saveGame(false),15000);if('serviceWorker'in navigator)navigator.serviceWorker.register('./service-worker.js').catch(console.error);
+  canvas.addEventListener('pointerdown',handlePointer,{passive:false});document.getElementById('saveButton').addEventListener('click',()=>saveGame(true));document.getElementById('stopButton').addEventListener('click',()=>stopAction(true));document.querySelectorAll('.tab').forEach(t=>t.addEventListener('click',()=>openPanel(t.dataset.panel)));document.getElementById('closeItemButton').addEventListener('click',()=>ui.dialog.close());document.getElementById('closeTownButton').addEventListener('click',()=>ui.townDialog.close());ui.itemAction.addEventListener('click',toggleSelectedEquipment);ui.dialog.addEventListener('click',e=>{if(e.target===ui.dialog)ui.dialog.close();});ui.townDialog.addEventListener('click',e=>{if(e.target===ui.townDialog)ui.townDialog.close();});document.getElementById('exportButton').addEventListener('click',()=>{saveGame(false);const blob=new Blob([JSON.stringify(state,null,2)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`idle-wanderer-save-${Date.now()}.json`;a.click();URL.revokeObjectURL(a.href);});document.getElementById('importInput').addEventListener('change',async e=>{const file=e.target.files?.[0];if(!file)return;try{localStorage.setItem(SAVE_KEY,JSON.stringify(JSON.parse(await file.text())));location.reload();}catch{showToast('Invalid save file');}});document.getElementById('resetButton').addEventListener('click',()=>{if(confirm('Reset all progress on this device?')){localStorage.removeItem(SAVE_KEY);location.reload();}});window.addEventListener('pagehide',()=>saveGame(false));setInterval(()=>saveGame(false),15000);if('serviceWorker'in navigator)navigator.serviceWorker.register('./service-worker.js').catch(console.error);
   camera.x=clamp(state.player.x-canvas.width/2,0,WORLD.width-canvas.width);camera.y=clamp(state.player.y-canvas.height/2,0,WORLD.height-canvas.height);renderAll();requestAnimationFrame(frame);
 })();

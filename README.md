@@ -1,4 +1,4 @@
-# Idle Wanderer v0.4.0
+# Idle Wanderer v0.4.1
 
 Mobile-first GitHub Pages build.
 
@@ -13,3 +13,9 @@ Mobile-first GitHub Pages build.
 - Progression tuned toward approximately 5–10 efficient hours to Woodcutting level 100
 
 Upload every file in this folder to the root of your GitHub Pages repository.
+
+
+## 0.4.1
+- Objects identify themselves when tapped.
+- Full planned skill dashboard.
+- Town interaction overlay with contextual services.

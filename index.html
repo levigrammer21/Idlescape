@@ -51,8 +51,8 @@
           <label class="wide-button file-button">Import Save<input id="importInput" type="file" accept="application/json" /></label>
           <button id="resetButton" class="wide-button muted-button">Reset Game</button>
         </div>
-        <p class="hint">This build expands and smooths the continent and introduces the first full skill: Woodcutting. Crafting and other stations will remain contextual world interactions rather than permanent tabs.</p>
-        <p class="version">Version 0.4.0 · World & Woodcutting</p>
+        <p class="hint">Town services are opened from the world itself. Skills will be developed one at a time, beginning with Woodcutting.</p>
+        <p class="version">Version 0.4.1 · Towns & Skills</p>
       </section>
     </section>
   </main>
@@ -62,6 +62,12 @@
     <p id="itemDescription" class="item-description"></p>
     <div id="itemStats" class="stat-list"></div>
     <button id="itemActionButton" class="wide-button dialog-action" hidden></button>
+  </dialog>
+
+  <dialog id="townDialog" class="item-dialog town-dialog">
+    <div class="dialog-head"><div><span class="label">Town</span><h2 id="townName">Town</h2></div><button id="closeTownButton" class="close-button" aria-label="Close">×</button></div>
+    <p id="townDescription" class="item-description"></p>
+    <div id="townServices" class="town-services"></div>
   </dialog>
 
   <script src="game.js"></script>
