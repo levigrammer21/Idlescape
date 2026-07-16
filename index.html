@@ -15,25 +15,19 @@
     <header class="topbar">
       <div class="title-block">
         <h1>Idle Wanderer</h1>
-        <p id="statusText">Tap the world to move.</p>
+        <p id="statusText">Walk the continent and judge its shape.</p>
       </div>
       <button id="saveButton" class="icon-button">Save</button>
     </header>
 
     <section class="game-shell">
-      <canvas id="gameCanvas" width="480" height="640" aria-label="2D game world"></canvas>
-      <div class="hud health-hud">
-        <span>HP</span><strong id="hpText">10 / 10</strong>
-        <div class="mini-track"><div id="hpFill" class="hp-fill"></div></div>
-      </div>
+      <canvas id="gameCanvas" width="480" height="640" aria-label="Idle Wanderer world map"></canvas>
+      <div class="hud location-hud"><span>Region</span><strong id="regionText">Central Grass</strong></div>
       <div id="toast" class="toast" aria-live="polite"></div>
     </section>
 
     <section class="action-strip">
-      <div class="action-copy">
-        <span class="label">Current action</span>
-        <strong id="actionName">Exploring</strong>
-      </div>
+      <div class="action-copy"><span class="label">Current action</span><strong id="actionName">Exploring</strong></div>
       <div class="progress-track"><div id="actionProgress" class="progress-fill"></div></div>
       <button id="stopButton" class="stop-button">Stop</button>
     </section>
@@ -42,7 +36,7 @@
       <button class="tab active" data-panel="inventory">Inv</button>
       <button class="tab" data-panel="skills">Skills</button>
       <button class="tab" data-panel="equipment">Equip</button>
-      <button class="tab" data-panel="crafting">Craft</button>
+      <button class="tab" data-panel="map">Map</button>
       <button class="tab" data-panel="menu">Menu</button>
     </nav>
 
@@ -50,18 +44,25 @@
       <section id="inventory" class="panel active"></section>
       <section id="skills" class="panel"></section>
       <section id="equipment" class="panel"></section>
-      <section id="crafting" class="panel"></section>
+      <section id="map" class="panel"></section>
       <section id="menu" class="panel">
         <div class="menu-grid">
           <button id="exportButton" class="wide-button">Export Save</button>
           <label class="wide-button file-button">Import Save<input id="importInput" type="file" accept="application/json" /></label>
           <button id="resetButton" class="wide-button muted-button">Reset Game</button>
         </div>
-        <p class="hint">Tap resources, the rat, or the crafting bench in the world. The camera softly follows your character.</p>
-        <p class="version">Version 0.2.0</p>
+        <p class="hint">This build is for testing the continent’s scale, biome shapes, entrances, and travel distances. World activities will return one polished system at a time.</p>
+        <p class="version">Version 0.3.0 · World Layout</p>
       </section>
     </section>
   </main>
+
+  <dialog id="itemDialog" class="item-dialog">
+    <div class="dialog-head"><div><span id="itemType" class="label"></span><h2 id="itemName"></h2></div><button id="closeItemButton" class="close-button" aria-label="Close">×</button></div>
+    <p id="itemDescription" class="item-description"></p>
+    <div id="itemStats" class="stat-list"></div>
+    <button id="itemActionButton" class="wide-button dialog-action" hidden></button>
+  </dialog>
 
   <script src="game.js"></script>
 </body>

@@ -1,161 +1,118 @@
 (() => {
   'use strict';
 
-  const VERSION = '0.2.0';
-  const SAVE_KEY = 'idle-wanderer-save-v2';
-  const TICK_MS = 600;
-  const WORLD = { width: 1500, height: 1200 };
+  const VERSION = '0.3.0';
+  const SAVE_KEY = 'idle-wanderer-save-v3';
+  const LEGACY_KEY = 'idle-wanderer-save-v2';
+  const WORLD = { width: 2500, height: 2900 };
   const canvas = document.getElementById('gameCanvas');
   const ctx = canvas.getContext('2d');
   ctx.imageSmoothingEnabled = false;
 
   const ui = {
-    status: document.getElementById('statusText'),
-    actionName: document.getElementById('actionName'),
-    actionProgress: document.getElementById('actionProgress'),
-    inventory: document.getElementById('inventory'),
-    skills: document.getElementById('skills'),
-    equipment: document.getElementById('equipment'),
-    crafting: document.getElementById('crafting'),
-    toast: document.getElementById('toast'),
-    hpText: document.getElementById('hpText'),
-    hpFill: document.getElementById('hpFill')
+    status: document.getElementById('statusText'), actionName: document.getElementById('actionName'),
+    actionProgress: document.getElementById('actionProgress'), inventory: document.getElementById('inventory'),
+    skills: document.getElementById('skills'), equipment: document.getElementById('equipment'),
+    map: document.getElementById('map'), toast: document.getElementById('toast'), region: document.getElementById('regionText'),
+    dialog: document.getElementById('itemDialog'), itemType: document.getElementById('itemType'), itemName: document.getElementById('itemName'),
+    itemDescription: document.getElementById('itemDescription'), itemStats: document.getElementById('itemStats'), itemAction: document.getElementById('itemActionButton')
   };
 
-  const resources = [
-    { id: 'tree1', type: 'tree', x: 355, y: 360, radius: 28, skill: 'woodcutting', item: 'sticks', xp: 12, duration: 2400 },
-    { id: 'tree2', type: 'tree', x: 520, y: 260, radius: 28, skill: 'woodcutting', item: 'sticks', xp: 12, duration: 2400 },
-    { id: 'tree3', type: 'tree', x: 965, y: 350, radius: 28, skill: 'woodcutting', item: 'sticks', xp: 12, duration: 2400 },
-    { id: 'tree4', type: 'tree', x: 1120, y: 760, radius: 28, skill: 'woodcutting', item: 'sticks', xp: 12, duration: 2400 },
-    { id: 'rock1', type: 'rock', x: 420, y: 750, radius: 25, skill: 'mining', item: 'rocks', xp: 14, duration: 2800 },
-    { id: 'rock2', type: 'rock', x: 1040, y: 590, radius: 25, skill: 'mining', item: 'rocks', xp: 14, duration: 2800 },
-    { id: 'rock3', type: 'rock', x: 1240, y: 900, radius: 25, skill: 'mining', item: 'rocks', xp: 14, duration: 2800 },
-    { id: 'fish1', type: 'fish', x: 1110, y: 230, radius: 32, skill: 'fishing', item: 'fish', xp: 13, duration: 2600 },
-    { id: 'fish2', type: 'fish', x: 1260, y: 300, radius: 32, skill: 'fishing', item: 'fish', xp: 13, duration: 2600 }
+  const ITEM_DEFS = {
+    sticks: { name: 'Stick', type: 'Material', description: 'A straight piece of wood. Useful for simple tools, weapons, and fires.', uses: 'Crafting · Firemaking' },
+    rocks: { name: 'Loose Rock', type: 'Material', description: 'A sturdy loose rock that could be shaped or fastened to a handle.', uses: 'Crafting · Construction' },
+    fish: { name: 'Raw Fish', type: 'Food ingredient', description: 'A freshly caught fish. It needs to be cooked at a campfire or cooking pot.', uses: 'Cooking', stats: { 'Heals': 'Nothing while raw' } },
+    club: { name: 'Crude Club', type: 'Weapon', description: 'A rough club made by fastening a heavy rock to a stick.', slot: 'weapon', stats: { 'Attack speed': '4 ticks · 2.4 seconds', 'Maximum hit': '3', 'Strength': '+2' } },
+    clothShirt: { name: 'Cloth Shirt', type: 'Body armour', description: 'A basic shirt that offers a little protection without restricting movement.', slot: 'body', stats: { 'Defence': '+1', 'Weight': 'Light' } }
+  };
+
+  // Hand-built continent translated from the supplied sketch. Polygons intentionally preserve narrow biome joins.
+  const regions = [
+    { id: 'central', name: 'Central Grass', color: '#72ad60', points: [[830,1020],[1640,1010],[1820,1170],[1760,1620],[1540,1730],[1490,1980],[1040,2010],[870,1840],[750,1500],[760,1180]] },
+    { id: 'northDead', name: 'Northern Dead Grass', color: '#95885e', points: [[760,650],[1810,650],[1830,1080],[1640,1140],[1510,1030],[830,1040],[670,900]] },
+    { id: 'swamp', name: 'Swamp', color: '#56795d', points: [[820,170],[1740,170],[1860,330],[1810,690],[760,690],[650,520],[720,300]] },
+    { id: 'desert', name: 'Desert', color: '#c9a45f', points: [[120,920],[690,920],[810,1110],[760,1450],[850,1780],[680,2140],[160,2180],[80,1920],[100,1260]] },
+    { id: 'eastGrass', name: 'Eastern Grass', color: '#67a65a', points: [[1740,1030],[2260,1050],[2390,1230],[2320,1700],[2050,1840],[1730,1640],[1800,1180]] },
+    { id: 'southDead', name: 'Southern Dead Grass', color: '#887d58', points: [[790,1900],[1560,1900],[1710,2080],[1600,2390],[880,2400],[690,2220]] },
+    { id: 'jungle', name: 'Jungle', color: '#3f8152', points: [[760,2330],[1680,2330],[1850,2510],[1730,2790],[760,2780],[620,2600]] }
   ];
 
-  const bench = { id: 'bench1', type: 'bench', x: 735, y: 520, radius: 34 };
-  const ratSpawn = { x: 850, y: 690 };
-  const camera = { x: 0, y: 0 };
-  const floaters = [];
+  const towns = [
+    { name: 'Swamp Town', x: 1450, y: 470 }, { name: 'North Town', x: 920, y: 835 },
+    { name: 'Desert Town', x: 360, y: 1320 }, { name: 'Starting Town', x: 1230, y: 1450 },
+    { name: 'East Town', x: 2110, y: 1330 }, { name: 'South Town', x: 900, y: 2160 },
+    { name: 'Jungle Town', x: 1380, y: 2550 }
+  ];
 
   const defaultState = () => ({
     version: VERSION,
-    player: {
-      x: 650, y: 620, targetX: 650, targetY: 620,
-      hp: 10, maxHp: 10, attackCooldownUntil: 0
-    },
-    inventory: { sticks: 0, rocks: 0, fish: 0, club: 0 },
-    skills: {
-      woodcutting: { xp: 0 }, mining: { xp: 0 }, fishing: { xp: 0 }, combat: { xp: 0 }
-    },
-    equipment: { weapon: null },
-    rat: { x: ratSpawn.x, y: ratSpawn.y, hp: 8, maxHp: 8, alive: true, respawnAt: 0, attackCooldownUntil: 0 },
-    activeTarget: null,
-    actionStartedAt: 0,
+    player: { x: 1230, y: 1570, targetX: 1230, targetY: 1570 },
+    inventory: { sticks: 0, rocks: 0, fish: 0, club: 0, clothShirt: 0 },
+    skills: { woodcutting: { xp: 0 }, mining: { xp: 0 }, fishing: { xp: 0 }, cooking: { xp: 0 }, crafting: { xp: 0 }, combat: { xp: 0 } },
+    equipment: { head: null, body: null, legs: null, boots: null, weapon: null, shield: null, cape: null, ring: null },
     lastSavedAt: Date.now()
   });
 
+  const camera = { x: 0, y: 0 };
   let state = loadState();
   let lastFrame = performance.now();
   let toastTimer = null;
+  let selectedItemKey = null;
 
+  function clamp(v, min, max) { return Math.max(min, Math.min(max, v)); }
   function xpForLevel(level) { return 45 * level * level; }
   function levelFromXp(xp) { let level = 1; while (xp >= xpForLevel(level)) level++; return level; }
-  function clamp(value, min, max) { return Math.max(min, Math.min(max, value)); }
-  function distance(a, b) { return Math.hypot(a.x - b.x, a.y - b.y); }
+
+  function pointInPolygon(x, y, points) {
+    let inside = false;
+    for (let i = 0, j = points.length - 1; i < points.length; j = i++) {
+      const xi = points[i][0], yi = points[i][1], xj = points[j][0], yj = points[j][1];
+      const intersect = ((yi > y) !== (yj > y)) && x < (xj - xi) * (y - yi) / ((yj - yi) || .00001) + xi;
+      if (intersect) inside = !inside;
+    }
+    return inside;
+  }
+
+  function regionAt(x, y) { return regions.find(r => pointInPolygon(x, y, r.points)) || null; }
+  function isWalkable(x, y) { return !!regionAt(x, y); }
+
+  function closestWalkable(x, y) {
+    if (isWalkable(x, y)) return { x, y };
+    let best = { x: state.player.x, y: state.player.y, d: Infinity };
+    for (const region of regions) for (const [px, py] of region.points) {
+      const d = Math.hypot(x - px, y - py);
+      if (d < best.d) best = { x: px, y: py, d };
+    }
+    const towardCenter = regionAt(best.x, best.y) ? best : { x: 1230, y: 1450 };
+    return { x: towardCenter.x, y: towardCenter.y };
+  }
 
   function loadState() {
     try {
-      const raw = localStorage.getItem(SAVE_KEY);
+      const raw = localStorage.getItem(SAVE_KEY) || localStorage.getItem(LEGACY_KEY);
       if (!raw) return defaultState();
-      const parsed = JSON.parse(raw);
-      const merged = defaultState();
-      Object.assign(merged, parsed);
-      merged.player = { ...merged.player, ...(parsed.player || {}) };
-      merged.inventory = { ...merged.inventory, ...(parsed.inventory || {}) };
-      merged.equipment = { ...merged.equipment, ...(parsed.equipment || {}) };
-      merged.rat = { ...merged.rat, ...(parsed.rat || {}) };
-      for (const key of Object.keys(merged.skills)) merged.skills[key] = { ...merged.skills[key], ...(parsed.skills?.[key] || {}) };
-      applyOfflineProgress(merged);
-      return merged;
-    } catch (error) {
-      console.error(error);
-      return defaultState();
-    }
+      const old = JSON.parse(raw); const fresh = defaultState();
+      fresh.inventory = { ...fresh.inventory, ...(old.inventory || {}) };
+      fresh.skills = { ...fresh.skills, ...(old.skills || {}) };
+      fresh.equipment = { ...fresh.equipment, ...(old.equipment || {}) };
+      if (old.player && isWalkable(old.player.x, old.player.y)) fresh.player = { ...fresh.player, x: old.player.x, y: old.player.y, targetX: old.player.x, targetY: old.player.y };
+      return fresh;
+    } catch (e) { console.error(e); return defaultState(); }
   }
 
-  function applyOfflineProgress(save) {
-    if (!save.activeTarget?.startsWith('resource:') || !save.lastSavedAt) return;
-    const resource = resources.find(r => `resource:${r.id}` === save.activeTarget);
-    if (!resource) return;
-    const elapsed = Math.min(Date.now() - save.lastSavedAt, 4 * 60 * 60 * 1000);
-    const cycles = Math.floor(elapsed / resource.duration);
-    if (cycles <= 0) return;
-    save.inventory[resource.item] += cycles;
-    save.skills[resource.skill].xp += cycles * resource.xp;
-    setTimeout(() => showToast(`Offline: +${cycles} ${resource.item}`), 500);
-  }
-
-  function saveGame(showMessage = false) {
-    state.lastSavedAt = Date.now();
+  function saveGame(show = false) {
+    state.lastSavedAt = Date.now(); state.version = VERSION;
     localStorage.setItem(SAVE_KEY, JSON.stringify(state));
-    if (showMessage) showToast('Game saved');
+    if (show) showToast('Game saved');
   }
 
   function showToast(message) {
-    ui.toast.textContent = message;
-    ui.toast.classList.add('show');
-    clearTimeout(toastTimer);
-    toastTimer = setTimeout(() => ui.toast.classList.remove('show'), 1700);
+    ui.toast.textContent = message; ui.toast.classList.add('show');
+    clearTimeout(toastTimer); toastTimer = setTimeout(() => ui.toast.classList.remove('show'), 1700);
   }
 
   function worldToScreen(x, y) { return { x: x - camera.x, y: y - camera.y }; }
   function screenToWorld(x, y) { return { x: x + camera.x, y: y + camera.y }; }
-
-  function resourceName(resource) {
-    return resource.type === 'tree' ? 'Cutting branches' : resource.type === 'rock' ? 'Breaking rock' : 'Fishing';
-  }
-
-  function stopAction(message = 'Tap the world to move.') {
-    state.activeTarget = null;
-    state.actionStartedAt = 0;
-    ui.actionName.textContent = 'Exploring';
-    ui.actionProgress.style.width = '0%';
-    ui.status.textContent = message;
-  }
-
-  function moveNear(target, gap = 42) {
-    const p = state.player;
-    const angle = Math.atan2(p.y - target.y, p.x - target.x);
-    p.targetX = clamp(target.x + Math.cos(angle) * gap, 24, WORLD.width - 24);
-    p.targetY = clamp(target.y + Math.sin(angle) * gap, 30, WORLD.height - 24);
-  }
-
-  function beginResource(resource) {
-    state.activeTarget = `resource:${resource.id}`;
-    state.actionStartedAt = 0;
-    moveNear(resource, resource.radius + 22);
-    ui.status.textContent = `Walking to ${resource.type}...`;
-    ui.actionName.textContent = resourceName(resource);
-  }
-
-  function beginCombat() {
-    if (!state.rat.alive) return showToast('The rat is respawning');
-    state.activeTarget = 'rat';
-    state.actionStartedAt = 0;
-    moveNear(state.rat, 45);
-    ui.status.textContent = 'Approaching rat...';
-    ui.actionName.textContent = 'Fighting rat';
-  }
-
-  function beginBench() {
-    state.activeTarget = 'bench';
-    state.actionStartedAt = 0;
-    moveNear(bench, 48);
-    ui.status.textContent = 'Walking to crafting bench...';
-    ui.actionName.textContent = 'Using crafting bench';
-  }
 
   function handlePointer(event) {
     event.preventDefault();
@@ -163,301 +120,136 @@
     const sx = (event.clientX - rect.left) * canvas.width / rect.width;
     const sy = (event.clientY - rect.top) * canvas.height / rect.height;
     const point = screenToWorld(sx, sy);
-
-    if (state.rat.alive && Math.hypot(point.x - state.rat.x, point.y - state.rat.y) <= 42) return beginCombat();
-    if (Math.hypot(point.x - bench.x, point.y - bench.y) <= bench.radius + 18) return beginBench();
-    const hit = [...resources].reverse().find(r => Math.hypot(point.x - r.x, point.y - r.y) <= r.radius + 18);
-    if (hit) return beginResource(hit);
-
-    stopAction('Walking...');
-    state.player.targetX = clamp(point.x, 20, WORLD.width - 20);
-    state.player.targetY = clamp(point.y, 26, WORLD.height - 22);
+    if (!isWalkable(point.x, point.y)) { showToast('You cannot leave the continent'); return; }
+    state.player.targetX = point.x; state.player.targetY = point.y;
+    ui.status.textContent = 'Walking...'; ui.actionName.textContent = 'Exploring'; ui.actionProgress.style.width = '35%';
   }
 
-  function addFloater(x, y, text, kind = 'damage') {
-    floaters.push({ x, y, text, kind, born: performance.now(), duration: 900 });
-  }
-
-  function playerAttackInterval() {
-    return state.equipment.weapon === 'club' ? 4 * TICK_MS : 4 * TICK_MS;
-  }
-
-  function playerMaxHit() { return state.equipment.weapon === 'club' ? 3 : 1; }
-
-  function damageRat() {
-    const hit = Math.floor(Math.random() * (playerMaxHit() + 1));
-    state.rat.hp = Math.max(0, state.rat.hp - hit);
-    addFloater(state.rat.x, state.rat.y - 28, String(hit), hit ? 'damage' : 'zero');
-    if (hit > 0) state.skills.combat.xp += hit * 4;
-    if (state.rat.hp <= 0) {
-      state.rat.alive = false;
-      state.rat.respawnAt = Date.now() + 9000;
-      state.inventory.fish += 1;
-      showToast('Rat defeated · +1 raw fish');
-      stopAction('Rat defeated. It will respawn.');
-      renderPanels();
-    }
-  }
-
-  function damagePlayer() {
-    const hit = Math.floor(Math.random() * 3);
-    state.player.hp = Math.max(0, state.player.hp - hit);
-    addFloater(state.player.x, state.player.y - 30, String(hit), hit ? 'damage' : 'zero');
-    if (state.player.hp <= 0) {
-      state.player.hp = state.player.maxHp;
-      state.player.x = 650; state.player.y = 620;
-      state.player.targetX = 650; state.player.targetY = 620;
-      stopAction('You were knocked out and returned to camp.');
-      showToast('Knocked out!');
-    }
-  }
-
-  function updateCombat(now) {
-    const p = state.player;
-    const rat = state.rat;
-    if (!rat.alive) return stopAction('The rat is respawning.');
-    if (distance(p, rat) > 58) return;
-    ui.status.textContent = 'Trading blows on game ticks';
-    ui.actionProgress.style.width = '100%';
-    if (now >= p.attackCooldownUntil) {
-      p.attackCooldownUntil = now + playerAttackInterval();
-      damageRat();
-    }
-    if (rat.alive && now >= rat.attackCooldownUntil) {
-      rat.attackCooldownUntil = now + 3 * TICK_MS;
-      damagePlayer();
-    }
+  function stopMovement() {
+    state.player.targetX = state.player.x; state.player.targetY = state.player.y;
+    ui.status.textContent = 'Standing still.'; ui.actionProgress.style.width = '0%';
   }
 
   function update(dt) {
-    const p = state.player;
-    const dx = p.targetX - p.x;
-    const dy = p.targetY - p.y;
-    const dist = Math.hypot(dx, dy);
-    const speed = 132;
+    const p = state.player; const dx = p.targetX - p.x, dy = p.targetY - p.y, dist = Math.hypot(dx, dy);
     if (dist > 2) {
-      const move = Math.min(dist, speed * dt);
-      p.x += dx / dist * move;
-      p.y += dy / dist * move;
+      const move = Math.min(dist, 185 * dt); const nx = p.x + dx / dist * move, ny = p.y + dy / dist * move;
+      if (isWalkable(nx, ny)) { p.x = nx; p.y = ny; }
+      else stopMovement();
+      ui.actionProgress.style.width = '65%';
     } else {
-      p.x = p.targetX; p.y = p.targetY;
-      if (state.activeTarget?.startsWith('resource:')) {
-        const resource = resources.find(r => `resource:${r.id}` === state.activeTarget);
-        if (resource) {
-          if (!state.actionStartedAt) state.actionStartedAt = Date.now();
-          ui.status.textContent = resourceName(resource);
-          const elapsed = Date.now() - state.actionStartedAt;
-          ui.actionProgress.style.width = `${Math.min(100, elapsed / resource.duration * 100)}%`;
-          if (elapsed >= resource.duration) {
-            state.inventory[resource.item] += 1;
-            state.skills[resource.skill].xp += resource.xp;
-            state.actionStartedAt = Date.now();
-            showToast(`+1 ${resource.item} · +${resource.xp} XP`);
-            renderPanels(); saveGame(false);
-          }
-        }
-      } else if (state.activeTarget === 'rat') updateCombat(Date.now());
-      else if (state.activeTarget === 'bench') {
-        ui.status.textContent = 'Crafting bench ready';
-        ui.actionProgress.style.width = '100%';
-        openPanel('crafting');
-      } else ui.status.textContent = 'Tap a resource, rat, or bench.';
+      p.x = p.targetX; p.y = p.targetY; ui.actionProgress.style.width = '0%';
+      ui.status.textContent = 'Tap anywhere on the continent to walk.';
     }
 
-    if (!state.rat.alive && Date.now() >= state.rat.respawnAt) {
-      state.rat.alive = true; state.rat.hp = state.rat.maxHp;
-      state.rat.x = ratSpawn.x; state.rat.y = ratSpawn.y;
-      state.rat.attackCooldownUntil = 0;
-      showToast('The rat has respawned');
-    }
-
+    const region = regionAt(p.x, p.y); ui.region.textContent = region?.name || 'Outside';
     const targetCameraX = clamp(p.x - canvas.width / 2, 0, WORLD.width - canvas.width);
     const targetCameraY = clamp(p.y - canvas.height / 2, 0, WORLD.height - canvas.height);
-    const follow = 1 - Math.pow(0.001, dt);
-    camera.x += (targetCameraX - camera.x) * follow;
-    camera.y += (targetCameraY - camera.y) * follow;
-
-    ui.hpText.textContent = `${p.hp} / ${p.maxHp}`;
-    ui.hpFill.style.width = `${p.hp / p.maxHp * 100}%`;
+    const follow = 1 - Math.pow(0.012, dt);
+    camera.x += (targetCameraX - camera.x) * follow; camera.y += (targetCameraY - camera.y) * follow;
   }
 
-  function drawGround() {
-    const tile = 40;
-    const startX = Math.floor(camera.x / tile) * tile;
-    const startY = Math.floor(camera.y / tile) * tile;
-    for (let y = startY; y < camera.y + canvas.height + tile; y += tile) {
-      for (let x = startX; x < camera.x + canvas.width + tile; x += tile) {
-        const s = worldToScreen(x, y);
-        ctx.fillStyle = ((x / tile + y / tile) % 2) ? '#70a85e' : '#76ae63';
-        ctx.fillRect(Math.floor(s.x), Math.floor(s.y), tile + 1, tile + 1);
-      }
+  function drawPolygon(region) {
+    ctx.beginPath();
+    region.points.forEach(([x,y], i) => { const s = worldToScreen(x,y); i ? ctx.lineTo(s.x,s.y) : ctx.moveTo(s.x,s.y); });
+    ctx.closePath(); ctx.fillStyle = region.color; ctx.fill(); ctx.strokeStyle = 'rgba(30,42,31,.72)'; ctx.lineWidth = 7; ctx.stroke();
+    ctx.save(); ctx.clip();
+    const tile = 48, minX = Math.floor(camera.x / tile) * tile, minY = Math.floor(camera.y / tile) * tile;
+    for (let y=minY; y<camera.y+canvas.height+tile; y+=tile) for (let x=minX; x<camera.x+canvas.width+tile; x+=tile) {
+      if (!pointInPolygon(x+tile/2,y+tile/2,region.points)) continue;
+      const s=worldToScreen(x,y); ctx.fillStyle=((x/tile+y/tile)%2)?'rgba(255,255,255,.025)':'rgba(0,0,0,.025)'; ctx.fillRect(s.x,s.y,tile,tile);
     }
-
-    drawWorldRect(610, 0, 115, WORLD.height, '#c7a568');
-    drawWorldRect(1030, 40, 420, 350, '#4f91b5');
-    for (let y = 75; y < 370; y += 45) drawWorldRect(1060 + (y % 70), y, 90, 4, '#7abbd4');
-    drawWorldRect(120, 880, 400, 130, '#669c54');
-    drawWorldRect(210, 910, 210, 65, '#bc9b61');
+    ctx.restore();
   }
 
-  function drawWorldRect(x, y, w, h, color) {
-    const s = worldToScreen(x, y); ctx.fillStyle = color; ctx.fillRect(Math.round(s.x), Math.round(s.y), w, h);
-  }
-
-  function drawTree(r) {
-    const s = worldToScreen(r.x, r.y);
-    ctx.fillStyle = '#5a3824'; ctx.fillRect(s.x - 7, s.y + 8, 14, 31);
-    ctx.fillStyle = '#2e6e3a'; ctx.fillRect(s.x - 22, s.y - 18, 44, 36);
-    ctx.fillStyle = '#3d8947'; ctx.fillRect(s.x - 14, s.y - 29, 29, 28);
-    ctx.fillStyle = '#78b95b'; ctx.fillRect(s.x - 9, s.y - 22, 10, 7);
-  }
-
-  function drawRock(r) {
-    const s = worldToScreen(r.x, r.y);
-    ctx.fillStyle = '#505865'; ctx.fillRect(s.x - 22, s.y - 8, 44, 25);
-    ctx.fillStyle = '#717b89'; ctx.fillRect(s.x - 14, s.y - 20, 27, 25);
-    ctx.fillStyle = '#929ba6'; ctx.fillRect(s.x - 8, s.y - 16, 9, 5);
-  }
-
-  function drawFishSpot(r) {
-    const s = worldToScreen(r.x, r.y);
-    ctx.strokeStyle = '#d8f3ff'; ctx.lineWidth = 3;
-    ctx.beginPath(); ctx.arc(s.x, s.y, 18, 0, Math.PI * 2); ctx.stroke();
-    ctx.beginPath(); ctx.arc(s.x, s.y, 7, 0, Math.PI * 2); ctx.stroke();
-    ctx.fillStyle = '#f4d35e'; ctx.fillRect(s.x - 3, s.y - 3, 6, 6);
-  }
-
-  function drawBench() {
-    const s = worldToScreen(bench.x, bench.y);
-    ctx.fillStyle = '#4d3422'; ctx.fillRect(s.x - 27, s.y - 7, 54, 16);
-    ctx.fillRect(s.x - 21, s.y + 8, 8, 22); ctx.fillRect(s.x + 13, s.y + 8, 8, 22);
-    ctx.fillStyle = '#8d683f'; ctx.fillRect(s.x - 30, s.y - 14, 60, 12);
-    ctx.fillStyle = '#c8a46e'; ctx.fillRect(s.x - 16, s.y - 19, 22, 5);
-  }
-
-  function drawRat() {
-    if (!state.rat.alive) return;
-    const r = state.rat; const s = worldToScreen(r.x, r.y);
-    ctx.fillStyle = 'rgba(0,0,0,.22)'; ctx.fillRect(s.x - 15, s.y + 10, 30, 6);
-    ctx.fillStyle = '#76717b'; ctx.fillRect(s.x - 15, s.y - 9, 29, 20);
-    ctx.fillStyle = '#908a95'; ctx.fillRect(s.x + 8, s.y - 13, 12, 13);
-    ctx.fillStyle = '#d7a1a8'; ctx.fillRect(s.x + 18, s.y - 8, 4, 4);
-    ctx.fillStyle = '#2a2023'; ctx.fillRect(s.x + 14, s.y - 10, 3, 3);
-    ctx.strokeStyle = '#b9898f'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(s.x - 14, s.y + 2); ctx.quadraticCurveTo(s.x - 27, s.y - 2, s.x - 30, s.y + 8); ctx.stroke();
-    drawHealthBar(s.x - 20, s.y - 25, 40, r.hp / r.maxHp);
-  }
-
-  function drawHealthBar(x, y, w, ratio) {
-    ctx.fillStyle = '#15191f'; ctx.fillRect(x, y, w, 5);
-    ctx.fillStyle = ratio > .5 ? '#62c879' : ratio > .25 ? '#dfb65b' : '#d7666b';
-    ctx.fillRect(x + 1, y + 1, (w - 2) * ratio, 3);
+  function drawTown(town) {
+    const s = worldToScreen(town.x, town.y);
+    ctx.fillStyle = 'rgba(25,29,31,.25)'; ctx.fillRect(s.x-54,s.y-37,108,74);
+    ctx.strokeStyle = '#dbcda2'; ctx.lineWidth = 3; ctx.strokeRect(s.x-50,s.y-34,100,68);
+    ctx.fillStyle = '#b98b58'; ctx.fillRect(s.x-25,s.y-18,50,36); ctx.fillStyle='#6b4c34'; ctx.fillRect(s.x-6,s.y+2,12,16);
+    ctx.fillStyle='#eee7cf'; ctx.font='bold 13px system-ui'; ctx.textAlign='center'; ctx.fillText(town.name,s.x,s.y-46); ctx.textAlign='start';
   }
 
   function drawPlayer() {
-    const p = state.player; const s = worldToScreen(p.x, p.y);
-    ctx.fillStyle = 'rgba(0,0,0,.22)'; ctx.fillRect(Math.round(s.x - 11), Math.round(s.y + 14), 22, 7);
-    ctx.fillStyle = '#e1b07b'; ctx.fillRect(Math.round(s.x - 7), Math.round(s.y - 18), 14, 14);
-    ctx.fillStyle = '#4f74b7'; ctx.fillRect(Math.round(s.x - 10), Math.round(s.y - 4), 20, 19);
-    ctx.fillStyle = '#242a34'; ctx.fillRect(Math.round(s.x - 9), Math.round(s.y + 15), 7, 10); ctx.fillRect(Math.round(s.x + 2), Math.round(s.y + 15), 7, 10);
-    ctx.fillStyle = '#2b1a13'; ctx.fillRect(Math.round(s.x - 7), Math.round(s.y - 19), 14, 5);
-    if (state.equipment.weapon === 'club') {
-      ctx.fillStyle = '#6b492d'; ctx.fillRect(Math.round(s.x + 10), Math.round(s.y - 5), 5, 24);
-      ctx.fillStyle = '#77747a'; ctx.fillRect(Math.round(s.x + 8), Math.round(s.y - 9), 10, 8);
-    }
-  }
-
-  function drawFloaters(now) {
-    for (let i = floaters.length - 1; i >= 0; i--) {
-      const f = floaters[i]; const age = now - f.born;
-      if (age >= f.duration) { floaters.splice(i, 1); continue; }
-      const s = worldToScreen(f.x, f.y - age * .035);
-      ctx.globalAlpha = 1 - age / f.duration;
-      ctx.font = 'bold 20px system-ui'; ctx.textAlign = 'center'; ctx.lineWidth = 4;
-      ctx.strokeStyle = '#1a1012'; ctx.strokeText(f.text, s.x, s.y);
-      ctx.fillStyle = f.kind === 'zero' ? '#d9dce2' : '#ff666d'; ctx.fillText(f.text, s.x, s.y);
-      ctx.globalAlpha = 1;
-    }
-    ctx.textAlign = 'start';
+    const s=worldToScreen(state.player.x,state.player.y);
+    ctx.fillStyle='rgba(0,0,0,.25)'; ctx.fillRect(Math.round(s.x-12),Math.round(s.y+15),24,7);
+    ctx.fillStyle='#e1b07b'; ctx.fillRect(Math.round(s.x-7),Math.round(s.y-18),14,14);
+    ctx.fillStyle='#4f74b7'; ctx.fillRect(Math.round(s.x-10),Math.round(s.y-4),20,19);
+    ctx.fillStyle='#242a34'; ctx.fillRect(Math.round(s.x-9),Math.round(s.y+15),7,10); ctx.fillRect(Math.round(s.x+2),Math.round(s.y+15),7,10);
+    ctx.fillStyle='#2b1a13'; ctx.fillRect(Math.round(s.x-7),Math.round(s.y-19),14,5);
+    if (state.equipment.weapon==='club') { ctx.fillStyle='#6b492d'; ctx.fillRect(s.x+10,s.y-5,5,24); ctx.fillStyle='#77747a'; ctx.fillRect(s.x+8,s.y-9,10,8); }
   }
 
   function draw() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    drawGround();
-    for (const r of resources) r.type === 'tree' ? drawTree(r) : r.type === 'rock' ? drawRock(r) : drawFishSpot(r);
-    drawBench(); drawRat(); drawPlayer(); drawFloaters(performance.now());
+    ctx.fillStyle='#18221d'; ctx.fillRect(0,0,canvas.width,canvas.height);
+    for (const region of regions) drawPolygon(region);
+    for (const town of towns) drawTown(town);
+    drawPlayer();
   }
 
   function openPanel(id) {
-    document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.panel === id));
-    document.querySelectorAll('.panel').forEach(p => p.classList.toggle('active', p.id === id));
+    document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active',t.dataset.panel===id));
+    document.querySelectorAll('.panel').forEach(p=>p.classList.toggle('active',p.id===id));
   }
 
-  function craftClub() {
-    if (state.activeTarget !== 'bench' || distance(state.player, bench) > 60) return showToast('Stand at the crafting bench');
-    if (state.inventory.sticks < 1 || state.inventory.rocks < 1) return showToast('Need 1 stick and 1 rock');
-    state.inventory.sticks--; state.inventory.rocks--; state.inventory.club++;
-    showToast('Crafted a crude club'); renderPanels(); saveGame(false);
+  function inventoryEntries() { return Object.entries(state.inventory).filter(([key,value])=>value>0 && ITEM_DEFS[key]); }
+
+  function renderInventory() {
+    const entries=inventoryEntries();
+    if (!entries.length) { ui.inventory.innerHTML='<div class="empty-state"><strong>Your inventory is empty</strong><span>Only items you actually own will appear here.</span></div>'; return; }
+    ui.inventory.innerHTML=`<div class="item-grid">${entries.map(([key,value])=>`<button class="item" data-item="${key}"><strong>${ITEM_DEFS[key].name}</strong><span>×${value}</span><small>${ITEM_DEFS[key].type}</small></button>`).join('')}</div>`;
+    ui.inventory.querySelectorAll('[data-item]').forEach(b=>b.addEventListener('click',()=>showItem(b.dataset.item)));
   }
 
-  function equipClub() {
-    if (state.inventory.club < 1) return showToast('Craft a club first');
-    state.equipment.weapon = state.equipment.weapon === 'club' ? null : 'club';
-    renderPanels(); saveGame(false);
+  function renderSkills() {
+    const labels={woodcutting:'Woodcutting',mining:'Mining',fishing:'Fishing',cooking:'Cooking',crafting:'Crafting',combat:'Combat'};
+    ui.skills.innerHTML=Object.entries(state.skills).map(([key,val])=>{const level=levelFromXp(val.xp||0), prev=level===1?0:xpForLevel(level-1), next=xpForLevel(level), pct=clamp(((val.xp||0)-prev)/(next-prev)*100,0,100);return `<div class="skill"><div class="skill-head"><strong>${labels[key]}</strong><span>Lv ${level} · ${val.xp||0} XP</span></div><div class="progress-track"><div class="progress-fill" style="width:${pct}%"></div></div></div>`}).join('');
   }
 
-  function renderPanels() {
-    const names = { sticks: 'Stick', rocks: 'Rock', fish: 'Raw Fish', club: 'Crude Club' };
-    ui.inventory.innerHTML = `<div class="item-grid">${Object.entries(state.inventory).map(([key, value]) => `<div class="item ${value ? '' : 'empty'}"><strong>${names[key]}</strong><span>${value}</span></div>`).join('')}</div>`;
-
-    const labels = { woodcutting: 'Woodcutting', mining: 'Mining', fishing: 'Fishing', combat: 'Combat' };
-    ui.skills.innerHTML = Object.entries(state.skills).map(([key, value]) => {
-      const level = levelFromXp(value.xp); const previous = level === 1 ? 0 : xpForLevel(level - 1); const next = xpForLevel(level);
-      const percent = clamp((value.xp - previous) / (next - previous) * 100, 0, 100);
-      return `<div class="skill"><div class="skill-head"><strong>${labels[key]}</strong><span>Lv ${level} · ${value.xp} XP</span></div><div class="progress-track"><div class="progress-fill" style="width:${percent}%"></div></div></div>`;
-    }).join('');
-
-    const equipped = state.equipment.weapon === 'club';
-    ui.equipment.innerHTML = `<div class="equipment-grid"><div class="equipment-card"><div class="equipment-row"><div><strong>Weapon</strong><span>${equipped ? 'Crude Club' : 'Unarmed'}</span></div><button id="equipClubButton" class="equip-button" ${state.inventory.club < 1 ? 'disabled' : ''}>${equipped ? 'Unequip' : 'Equip club'}</button></div></div><div class="equipment-card"><strong>Attack speed</strong><span>${equipped ? '4 ticks · 2.4 seconds' : '4 ticks · 2.4 seconds'}</span></div><div class="equipment-card"><strong>Maximum hit</strong><span>${equipped ? '3' : '1'}</span></div></div>`;
-    document.getElementById('equipClubButton')?.addEventListener('click', equipClub);
-
-    const canCraft = state.inventory.sticks >= 1 && state.inventory.rocks >= 1 && state.activeTarget === 'bench' && distance(state.player, bench) <= 60;
-    ui.crafting.innerHTML = `<div class="recipe"><div class="recipe-row"><div><strong>Crude Club</strong><span>1 stick + 1 rock</span></div><button id="craftClubButton" class="craft-button" ${canCraft ? '' : 'disabled'}>Craft</button></div></div><p class="hint">Tap the wooden bench in the world and walk to it before crafting.</p>`;
-    document.getElementById('craftClubButton')?.addEventListener('click', craftClub);
+  function renderEquipment() {
+    const slots=[['head','Head'],['cape','Cape'],['body','Body'],['weapon','Weapon'],['shield','Shield'],['legs','Legs'],['boots','Boots'],['ring','Ring']];
+    ui.equipment.innerHTML=`<div class="equipment-slots">${slots.map(([key,label])=>{const item=state.equipment[key]&&ITEM_DEFS[state.equipment[key]];return `<button class="slot ${item?'filled':''}" data-slot="${key}" ${item?'':'disabled'}><span>${label}</span><strong>${item?item.name:'Empty'}</strong></button>`}).join('')}</div>`;
+    ui.equipment.querySelectorAll('.slot.filled').forEach(b=>b.addEventListener('click',()=>showItem(state.equipment[b.dataset.slot])));
   }
 
-  function frame(now) {
-    const dt = Math.min(.05, (now - lastFrame) / 1000); lastFrame = now;
-    update(dt); draw(); requestAnimationFrame(frame);
+  function renderMapPanel() {
+    ui.map.innerHTML=`<div class="map-summary"><strong>Hand-built continent</strong><span>Seven connected regions based on your drawing.</span></div><div class="region-list">${regions.map(r=>`<div><i style="background:${r.color}"></i><span>${r.name}</span></div>`).join('')}</div><p class="hint">Town boxes are scale markers only. Walk through every region and check whether the sizes and narrow entrances feel right.</p>`;
   }
 
-  canvas.addEventListener('pointerdown', handlePointer, { passive: false });
-  document.getElementById('stopButton').addEventListener('click', () => stopAction());
-  document.getElementById('saveButton').addEventListener('click', () => saveGame(true));
-  document.querySelectorAll('.tab').forEach(tab => tab.addEventListener('click', () => openPanel(tab.dataset.panel)));
+  function showItem(key) {
+    const item=ITEM_DEFS[key]; if(!item)return; selectedItemKey=key;
+    ui.itemType.textContent=item.type; ui.itemName.textContent=item.name; ui.itemDescription.textContent=item.description;
+    const rows=[]; if(item.uses) rows.push(['Used for',item.uses]); for(const [k,v] of Object.entries(item.stats||{})) rows.push([k,v]);
+    ui.itemStats.innerHTML=rows.map(([k,v])=>`<div><span>${k}</span><strong>${v}</strong></div>`).join('');
+    const equippedSlot=Object.keys(state.equipment).find(slot=>state.equipment[slot]===key);
+    if(item.slot && state.inventory[key]>0) { ui.itemAction.hidden=false; ui.itemAction.textContent=equippedSlot?'Unequip':'Equip'; }
+    else ui.itemAction.hidden=true;
+    ui.dialog.showModal();
+  }
 
-  document.getElementById('exportButton').addEventListener('click', () => {
-    saveGame(false);
-    const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
-    const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = `idle-wanderer-save-${Date.now()}.json`; link.click(); URL.revokeObjectURL(link.href);
-  });
+  function toggleSelectedEquipment() {
+    const key=selectedItemKey,item=ITEM_DEFS[key]; if(!item?.slot)return;
+    const existing=Object.keys(state.equipment).find(slot=>state.equipment[slot]===key);
+    if(existing) state.equipment[existing]=null; else state.equipment[item.slot]=key;
+    ui.dialog.close(); renderAll(); saveGame(false);
+  }
 
-  document.getElementById('importInput').addEventListener('change', async event => {
-    const file = event.target.files?.[0]; if (!file) return;
-    try { localStorage.setItem(SAVE_KEY, JSON.stringify(JSON.parse(await file.text()))); location.reload(); }
-    catch { showToast('Invalid save file'); }
-  });
+  function renderAll(){renderInventory();renderSkills();renderEquipment();renderMapPanel();}
 
-  document.getElementById('resetButton').addEventListener('click', () => {
-    if (!confirm('Reset all progress on this device?')) return;
-    localStorage.removeItem(SAVE_KEY); location.reload();
-  });
+  function frame(now){const dt=Math.min((now-lastFrame)/1000,.05);lastFrame=now;update(dt);draw();requestAnimationFrame(frame);}
 
-  window.addEventListener('pagehide', () => saveGame(false));
-  setInterval(() => saveGame(false), 15000);
-  setInterval(renderPanels, 1000);
-  if ('serviceWorker' in navigator) navigator.serviceWorker.register('./service-worker.js').catch(console.error);
-
-  camera.x = clamp(state.player.x - canvas.width / 2, 0, WORLD.width - canvas.width);
-  camera.y = clamp(state.player.y - canvas.height / 2, 0, WORLD.height - canvas.height);
-  renderPanels(); requestAnimationFrame(frame);
+  canvas.addEventListener('pointerdown',handlePointer,{passive:false});
+  document.getElementById('saveButton').addEventListener('click',()=>saveGame(true));
+  document.getElementById('stopButton').addEventListener('click',stopMovement);
+  document.querySelectorAll('.tab').forEach(tab=>tab.addEventListener('click',()=>openPanel(tab.dataset.panel)));
+  document.getElementById('closeItemButton').addEventListener('click',()=>ui.dialog.close());
+  ui.itemAction.addEventListener('click',toggleSelectedEquipment);
+  ui.dialog.addEventListener('click',e=>{if(e.target===ui.dialog)ui.dialog.close();});
+  document.getElementById('exportButton').addEventListener('click',()=>{saveGame(false);const blob=new Blob([JSON.stringify(state,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`idle-wanderer-save-${Date.now()}.json`;a.click();URL.revokeObjectURL(a.href);});
+  document.getElementById('importInput').addEventListener('change',async e=>{const file=e.target.files?.[0];if(!file)return;try{localStorage.setItem(SAVE_KEY,JSON.stringify(JSON.parse(await file.text())));location.reload();}catch{showToast('Invalid save file');}});
+  document.getElementById('resetButton').addEventListener('click',()=>{if(confirm('Reset all progress on this device?')){localStorage.removeItem(SAVE_KEY);localStorage.removeItem(LEGACY_KEY);location.reload();}});
+  window.addEventListener('pagehide',()=>saveGame(false)); setInterval(()=>saveGame(false),15000);
+  if('serviceWorker'in navigator)navigator.serviceWorker.register('./service-worker.js').catch(console.error);
+  camera.x=clamp(state.player.x-canvas.width/2,0,WORLD.width-canvas.width);camera.y=clamp(state.player.y-canvas.height/2,0,WORLD.height-canvas.height);
+  renderAll();requestAnimationFrame(frame);
 })();
