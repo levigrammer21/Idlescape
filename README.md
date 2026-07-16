@@ -1,31 +1,15 @@
-# Idle Wanderer v0.4.2
+# Idle Wanderer v0.5.0 — Fishing & Animation
 
 Mobile-first GitHub Pages build.
 
-## Included
-- Larger continuous hand-built continent with smooth curved biome transitions
-- Four water areas reserved for future Fishing
-- Soft-follow camera
-- Owned-items-only inventory with item descriptions
-- First full skill: Woodcutting
-- Cedar, Oak, Willow, Beech, Cherry, Arctic Pine, Mahogany, and Redwood trees
-- Level requirements, tick-based collection times, XP, depletion, and respawning
-- Progression tuned toward approximately 5–10 efficient hours to Woodcutting level 100
+## New in this version
+- Fishing is now a complete gathering skill using an owned Basic Fishing Rod.
+- Progression: Sardine (1), Minnow (10), Crappie (20), Bass (30), Catfish (40), Tuna (50), Grouper (60), Shark (70).
+- Inland pond, lake, swamp, lagoon, and coastal ocean fishing spots.
+- Ocean now surrounds the continent instead of empty space.
+- Fishing spots bob, ripple, deplete, move, and respawn.
+- Animated water, ocean movement, casting line, gathering bounce, swaying trees, and floating catch/XP feedback.
+- Raw fish appear in the owned-items-only inventory with descriptions for future Cooking.
+- Existing v0.4.2 saves migrate automatically.
 
 Upload every file in this folder to the root of your GitHub Pages repository.
-
-
-## 0.4.1
-- Objects identify themselves when tapped.
-- Full planned skill dashboard.
-- Town interaction overlay with contextual services.
-
-
-## 0.4.2 — Starter tools
-
-- New and migrated characters receive a Stone Axe, Stone Pickaxe, and Basic Fishing Rod.
-- Gathering tools only need to be owned; they never need to be equipped.
-- Woodcutting now checks for an owned axe before chopping.
-- The engine automatically selects the best owned tool tier, ready for faster higher-level tools later.
-- Starter tools include inventory descriptions and skill statistics.
-- Replacement starter tools are intended to be cheap shop purchases or easy recipes when those town services are implemented.
