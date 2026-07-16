@@ -7,3 +7,14 @@
 
 
 .crafting-dialog{width:min(calc(100% - 18px),520px);max-height:88dvh;overflow:auto;padding:12px}.crafting-recipes{display:grid;gap:12px}.recipe-group h3{margin:8px 0 6px;color:#f0d47a;font-size:.78rem;text-transform:uppercase;letter-spacing:.06em}.recipe-card{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center;padding:9px;margin-bottom:6px;border:1px solid #354154;border-radius:10px;background:var(--panel-2)}.recipe-card.locked{opacity:.58}.recipe-copy strong{display:block;font-size:.76rem}.recipe-copy span,.recipe-copy small{display:block;color:var(--muted);font-size:.61rem;line-height:1.35;margin-top:2px}.recipe-copy small{color:#8f9bad}.recipe-actions{display:grid;grid-template-columns:1fr 1fr;gap:4px;min-width:116px}.recipe-actions button{border:0;border-radius:7px;padding:7px 5px;background:#806b36;color:#fff7dc;font-size:.61rem;font-weight:800}.recipe-actions button:disabled{background:#313846;color:#7f8997}.recipe-card.craftable{border-color:#7f6d3f}@media(max-width:390px){.recipe-card{grid-template-columns:1fr}.recipe-actions{min-width:0}}
+
+.header-version{display:inline-block;margin-left:6px;color:var(--accent);font-size:.62em;font-weight:800;vertical-align:middle}
+.recipe-group{border:1px solid #354154;border-radius:10px;background:#1b222c;overflow:hidden}
+.recipe-group+ .recipe-group{margin-top:8px}
+.recipe-group>summary{list-style:none;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:11px 12px;cursor:pointer;color:#f0d47a;font-size:.78rem;font-weight:850;text-transform:uppercase;letter-spacing:.06em}
+.recipe-group>summary::-webkit-details-marker{display:none}
+.recipe-group>summary:after{content:'+';font-size:1.2rem;color:#d9e0e8}
+.recipe-group[open]>summary:after{content:'−'}
+.recipe-group>summary small{margin-left:auto;color:var(--muted);font-size:.56rem;font-weight:650;text-transform:none;letter-spacing:0}
+.recipe-group-body{padding:0 8px 8px}
+.recipe-group .recipe-card:last-child{margin-bottom:0}
