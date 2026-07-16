@@ -1,0 +1,13 @@
+{
+  "name": "Idle Wanderer",
+  "short_name": "Wanderer",
+  "description": "A tiny mobile-first idle gathering RPG.",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#0f1217",
+  "theme_color": "#171b22",
+  "orientation": "portrait-primary",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}
