@@ -1,7 +1,7 @@
 (() => {
   'use strict';
 
-  const VERSION = '0.5.0';
+  const VERSION = '0.6.0';
   const SAVE_KEY = 'idle-wanderer-save-v6';
   const LEGACY_KEYS = ['idle-wanderer-save-v5', 'idle-wanderer-save-v4', 'idle-wanderer-save-v3', 'idle-wanderer-save-v2'];
   const TICK_SECONDS = 0.6;
@@ -32,14 +32,24 @@
   };
 
   const FISH_TYPES = {
-    sardine: { name: 'Sardine', level: 1, ticks: 3, xp: 8, item: 'rawSardine', color: '#d8e4e7' },
-    minnow: { name: 'Minnow', level: 10, ticks: 5, xp: 18, item: 'rawMinnow', color: '#b8d7de' },
-    crappie: { name: 'Crappie', level: 20, ticks: 7, xp: 32, item: 'rawCrappie', color: '#a6c2b3' },
-    bass: { name: 'Bass', level: 30, ticks: 9, xp: 55, item: 'rawBass', color: '#87a899' },
-    catfish: { name: 'Catfish', level: 40, ticks: 12, xp: 90, item: 'rawCatfish', color: '#9a8c72' },
-    tuna: { name: 'Tuna', level: 50, ticks: 16, xp: 140, item: 'rawTuna', color: '#6f91ae' },
-    grouper: { name: 'Grouper', level: 60, ticks: 18, xp: 175, item: 'rawGrouper', color: '#a0715b' },
+    minnow: { name: 'Minnow', level: 1, ticks: 3, xp: 8, item: 'rawMinnow', color: '#b8d7de' },
+    crappie: { name: 'Crappie', level: 10, ticks: 5, xp: 18, item: 'rawCrappie', color: '#a6c2b3' },
+    bass: { name: 'Bass', level: 20, ticks: 7, xp: 32, item: 'rawBass', color: '#87a899' },
+    catfish: { name: 'Catfish', level: 30, ticks: 9, xp: 55, item: 'rawCatfish', color: '#9a8c72' },
+    tuna: { name: 'Tuna', level: 40, ticks: 12, xp: 90, item: 'rawTuna', color: '#6f91ae' },
+    grouper: { name: 'Grouper', level: 50, ticks: 16, xp: 140, item: 'rawGrouper', color: '#a0715b' },
     shark: { name: 'Shark', level: 70, ticks: 20, xp: 220, item: 'rawShark', color: '#8295a5' }
+  };
+
+  const ROCK_TYPES = {
+    stone: { name: 'Stone', level: 1, ticks: 3, xp: 8, item: 'stone', color: '#8c9299', respawn: 16, hp: 4 },
+    copper: { name: 'Copper', level: 10, ticks: 5, xp: 18, item: 'copperOre', color: '#b9784f', respawn: 22, hp: 5 },
+    iron: { name: 'Iron', level: 20, ticks: 7, xp: 32, item: 'ironOre', color: '#6f7782', respawn: 28, hp: 6 },
+    coal: { name: 'Coal', level: 30, ticks: 9, xp: 55, item: 'coal', color: '#34383e', respawn: 34, hp: 7 },
+    silver: { name: 'Silver', level: 40, ticks: 12, xp: 90, item: 'silverOre', color: '#c4ccd2', respawn: 42, hp: 8 },
+    pyrite: { name: 'Pyrite', level: 50, ticks: 16, xp: 140, item: 'pyriteOre', color: '#c59d39', respawn: 50, hp: 9 },
+    gold: { name: 'Gold', level: 60, ticks: 18, xp: 175, item: 'goldOre', color: '#d4b33f', respawn: 58, hp: 10 },
+    crystal: { name: 'Crystal', level: 70, ticks: 20, xp: 220, item: 'crystal', color: '#8ed7e8', respawn: 68, hp: 11 }
   };
 
   const TOOL_TYPES = {
@@ -52,7 +62,6 @@
     stoneAxe: { name: 'Stone Axe', type: 'Woodcutting tool', description: 'A simple starter axe. Owning it allows you to cut trees; it does not need to be equipped.', tool: 'axe', toolTier: 1, stats: { 'Skill': 'Woodcutting', 'Required level': '1', 'Chopping speed': 'Base speed' } },
     stonePickaxe: { name: 'Stone Pickaxe', type: 'Mining tool', description: 'A simple starter pickaxe. Owning it will allow you to mine rocks; it does not need to be equipped.', tool: 'pickaxe', toolTier: 1, stats: { 'Skill': 'Mining', 'Required level': '1', 'Mining speed': 'Base speed' } },
     basicFishingRod: { name: 'Basic Fishing Rod', type: 'Fishing tool', description: 'A basic starter fishing rod. Owning it will allow you to fish; it does not need to be equipped.', tool: 'fishingRod', toolTier: 1, stats: { 'Skill': 'Fishing', 'Required level': '1', 'Fishing speed': 'Base speed' } },
-    rawSardine: { name: 'Raw Sardine', type: 'Raw fish', description: 'A small ocean fish. It can eventually be cooked on a fire or cooking pot.', uses: 'Future Cooking · Food' },
     rawMinnow: { name: 'Raw Minnow', type: 'Raw fish', description: 'A tiny freshwater fish caught in calm ponds.', uses: 'Future Cooking · Bait' },
     rawCrappie: { name: 'Raw Crappie', type: 'Raw fish', description: 'A speckled pond fish with mild meat.', uses: 'Future Cooking · Food' },
     rawBass: { name: 'Raw Bass', type: 'Raw fish', description: 'A sturdy freshwater fish found in deeper lakes.', uses: 'Future Cooking · Food' },
@@ -60,6 +69,14 @@
     rawTuna: { name: 'Raw Tuna', type: 'Raw fish', description: 'A strong ocean fish caught from coastal waters.', uses: 'Future Cooking · Food' },
     rawGrouper: { name: 'Raw Grouper', type: 'Raw fish', description: 'A heavy reef fish caught along the warm coast.', uses: 'Future Cooking · Food' },
     rawShark: { name: 'Raw Shark', type: 'Raw fish', description: 'A dangerous deep-water catch requiring great Fishing skill.', uses: 'Future Cooking · High-level food' },
+    stone: { name: 'Stone', type: 'Mining material', description: 'A common chunk of stone useful for construction and basic crafting.', uses: 'Future Construction · Crafting' },
+    copperOre: { name: 'Copper Ore', type: 'Mining material', description: 'A warm-coloured ore ready to be refined into copper.', uses: 'Future Smelting · Smithing' },
+    ironOre: { name: 'Iron Ore', type: 'Mining material', description: 'A sturdy metal ore used for dependable tools and armour.', uses: 'Future Smelting · Smithing' },
+    coal: { name: 'Coal', type: 'Mining material', description: 'Dense black fuel used by furnaces and higher-level recipes.', uses: 'Future Smelting · Fuel' },
+    silverOre: { name: 'Silver Ore', type: 'Mining material', description: 'A pale valuable ore suited to jewellery and refined gear.', uses: 'Future Smelting · Crafting' },
+    pyriteOre: { name: 'Pyrite Ore', type: 'Mining material', description: 'A bright metallic ore sometimes called fool’s gold.', uses: 'Future Smelting · Smithing · Jewellery' },
+    goldOre: { name: 'Gold Ore', type: 'Mining material', description: 'A valuable heavy ore used for precious bars and ornaments.', uses: 'Future Smelting · Jewellery' },
+    crystal: { name: 'Crystal', type: 'Mining material', description: 'A rare luminous crystal mined from the deepest deposits.', uses: 'Future High-level Crafting · Equipment' },
     cedarLog: { name: 'Cedar Log', type: 'Woodcutting material', description: 'A light, fragrant log from a cedar tree.', uses: 'Future Firemaking · Fletching · Construction' },
     oakLog: { name: 'Oak Log', type: 'Woodcutting material', description: 'A dependable hardwood log with a sturdy grain.', uses: 'Future Firemaking · Fletching · Construction' },
     willowLog: { name: 'Willow Log', type: 'Woodcutting material', description: 'A flexible pale log cut near wet ground.', uses: 'Future Firemaking · Fletching · Crafting' },
@@ -109,8 +126,6 @@
   ];
 
   const fishingSeeds = [
-    ['sardine', 820, 118, 820, 250, 'Northern Coast'],
-    ['sardine', 3320, 2140, 3200, 2140, 'Eastern Coast'],
     ['minnow', 1470, 1880, 1335, 1830, 'Cedar Pond'],
     ['minnow', 1660, 1940, 1760, 2070, 'Cedar Pond'],
     ['crappie', 2850, 2100, 2690, 2050, 'Willow Mere'],
@@ -160,6 +175,24 @@
     });
   }
 
+  const rockSeeds = [
+    ['stone',1650,2440],['stone',1930,2490],['stone',2200,2360],
+    ['copper',2380,1580],['copper',2740,1710],
+    ['iron',2700,2520],['iron',3060,2400],
+    ['coal',1080,1360],['coal',1420,1280],
+    ['silver',760,2350],['silver',520,2200],
+    ['pyrite',1080,3130],['pyrite',1520,3020],
+    ['gold',2320,3440],['gold',2650,3600],
+    ['crystal',1200,520],['crystal',1920,420]
+  ];
+
+  function makeRocks(saved = {}) {
+    return rockSeeds.map(([type,x,y], index) => {
+      const id = `rock-${type}-${index}`, prior = saved[id] || {}, def = ROCK_TYPES[type];
+      return { id, type, x, y, hp: prior.hp ?? def.hp, maxHp: def.hp, respawnAt: prior.respawnAt || 0 };
+    });
+  }
+
   const defaultInventory = () => Object.fromEntries(Object.keys(ITEM_DEFS).map(k => [k, 0]));
   const defaultState = () => ({
     version: VERSION,
@@ -167,15 +200,16 @@
     inventory: { ...defaultInventory(), stoneAxe: 1, stonePickaxe: 1, basicFishingRod: 1 },
     skills: Object.fromEntries(Object.keys(SKILL_DEFS).map(k => [k, { xp: 0 }])),
     equipment: { head: null, body: null, legs: null, boots: null, weapon: null, shield: null, cape: null, ring: null },
-    treeState: {}, fishingState: {}, lastSavedAt: Date.now()
+    treeState: {}, fishingState: {}, rockState: {}, lastSavedAt: Date.now()
   });
 
   const camera = { x: 0, y: 0 };
   let state = loadState();
   let trees = makeTrees(state.treeState);
   let fishingSpots = makeFishingSpots(state.fishingState);
+  let rocks = makeRocks(state.rockState);
   let lastFrame = performance.now(), toastTimer = null, selectedItemKey = null;
-  let activeTree = null, queuedTree = null, activeFishingSpot = null, queuedFishingSpot = null, queuedTown = null, actionElapsed = 0;
+  let activeTree = null, queuedTree = null, activeFishingSpot = null, queuedFishingSpot = null, activeRock = null, queuedRock = null, queuedTown = null, actionElapsed = 0;
   let animationClock = 0;
   const floaters = [];
 
@@ -206,7 +240,7 @@
         if (!fresh.inventory[starter] || fresh.inventory[starter] < 1) fresh.inventory[starter] = 1;
       }
       for(const key of Object.keys(SKILL_DEFS)) if(old.skills?.[key]) fresh.skills[key]=old.skills[key];
-      fresh.equipment={...fresh.equipment,...(old.equipment||{})}; fresh.treeState=old.treeState||{}; fresh.fishingState=old.fishingState||{};
+      fresh.equipment={...fresh.equipment,...(old.equipment||{})}; fresh.treeState=old.treeState||{}; fresh.fishingState=old.fishingState||{}; fresh.rockState=old.rockState||{};
       if(old.player && isWalkable(old.player.x,old.player.y)) fresh.player={...fresh.player,x:old.player.x,y:old.player.y,targetX:old.player.x,targetY:old.player.y};
       return fresh;
     } catch(e){ console.error(e); return defaultState(); }
@@ -215,6 +249,7 @@
   function saveGame(show=false){
     state.treeState=Object.fromEntries(trees.map(t=>[t.id,{remaining:t.remaining,respawnAt:t.respawnAt,max:t.max}]));
     state.fishingState=Object.fromEntries(fishingSpots.map(f=>[f.id,{remaining:f.remaining,respawnAt:f.respawnAt}]));
+    state.rockState=Object.fromEntries(rocks.map(r=>[r.id,{hp:r.hp,respawnAt:r.respawnAt}]));
     state.lastSavedAt=Date.now(); state.version=VERSION; localStorage.setItem(SAVE_KEY,JSON.stringify(state)); if(show)showToast('Game saved');
   }
   function showToast(message){ ui.toast.textContent=message;ui.toast.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>ui.toast.classList.remove('show'),1800); }
@@ -223,12 +258,14 @@
 
   function townAt(x,y){ let best=null,bestD=72; for(const t of towns){const d=Math.hypot(x-t.x,y-t.y);if(d<bestD){best=t;bestD=d;}} return best; }
   function treeAt(x,y){ let best=null,bestD=44; for(const t of trees){if(t.remaining<=0)continue;const d=Math.hypot(x-t.x,y-t.y);if(d<bestD){best=t;bestD=d;}} return best; }
-  function fishingSpotAt(x,y){ let best=null,bestD=52; for(const f of fishingSpots){if(f.remaining<=0)continue;const d=Math.hypot(x-f.x,y-f.y);if(d<bestD){best=f;bestD=d;}} return best; }
+  function rockAt(x,y){ let best=null,bestD=48; for(const r of rocks){if(r.hp<=0)continue;const d=Math.hypot(x-r.x,y-r.y);if(d<bestD){best=r;bestD=d;}} return best; }
+  function fishingSpotAt(x,y){ let best=null,bestD=52; for(const r of rocks){if(r.hp<=0&&r.respawnAt&&now>=r.respawnAt){r.hp=r.maxHp;r.respawnAt=0;}}
+    for(const f of fishingSpots){if(f.remaining<=0)continue;const d=Math.hypot(x-f.x,y-f.y);if(d<bestD){best=f;bestD=d;}} return best; }
   function handlePointer(event){
     event.preventDefault(); const rect=canvas.getBoundingClientRect(); const sx=(event.clientX-rect.left)*canvas.width/rect.width, sy=(event.clientY-rect.top)*canvas.height/rect.height; const p=screenToWorld(sx,sy);
-    const town=townAt(p.x,p.y), tree=treeAt(p.x,p.y), fishingSpot=fishingSpotAt(p.x,p.y); stopAction(false);
+    const town=townAt(p.x,p.y), tree=treeAt(p.x,p.y), rock=rockAt(p.x,p.y), fishingSpot=fishingSpotAt(p.x,p.y); stopAction(false);
     if(town){
-      queuedTown=town; queuedTree=null; queuedFishingSpot=null; const dx=state.player.x-town.x,dy=state.player.y-town.y,d=Math.hypot(dx,dy)||1;
+      queuedTown=town; queuedTree=null; queuedFishingSpot=null; queuedRock=null; const dx=state.player.x-town.x,dy=state.player.y-town.y,d=Math.hypot(dx,dy)||1;
       state.player.targetX=town.x+dx/d*82;state.player.targetY=town.y+dy/d*82;ui.status.textContent=`Walking to ${town.name}...`;ui.actionName.textContent='Walking';showToast(town.name);return;
     }
     if(fishingSpot){
@@ -239,6 +276,15 @@
       state.player.targetX=fishingSpot.standX; state.player.targetY=fishingSpot.standY;
       ui.status.textContent=`Walking to ${def.name} fishing spot...`;ui.actionName.textContent='Walking';showToast(`${def.name} Fishing Spot`);return;
     }
+    if(rock){
+      const def=ROCK_TYPES[rock.type], level=levelFromXp(state.skills.mining.xp);
+      if(level<def.level){showToast(`${def.name} Rock · Mining level ${def.level} required`);return;}
+      if(!bestOwnedTool('pickaxe')){showToast(`${def.name} Rock · A pickaxe is required`);return;}
+      queuedRock=rock; queuedTree=null; queuedFishingSpot=null; queuedTown=null;
+      const dx=state.player.x-rock.x,dy=state.player.y-rock.y,d=Math.hypot(dx,dy)||1;
+      state.player.targetX=rock.x+dx/d*62;state.player.targetY=rock.y+dy/d*62;
+      ui.status.textContent=`Walking to ${def.name} rock...`;ui.actionName.textContent='Walking';showToast(`${def.name} Rock`);return;
+    }
     if(tree){
       const def=TREE_TYPES[tree.type], level=levelFromXp(state.skills.woodcutting.xp);
       if(level<def.level){showToast(`${def.name} Tree · Woodcutting level ${def.level} required`);return;}
@@ -247,16 +293,23 @@
       state.player.targetX=tree.x+dx/d*stand;state.player.targetY=tree.y+dy/d*stand;ui.status.textContent=`Walking to ${def.name} tree...`;ui.actionName.textContent='Walking';return;
     }
     if(!isWalkable(p.x,p.y)){showToast(pointInWater(p.x,p.y)?'You cannot walk into the water':'You cannot leave the continent');return;}
-    queuedTree=null;queuedFishingSpot=null;queuedTown=null;state.player.targetX=p.x;state.player.targetY=p.y;ui.status.textContent='Walking...';ui.actionName.textContent='Exploring';
+    queuedTree=null;queuedFishingSpot=null;queuedRock=null;queuedTown=null;state.player.targetX=p.x;state.player.targetY=p.y;ui.status.textContent='Walking...';ui.actionName.textContent='Exploring';
   }
 
-  function stopAction(stopMovement=true){ activeTree=null;queuedTree=null;activeFishingSpot=null;queuedFishingSpot=null;queuedTown=null;actionElapsed=0;ui.actionProgress.style.width='0%';if(stopMovement){state.player.targetX=state.player.x;state.player.targetY=state.player.y;}ui.actionName.textContent='Exploring'; }
+  function stopAction(stopMovement=true){ activeTree=null;queuedTree=null;activeFishingSpot=null;queuedFishingSpot=null;activeRock=null;queuedRock=null;queuedTown=null;actionElapsed=0;ui.actionProgress.style.width='0%';if(stopMovement){state.player.targetX=state.player.x;state.player.targetY=state.player.y;}ui.actionName.textContent='Exploring'; }
   function beginChopping(tree){ activeTree=tree;queuedTree=null;actionElapsed=0;const def=TREE_TYPES[tree.type], tool=ITEM_DEFS[bestOwnedTool('axe')];ui.actionName.textContent=`Chopping ${def.name}`;ui.status.textContent=`Chopping ${def.name} tree with ${tool?.name || 'an axe'}...`; }
+  function beginMining(rock){ activeRock=rock;queuedRock=null;actionElapsed=0;const def=ROCK_TYPES[rock.type],tool=ITEM_DEFS[bestOwnedTool('pickaxe')];ui.actionName.textContent=`Mining ${def.name}`;ui.status.textContent=`Mining ${def.name} with ${tool?.name || 'a pickaxe'}...`; }
   function beginFishing(spot){ activeFishingSpot=spot;queuedFishingSpot=null;actionElapsed=0;const def=FISH_TYPES[spot.type],tool=ITEM_DEFS[bestOwnedTool('fishingRod')];ui.actionName.textContent=`Fishing ${def.name}`;ui.status.textContent=`Fishing for ${def.name} with ${tool?.name || 'a fishing rod'}...`; }
   function awardFish(spot){
     const def=FISH_TYPES[spot.type];state.inventory[def.item]=(state.inventory[def.item]||0)+1;state.skills.fishing.xp+=def.xp;spot.remaining--;
     floaters.push({x:spot.standX,y:spot.standY-65,text:`+1 ${ITEM_DEFS[def.item].name}  +${def.xp} XP`,life:1.4});renderInventory();renderSkills();
     if(spot.remaining<=0){spot.respawnAt=Date.now()+randomInt(20,36)*1000;showToast(`${def.name} fishing spot moved`);stopAction(true);}else actionElapsed=0;
+  }
+
+  function awardOre(rock){
+    const def=ROCK_TYPES[rock.type];state.inventory[def.item]=(state.inventory[def.item]||0)+1;state.skills.mining.xp+=def.xp;rock.hp--;
+    floaters.push({x:rock.x,y:rock.y-48,text:`+1 ${ITEM_DEFS[def.item].name}  +${def.xp} XP`,life:1.4});renderInventory();renderSkills();
+    if(rock.hp<=0){rock.respawnAt=Date.now()+def.respawn*1000;showToast(`${def.name} rock depleted`);stopAction(true);}else actionElapsed=0;
   }
 
   function awardLog(tree){
@@ -267,18 +320,22 @@
 
   function update(dt){
     animationClock+=dt; const now=Date.now(); for(const t of trees){if(t.remaining<=0&&t.respawnAt&&now>=t.respawnAt){const def=TREE_TYPES[t.type];t.max=randomInt(def.capacity[0],def.capacity[1]);t.remaining=t.max;t.respawnAt=0;}}
+    for(const r of rocks){if(r.hp<=0&&r.respawnAt&&now>=r.respawnAt){r.hp=r.maxHp;r.respawnAt=0;}}
     for(const f of fishingSpots){if(f.remaining<=0&&f.respawnAt&&now>=f.respawnAt){f.remaining=randomInt(5,9);f.respawnAt=0;}}
     const p=state.player,dx=p.targetX-p.x,dy=p.targetY-p.y,dist=Math.hypot(dx,dy);
-    if(dist>2){const move=Math.min(dist,190*dt),nx=p.x+dx/dist*move,ny=p.y+dy/dist*move;if(isWalkable(nx,ny)){p.x=nx;p.y=ny;}else{p.targetX=p.x;p.targetY=p.y;queuedTree=null;queuedFishingSpot=null;queuedTown=null;showToast('That route is blocked');}}
-    else {p.x=p.targetX;p.y=p.targetY;if(queuedTown && Math.hypot(p.x-queuedTown.x,p.y-queuedTown.y)<105){const town=queuedTown;queuedTown=null;openTown(town);}else if(queuedFishingSpot && queuedFishingSpot.remaining>0 && Math.hypot(p.x-queuedFishingSpot.standX,p.y-queuedFishingSpot.standY)<20)beginFishing(queuedFishingSpot);else if(queuedTree && queuedTree.remaining>0 && Math.hypot(p.x-queuedTree.x,p.y-queuedTree.y)<78)beginChopping(queuedTree);else if(!activeTree&&!activeFishingSpot){ui.status.textContent='Tap the ground, a tree, a fishing spot, or a town.';ui.actionName.textContent='Exploring';}}
+    if(dist>2){const move=Math.min(dist,190*dt),nx=p.x+dx/dist*move,ny=p.y+dy/dist*move;if(isWalkable(nx,ny)){p.x=nx;p.y=ny;}else{p.targetX=p.x;p.targetY=p.y;queuedTree=null;queuedFishingSpot=null;queuedRock=null;queuedTown=null;showToast('That route is blocked');}}
+    else {p.x=p.targetX;p.y=p.targetY;if(queuedTown && Math.hypot(p.x-queuedTown.x,p.y-queuedTown.y)<105){const town=queuedTown;queuedTown=null;openTown(town);}else if(queuedRock && queuedRock.hp>0 && Math.hypot(p.x-queuedRock.x,p.y-queuedRock.y)<90)beginMining(queuedRock);else if(queuedFishingSpot && queuedFishingSpot.remaining>0 && Math.hypot(p.x-queuedFishingSpot.standX,p.y-queuedFishingSpot.standY)<20)beginFishing(queuedFishingSpot);else if(queuedTree && queuedTree.remaining>0 && Math.hypot(p.x-queuedTree.x,p.y-queuedTree.y)<78)beginChopping(queuedTree);else if(!activeTree&&!activeFishingSpot&&!activeRock){ui.status.textContent='Tap the ground, a tree, a rock, a fishing spot, or a town.';ui.actionName.textContent='Exploring';}}
     if(activeTree){
       if(activeTree.remaining<=0 || Math.hypot(p.x-activeTree.x,p.y-activeTree.y)>85)stopAction(false);
       else {const def=TREE_TYPES[activeTree.type],duration=def.ticks*TICK_SECONDS;actionElapsed+=dt;ui.actionProgress.style.width=`${Math.min(100,actionElapsed/duration*100)}%`;if(actionElapsed>=duration)awardLog(activeTree);}
+    } else if(activeRock){
+      if(activeRock.hp<=0 || Math.hypot(p.x-activeRock.x,p.y-activeRock.y)>92)stopAction(false);
+      else {const def=ROCK_TYPES[activeRock.type],duration=def.ticks*TICK_SECONDS;actionElapsed+=dt;ui.actionProgress.style.width=`${Math.min(100,actionElapsed/duration*100)}%`;if(actionElapsed>=duration)awardOre(activeRock);}
     } else if(activeFishingSpot){
       if(activeFishingSpot.remaining<=0 || Math.hypot(p.x-activeFishingSpot.standX,p.y-activeFishingSpot.standY)>30)stopAction(false);
       else {const def=FISH_TYPES[activeFishingSpot.type],duration=def.ticks*TICK_SECONDS;actionElapsed+=dt;ui.actionProgress.style.width=`${Math.min(100,actionElapsed/duration*100)}%`;if(actionElapsed>=duration)awardFish(activeFishingSpot);}
     } else ui.actionProgress.style.width='0%';
-    const region=regionAt(p.x,p.y);ui.region.textContent=region.name;
+    const region=regionAt(p.x,p.y);ui.region.textContent=region.name;if(document.getElementById('map')?.classList.contains('active'))drawMiniMap();
     const tx=clamp(p.x-canvas.width/2,0,WORLD.width-canvas.width),ty=clamp(p.y-canvas.height/2,0,WORLD.height-canvas.height),follow=1-Math.pow(.018,dt);camera.x+=(tx-camera.x)*follow;camera.y+=(ty-camera.y)*follow;
     for(let i=floaters.length-1;i>=0;i--){floaters[i].life-=dt;floaters[i].y-=24*dt;if(floaters[i].life<=0)floaters.splice(i,1);}
   }
@@ -293,11 +350,17 @@
   function drawFishingSpot(f){if(f.remaining<=0)return;const bob=Math.sin(animationClock*3+f.phase)*4,s=worldToScreen(f.x,f.y+bob);if(s.x<-70||s.y<-70||s.x>canvas.width+70||s.y>canvas.height+70)return;const d=FISH_TYPES[f.type];ctx.strokeStyle='rgba(233,249,255,.72)';ctx.lineWidth=3;for(let i=0;i<2;i++){ctx.beginPath();ctx.arc(s.x,s.y,12+i*11+Math.sin(animationClock*2+f.phase)*2,0,Math.PI*2);ctx.stroke();}ctx.fillStyle=d.color;ctx.beginPath();ctx.ellipse(s.x,s.y,8,5,0,0,Math.PI*2);ctx.fill();ctx.fillStyle='#223640';ctx.beginPath();ctx.moveTo(s.x+7,s.y);ctx.lineTo(s.x+14,s.y-6);ctx.lineTo(s.x+14,s.y+6);ctx.closePath();ctx.fill();if(activeFishingSpot===f){ctx.strokeStyle='#f0cc64';ctx.lineWidth=3;ctx.beginPath();ctx.arc(s.x,s.y,34,0,Math.PI*2);ctx.stroke();}}
   function drawTown(t){const s=worldToScreen(t.x,t.y);if(s.x<-100||s.y<-100||s.x>canvas.width+100||s.y>canvas.height+100)return;ctx.fillStyle='rgba(35,31,27,.2)';ctx.fillRect(s.x-54,s.y-38,108,76);ctx.strokeStyle='#e0d0a5';ctx.lineWidth=3;ctx.strokeRect(s.x-50,s.y-34,100,68);ctx.fillStyle='#b8895b';ctx.fillRect(s.x-25,s.y-17,50,34);ctx.fillStyle='#6b4c34';ctx.fillRect(s.x-6,s.y+1,12,16);ctx.fillStyle='#f0e9d2';ctx.font='bold 13px system-ui';ctx.textAlign='center';ctx.fillText(t.name,s.x,s.y-45);ctx.textAlign='start';}
   function drawTree(t){if(t.remaining<=0)return;const sway=Math.sin(animationClock*1.6+t.x*.01)*1.8+(activeTree===t?Math.sin(animationClock*12)*3:0);const s=worldToScreen(t.x+sway,t.y);if(s.x<-60||s.y<-90||s.x>canvas.width+60||s.y>canvas.height+60)return;const d=TREE_TYPES[t.type],scale=t.type==='redwood'?1.28:t.type==='mahogany'?1.12:1;ctx.fillStyle='rgba(0,0,0,.18)';ctx.fillRect(s.x-24*scale,s.y+22,48*scale,9);ctx.fillStyle=d.trunk;ctx.fillRect(s.x-7*scale,s.y-1,14*scale,34*scale);ctx.fillStyle=d.leaves;if(t.type==='arcticPine'){for(let i=0;i<3;i++){ctx.beginPath();ctx.moveTo(s.x,s.y-55+i*17);ctx.lineTo(s.x-27*scale+i*2,s.y-10+i*14);ctx.lineTo(s.x+27*scale-i*2,s.y-10+i*14);ctx.closePath();ctx.fill();}}else{ctx.fillRect(s.x-25*scale,s.y-44,50*scale,35*scale);ctx.fillRect(s.x-17*scale,s.y-56,34*scale,20*scale);if(t.type==='cherry'){ctx.fillStyle='#e6a1a9';ctx.fillRect(s.x-18,s.y-49,7,7);ctx.fillRect(s.x+11,s.y-39,6,6);}}if(activeTree===t){ctx.strokeStyle='#f0cc64';ctx.lineWidth=3;ctx.strokeRect(s.x-31*scale,s.y-61,62*scale,96);}}
-  function drawPlayer(){const working=activeTree||activeFishingSpot;const bounce=working?Math.sin(animationClock*8)*2:0;const s=worldToScreen(state.player.x,state.player.y+bounce);ctx.fillStyle='rgba(0,0,0,.2)';ctx.fillRect(s.x-13,s.y+18,26,7);ctx.fillStyle='#20242a';ctx.fillRect(s.x-11,s.y-18,22,10);ctx.fillStyle='#d4a16e';ctx.fillRect(s.x-10,s.y-8,20,16);ctx.fillStyle='#537fc4';ctx.fillRect(s.x-13,s.y+8,26,25);ctx.fillStyle='#20262b';ctx.fillRect(s.x-11,s.y+33,8,18);ctx.fillRect(s.x+3,s.y+33,8,18);if(activeFishingSpot){const fs=worldToScreen(activeFishingSpot.x,activeFishingSpot.y);ctx.strokeStyle='#dbc68b';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(s.x+12,s.y+8);ctx.quadraticCurveTo((s.x+fs.x)/2,s.y-28,fs.x,fs.y);ctx.stroke();ctx.fillStyle='#f1d267';ctx.fillRect(fs.x-2,fs.y-2,4,4);}}
-  function draw(){ctx.clearRect(0,0,canvas.width,canvas.height);ctx.fillStyle='#397f9f';ctx.fillRect(0,0,canvas.width,canvas.height);ctx.strokeStyle='rgba(210,240,248,.22)';ctx.lineWidth=3;for(let y=-30+(animationClock*12)%46;y<canvas.height+40;y+=46){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(canvas.width,y+10);ctx.stroke();}fillSmooth(continent,'#72ae61','#d5c68b',8);drawTileTexture(continent);for(const r of regions){fillSmooth(r.points,r.color);drawTileTexture(r.points);}for(const w of waters)drawWater(w);for(const f of fishingSpots)drawFishingSpot(f);for(const t of towns)drawTown(t);for(const t of trees)drawTree(t);drawPlayer();for(const f of floaters){const s=worldToScreen(f.x,f.y);ctx.globalAlpha=Math.min(1,f.life*1.4);ctx.fillStyle='#fff4b8';ctx.strokeStyle='rgba(20,20,20,.8)';ctx.lineWidth=4;ctx.font='bold 14px system-ui';ctx.textAlign='center';ctx.strokeText(f.text,s.x,s.y);ctx.fillText(f.text,s.x,s.y);ctx.textAlign='start';ctx.globalAlpha=1;}}
+  function drawRock(r){if(r.hp<=0)return;const s=worldToScreen(r.x,r.y);if(s.x<-60||s.y<-60||s.x>canvas.width+60||s.y>canvas.height+60)return;const d=ROCK_TYPES[r.type],ratio=r.hp/r.maxHp,shake=activeRock===r?Math.sin(animationClock*15)*2:0;ctx.save();ctx.translate(s.x+shake,s.y);ctx.fillStyle='rgba(0,0,0,.2)';ctx.fillRect(-25,18,50,8);ctx.fillStyle=d.color;ctx.beginPath();ctx.moveTo(-24,15);ctx.lineTo(-18,-18);ctx.lineTo(2,-30);ctx.lineTo(24,-12);ctx.lineTo(28,15);ctx.closePath();ctx.fill();ctx.strokeStyle='rgba(30,35,40,.6)';ctx.lineWidth=2;if(ratio<.8){ctx.beginPath();ctx.moveTo(-4,-26);ctx.lineTo(2,-8);ctx.lineTo(-8,7);ctx.stroke();}if(ratio<.5){ctx.beginPath();ctx.moveTo(17,-13);ctx.lineTo(5,-1);ctx.lineTo(15,12);ctx.stroke();}if(activeRock===r){ctx.strokeStyle='#f0cc64';ctx.lineWidth=3;ctx.strokeRect(-32,-36,64,58);ctx.fillStyle='#1a2028';ctx.fillRect(-28,-44,56,6);ctx.fillStyle='#68c77e';ctx.fillRect(-28,-44,56*ratio,6);}ctx.restore();}
+  function drawPlayer(){const working=activeTree||activeFishingSpot||activeRock;const bounce=working?Math.sin(animationClock*8)*2:0;const s=worldToScreen(state.player.x,state.player.y+bounce);ctx.fillStyle='rgba(0,0,0,.2)';ctx.fillRect(s.x-13,s.y+18,26,7);ctx.fillStyle='#20242a';ctx.fillRect(s.x-11,s.y-18,22,10);ctx.fillStyle='#d4a16e';ctx.fillRect(s.x-10,s.y-8,20,16);ctx.fillStyle='#537fc4';ctx.fillRect(s.x-13,s.y+8,26,25);const walking=Math.hypot(state.player.targetX-state.player.x,state.player.targetY-state.player.y)>3,step=walking&&Math.sin(animationClock*11)>0?3:0;ctx.fillStyle='#20262b';ctx.fillRect(s.x-11,s.y+33+step,8,18);ctx.fillRect(s.x+3,s.y+33-step,8,18);if(activeTree||activeRock){const swing=Math.sin(animationClock*8)*.65;ctx.save();ctx.translate(s.x+11,s.y+8);ctx.rotate(-.8+swing);ctx.strokeStyle=activeRock?'#7b8590':'#8a6540';ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(21,-15);ctx.stroke();ctx.restore();}if(activeFishingSpot){const fs=worldToScreen(activeFishingSpot.x,activeFishingSpot.y);ctx.strokeStyle='#dbc68b';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(s.x+12,s.y+8);ctx.quadraticCurveTo((s.x+fs.x)/2,s.y-28,fs.x,fs.y);ctx.stroke();ctx.fillStyle='#f1d267';ctx.fillRect(fs.x-2,fs.y-2,4,4);}}
+  function drawAmbient(){
+    const cycle=animationClock%18;
+    if(cycle<7){const x=(animationClock*70)% (canvas.width+120)-60,y=70+Math.sin(animationClock*2)*18;ctx.fillStyle='rgba(245,245,235,.75)';ctx.fillRect(x,y,8,3);ctx.fillRect(x+8,y-3,7,3);}
+    for(let i=0;i<3;i++){const x=(i*173+animationClock*17)%canvas.width,y=(i*97+animationClock*9)%canvas.height;ctx.fillStyle='rgba(240,210,90,.45)';ctx.fillRect(x,y,3,3);}
+  }
+  function draw(){ctx.clearRect(0,0,canvas.width,canvas.height);ctx.fillStyle='#397f9f';ctx.fillRect(0,0,canvas.width,canvas.height);ctx.strokeStyle='rgba(210,240,248,.22)';ctx.lineWidth=3;for(let y=-30+(animationClock*12)%46;y<canvas.height+40;y+=46){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(canvas.width,y+10);ctx.stroke();}fillSmooth(continent,'#72ae61','#d5c68b',8);drawTileTexture(continent);for(const r of regions){fillSmooth(r.points,r.color);drawTileTexture(r.points);}for(const w of waters)drawWater(w);for(const f of fishingSpots)drawFishingSpot(f);for(const t of towns)drawTown(t);for(const t of trees)drawTree(t);for(const r of rocks)drawRock(r);drawAmbient();drawPlayer();for(const f of floaters){const s=worldToScreen(f.x,f.y);ctx.globalAlpha=Math.min(1,f.life*1.4);ctx.fillStyle='#fff4b8';ctx.strokeStyle='rgba(20,20,20,.8)';ctx.lineWidth=4;ctx.font='bold 14px system-ui';ctx.textAlign='center';ctx.strokeText(f.text,s.x,s.y);ctx.fillText(f.text,s.x,s.y);ctx.textAlign='start';ctx.globalAlpha=1;}}
 
   function openPanel(name){document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active',t.dataset.panel===name));document.querySelectorAll('.panel').forEach(p=>p.classList.toggle('active',p.id===name));}
-  function renderInventory(){const owned=Object.entries(state.inventory).filter(([k,q])=>q>0&&ITEM_DEFS[k]);ui.inventory.innerHTML=owned.length?`<div class="item-grid">${owned.map(([k,q])=>`<button class="item" data-item="${k}"><strong>${ITEM_DEFS[k].name}</strong><span>×${q}</span><small>${ITEM_DEFS[k].type}</small></button>`).join('')}</div>`:`<div class="empty-state"><strong>Your inventory is empty</strong><span>Gather logs or catch fish to fill it.</span></div>`;ui.inventory.querySelectorAll('[data-item]').forEach(b=>b.addEventListener('click',()=>showItem(b.dataset.item)));}
+  function renderInventory(){const owned=Object.entries(state.inventory).filter(([k,q])=>q>0&&ITEM_DEFS[k]);ui.inventory.innerHTML=owned.length?`<div class="item-grid">${owned.map(([k,q])=>`<button class="item" data-item="${k}"><strong>${ITEM_DEFS[k].name}</strong><span>×${q}</span><small>${ITEM_DEFS[k].type}</small></button>`).join('')}</div>`:`<div class="empty-state"><strong>Your inventory is empty</strong><span>Gather logs, fish, or ore to fill it.</span></div>`;ui.inventory.querySelectorAll('[data-item]').forEach(b=>b.addEventListener('click',()=>showItem(b.dataset.item)));}
   function renderSkills(){
     ui.skills.innerHTML=`<div class="skill-grid">${Object.entries(SKILL_DEFS).map(([key,def])=>{const xp=state.skills[key]?.xp||0,level=levelFromXp(xp),progress=currentLevelProgress(xp);return `<button class="skill-card ${key==='woodcutting'?'active-skill':''}" data-skill="${key}"><strong>${def.name}</strong><span>Level ${level} · ${xp.toLocaleString()} XP</span><div class="progress-track"><div class="progress-fill" style="width:${progress*100}%"></div></div></button>`}).join('')}</div>`;
     ui.skills.querySelectorAll('[data-skill]').forEach(b=>b.addEventListener('click',()=>showSkill(b.dataset.skill)));
@@ -305,7 +368,12 @@
   function showSkill(key){const def=SKILL_DEFS[key],xp=state.skills[key]?.xp||0,level=levelFromXp(xp),next=level>=100?xpForLevel(100):xpForLevel(level+1);selectedItemKey=null;ui.itemType.textContent='Skill';ui.itemName.textContent=def.name;ui.itemDescription.textContent=def.description;ui.itemStats.innerHTML=`<div><span>Level</span><strong>${level}${level>=100?' · MAX':''}</strong></div><div><span>Experience</span><strong>${xp.toLocaleString()} XP</strong></div>${level<100?`<div><span>Next level</span><strong>${Math.max(0,next-xp).toLocaleString()} XP</strong></div>`:''}`;ui.itemAction.hidden=true;ui.dialog.showModal();}
   function openTown(town){ui.townName.textContent=town.name;ui.townDescription.textContent=town.description;const services=[['NPCs','Talk to residents and receive quests.'],['Crafting Table','Create items from gathered materials.'],['Cooking Fire','Cook fish and meat into food.'],['Player-Owned Home','Enter and improve your family home.'],['Shop','Buy supplies and sell gathered items.'],['Bank','Store items outside your carried inventory.'],['Notice Board','View town work, requests, and local quests.'],['Inn','Rest, meet travellers, and hear local information.']];ui.townServices.innerHTML=services.map(([name,description])=>`<button class="town-service" data-service="${name}"><strong>${name}</strong><span>${description}</span></button>`).join('');ui.townServices.querySelectorAll('[data-service]').forEach(b=>b.addEventListener('click',()=>showToast(`${b.dataset.service} · coming in a future system update`)));ui.townDialog.showModal();ui.status.textContent=`Visiting ${town.name}`;ui.actionName.textContent='In town';}
   function renderEquipment(){const slots=[['head','Head'],['cape','Cape'],['body','Body'],['weapon','Weapon'],['shield','Shield'],['legs','Legs'],['boots','Boots'],['ring','Ring']];ui.equipment.innerHTML=`<div class="equipment-slots">${slots.map(([k,l])=>{const item=state.equipment[k]&&ITEM_DEFS[state.equipment[k]];return `<button class="slot ${item?'filled':''}" data-slot="${k}" ${item?'':'disabled'}><span>${l}</span><strong>${item?item.name:'Empty'}</strong></button>`}).join('')}</div>`;ui.equipment.querySelectorAll('.slot.filled').forEach(b=>b.addEventListener('click',()=>showItem(state.equipment[b.dataset.slot])));}
-  function renderMapPanel(){ui.map.innerHTML=`<div class="map-summary"><strong>Expanded hand-built continent</strong><span>Animated ocean coastline, four inland waters, seven town sites, 23 trees, and 16 fishing spots.</span></div><div class="region-list">${regions.map(r=>`<div><i style="background:${r.color}"></i><span>${r.name}</span></div>`).join('')}${waters.map(w=>`<div><i style="background:${w.color}"></i><span>${w.name}</span></div>`).join('')}</div>`;}
+  function renderMapPanel(){
+    ui.map.innerHTML='<canvas id="miniMapCanvas" width="360" height="360" aria-label="World minimap"></canvas>';
+    drawMiniMap();
+  }
+  function drawMiniMap(){const mini=document.getElementById('miniMapCanvas');if(!mini)return;const m=mini.getContext('2d'),sx=mini.width/WORLD.width,sy=mini.height/WORLD.height;m.clearRect(0,0,mini.width,mini.height);m.fillStyle='#397f9f';m.fillRect(0,0,mini.width,mini.height);const poly=(pts,color)=>{m.beginPath();m.moveTo(pts[0][0]*sx,pts[0][1]*sy);for(const [x,y] of pts.slice(1))m.lineTo(x*sx,y*sy);m.closePath();m.fillStyle=color;m.fill();};poly(continent,'#72ae61');for(const r of regions)poly(r.points,r.color);for(const w of waters){m.beginPath();m.ellipse(w.x*sx,w.y*sy,w.rx*sx,w.ry*sy,0,0,Math.PI*2);m.fillStyle=w.color;m.fill();}for(const t of towns){m.fillStyle='#f0e9d2';m.fillRect(t.x*sx-2,t.y*sy-2,5,5);}m.fillStyle='#ffdf65';m.beginPath();m.arc(state.player.x*sx,state.player.y*sy,5,0,Math.PI*2);m.fill();m.strokeStyle='#1d232b';m.lineWidth=2;m.stroke();}
+
   function showItem(key){const item=ITEM_DEFS[key];if(!item)return;selectedItemKey=key;ui.itemType.textContent=item.type;ui.itemName.textContent=item.name;ui.itemDescription.textContent=item.description;const rows=[];if(item.uses)rows.push(['Used for',item.uses]);for(const [k,v] of Object.entries(item.stats||{}))rows.push([k,v]);ui.itemStats.innerHTML=rows.map(([k,v])=>`<div><span>${k}</span><strong>${v}</strong></div>`).join('');const equipped=Object.keys(state.equipment).find(s=>state.equipment[s]===key);if(item.slot&&state.inventory[key]>0){ui.itemAction.hidden=false;ui.itemAction.textContent=equipped?'Unequip':'Equip';}else ui.itemAction.hidden=true;ui.dialog.showModal();}
   function toggleSelectedEquipment(){const key=selectedItemKey,item=ITEM_DEFS[key];if(!item?.slot)return;const existing=Object.keys(state.equipment).find(s=>state.equipment[s]===key);if(existing)state.equipment[existing]=null;else state.equipment[item.slot]=key;ui.dialog.close();renderEquipment();saveGame(false);}
   function renderAll(){renderInventory();renderSkills();renderEquipment();renderMapPanel();}

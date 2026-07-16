@@ -1,15 +1,14 @@
-# Idle Wanderer v0.5.0 — Fishing & Animation
+# Idle Wanderer v0.6.0 — Mining & Minimap
 
 Mobile-first GitHub Pages build.
 
 ## New in this version
-- Fishing is now a complete gathering skill using an owned Basic Fishing Rod.
-- Progression: Sardine (1), Minnow (10), Crappie (20), Bass (30), Catfish (40), Tuna (50), Grouper (60), Shark (70).
-- Inland pond, lake, swamp, lagoon, and coastal ocean fishing spots.
-- Ocean now surrounds the continent instead of empty space.
-- Fishing spots bob, ripple, deplete, move, and respawn.
-- Animated water, ocean movement, casting line, gathering bounce, swaying trees, and floating catch/XP feedback.
-- Raw fish appear in the owned-items-only inventory with descriptions for future Cooking.
-- Existing v0.4.2 saves migrate automatically.
+- Minnow is now the level 1 starter fish at Cedar Pond.
+- Fishing progression corrected through Shark.
+- The Map tab is now a live minimap showing biomes, water, towns, and the player.
+- Mining added: Stone, Copper, Iron, Coal, Silver, Pyrite, Gold, and Crystal.
+- Mining requires an owned pickaxe and uses the same tap, walk, XP, depletion, and respawn loop as Woodcutting.
+- Rocks show HP, cracks, selection highlighting, and a mining swing animation.
+- Added a two-frame walking motion and light ambient movement.
 
 Upload every file in this folder to the root of your GitHub Pages repository.
