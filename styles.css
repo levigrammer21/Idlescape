@@ -32,3 +32,5 @@
 .service-actions{display:grid;grid-template-columns:1fr 1fr;gap:5px}.cook-progress{height:5px;border-radius:99px;overflow:hidden;background:#0b0e12}.cook-progress i{display:block;height:100%;background:var(--accent);width:0}
 .npc-card{width:100%}.quest-card{display:grid;gap:7px}.shop-row{display:flex;align-items:center;justify-content:space-between;gap:8px}.shop-row>div:first-child{min-width:0}.shop-group{border:1px solid #354154;border-radius:10px;overflow:hidden}.shop-group summary{padding:10px;color:#f0d47a;font-size:.76rem;font-weight:800;cursor:pointer}.shop-group .shop-row{margin:0 8px 8px}
 @media(max-width:390px){.shop-row{align-items:stretch;flex-direction:column}.shop-row button{width:100%}}
+
+.cooking-status{border:1px solid #8f7945;border-radius:10px;background:#2a2d28;padding:10px;margin-bottom:10px}.cooking-status strong{display:block;font-size:.84rem}.cooking-status span{display:block;color:var(--muted);font-size:.68rem;margin:4px 0 8px}.cook-progress.active{height:8px}.cook-progress.active i{transition:width .08s linear}

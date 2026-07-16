@@ -1,7 +1,7 @@
 (() => {
   'use strict';
 
-  const VERSION = '0.8.0';
+  const VERSION = '0.8.1';
   const SAVE_KEY = 'idle-wanderer-save-v6';
   const LEGACY_KEYS = ['idle-wanderer-save-v5', 'idle-wanderer-save-v4', 'idle-wanderer-save-v3', 'idle-wanderer-save-v2'];
   const TICK_SECONDS = 0.6;
@@ -23,14 +23,14 @@
   };
 
   const TREE_TYPES = {
-    cedar: { name: 'Cedar', level: 1, ticks: 3, xp: 8, log: 'cedarLog', trunk: '#6f4a2e', leaves: '#3f8051', respawn: 16, capacity: [5, 8] },
-    oak: { name: 'Oak', level: 10, ticks: 5, xp: 18, log: 'oakLog', trunk: '#694528', leaves: '#477944', respawn: 22, capacity: [5, 7] },
-    willow: { name: 'Willow', level: 20, ticks: 7, xp: 32, log: 'willowLog', trunk: '#806044', leaves: '#67915b', respawn: 28, capacity: [4, 7] },
-    beech: { name: 'Beech', level: 30, ticks: 9, xp: 55, log: 'beechLog', trunk: '#76513c', leaves: '#8b9851', respawn: 34, capacity: [4, 6] },
-    cherry: { name: 'Cherry', level: 40, ticks: 12, xp: 90, log: 'cherryLog', trunk: '#6e3e37', leaves: '#b86f77', respawn: 42, capacity: [4, 6] },
-    arcticPine: { name: 'Arctic Pine', level: 50, ticks: 16, xp: 140, log: 'arcticPineLog', trunk: '#765a40', leaves: '#6f9c8a', respawn: 50, capacity: [4, 5] },
-    mahogany: { name: 'Mahogany', level: 60, ticks: 18, xp: 175, log: 'mahoganyLog', trunk: '#733c2c', leaves: '#38714c', respawn: 58, capacity: [3, 5] },
-    redwood: { name: 'Redwood', level: 70, ticks: 20, xp: 220, log: 'redwoodLog', trunk: '#713b2a', leaves: '#2f6542', respawn: 68, capacity: [3, 4] }
+    cedar: { name: 'Cedar', level: 1, ticks: 3, xp: 8, log: 'cedarLog', trunk: '#6f4a2e', leaves: '#3f8051', respawn: 16, capacity: [12, 18] },
+    oak: { name: 'Oak', level: 10, ticks: 5, xp: 18, log: 'oakLog', trunk: '#694528', leaves: '#477944', respawn: 22, capacity: [11, 16] },
+    willow: { name: 'Willow', level: 20, ticks: 7, xp: 32, log: 'willowLog', trunk: '#806044', leaves: '#67915b', respawn: 28, capacity: [10, 15] },
+    beech: { name: 'Beech', level: 30, ticks: 9, xp: 55, log: 'beechLog', trunk: '#76513c', leaves: '#8b9851', respawn: 34, capacity: [9, 14] },
+    cherry: { name: 'Cherry', level: 40, ticks: 12, xp: 90, log: 'cherryLog', trunk: '#6e3e37', leaves: '#b86f77', respawn: 42, capacity: [9, 14] },
+    arcticPine: { name: 'Arctic Pine', level: 50, ticks: 16, xp: 140, log: 'arcticPineLog', trunk: '#765a40', leaves: '#6f9c8a', respawn: 50, capacity: [8, 12] },
+    mahogany: { name: 'Mahogany', level: 60, ticks: 18, xp: 175, log: 'mahoganyLog', trunk: '#733c2c', leaves: '#38714c', respawn: 58, capacity: [8, 11] },
+    redwood: { name: 'Redwood', level: 70, ticks: 20, xp: 220, log: 'redwoodLog', trunk: '#713b2a', leaves: '#2f6542', respawn: 68, capacity: [7, 10] }
   };
 
   const FISH_TYPES = {
@@ -44,14 +44,14 @@
   };
 
   const ROCK_TYPES = {
-    stone: { name: 'Stone', level: 1, ticks: 3, xp: 8, item: 'stone', color: '#8c9299', respawn: 16, hp: 4 },
-    copper: { name: 'Copper', level: 10, ticks: 5, xp: 18, item: 'copperOre', color: '#b9784f', respawn: 22, hp: 5 },
-    iron: { name: 'Iron', level: 20, ticks: 7, xp: 32, item: 'ironOre', color: '#6f7782', respawn: 28, hp: 6 },
-    coal: { name: 'Coal', level: 30, ticks: 9, xp: 55, item: 'coal', color: '#34383e', respawn: 34, hp: 7 },
-    silver: { name: 'Silver', level: 40, ticks: 12, xp: 90, item: 'silverOre', color: '#c4ccd2', respawn: 42, hp: 8 },
-    pyrite: { name: 'Pyrite', level: 50, ticks: 16, xp: 140, item: 'pyriteOre', color: '#c59d39', respawn: 50, hp: 9 },
+    stone: { name: 'Stone', level: 1, ticks: 3, xp: 8, item: 'stone', color: '#8c9299', respawn: 16, hp: 22 },
+    copper: { name: 'Copper', level: 10, ticks: 5, xp: 18, item: 'copperOre', color: '#b9784f', respawn: 22, hp: 12 },
+    iron: { name: 'Iron', level: 20, ticks: 7, xp: 32, item: 'ironOre', color: '#6f7782', respawn: 28, hp: 14 },
+    coal: { name: 'Coal', level: 30, ticks: 9, xp: 55, item: 'coal', color: '#34383e', respawn: 34, hp: 16 },
+    silver: { name: 'Silver', level: 40, ticks: 12, xp: 90, item: 'silverOre', color: '#c4ccd2', respawn: 42, hp: 18 },
+    pyrite: { name: 'Pyrite', level: 50, ticks: 16, xp: 140, item: 'pyriteOre', color: '#c59d39', respawn: 50, hp: 20 },
     gold: { name: 'Gold', level: 60, ticks: 18, xp: 175, item: 'goldOre', color: '#d4b33f', respawn: 58, hp: 10 },
-    crystal: { name: 'Crystal', level: 70, ticks: 20, xp: 220, item: 'crystal', color: '#8ed7e8', respawn: 68, hp: 11 }
+    crystal: { name: 'Crystal', level: 70, ticks: 20, xp: 220, item: 'crystal', color: '#8ed7e8', respawn: 68, hp: 24 }
   };
 
   const TOOL_TYPES = {
@@ -239,7 +239,7 @@
   function makeFishingSpots(saved = {}) {
     return fishingSeeds.map(([type,x,y,standX,standY,location], index) => {
       const id = `fish-${type}-${index}`; const prior=saved[id]||{};
-      return { id,type,x,y,standX,standY,location,phase:index*0.83,remaining:prior.remaining ?? randomInt(5,9),respawnAt:prior.respawnAt||0 };
+      return { id,type,x,y,standX,standY,location,phase:index*0.83,remaining:prior.remaining ?? randomInt(12,20),respawnAt:prior.respawnAt||0 };
     });
   }
 
@@ -346,6 +346,11 @@
       for(const key of Object.keys(SKILL_DEFS)) if(old.skills?.[key]) fresh.skills[key]=old.skills[key];
       fresh.equipment={...fresh.equipment,...(old.equipment||{})}; fresh.treeState=old.treeState||{}; fresh.fishingState=old.fishingState||{}; fresh.rockState=old.rockState||{}; fresh.poh=old.poh||{}; fresh.quests=old.quests||{};
       if(old.player && isWalkable(old.player.x,old.player.y)) fresh.player={...fresh.player,x:old.player.x,y:old.player.y,targetX:old.player.x,targetY:old.player.y};
+      if(old.version && old.version !== VERSION){
+        for(const [id,node] of Object.entries(fresh.treeState||{})){const type=id.replace(/-\d+$/,'');const def=TREE_TYPES[type];if(def&&node.remaining>0){node.remaining=Math.max(node.remaining,def.capacity[0]);node.max=Math.max(node.max||0,def.capacity[1]);}}
+        for(const node of Object.values(fresh.fishingState||{}))if(node.remaining>0)node.remaining=Math.max(node.remaining,12);
+        for(const [id,node] of Object.entries(fresh.rockState||{})){const type=id.split('-')[1],def=ROCK_TYPES[type];if(def&&node.hp>0)node.hp=Math.max(node.hp,def.hp);}
+      }
       return fresh;
     } catch(e){ console.error(e); return defaultState(); }
   }
@@ -424,7 +429,7 @@
   function update(dt){
     animationClock+=dt; const now=Date.now(); for(const t of trees){if(t.remaining<=0&&t.respawnAt&&now>=t.respawnAt){const def=TREE_TYPES[t.type];t.max=randomInt(def.capacity[0],def.capacity[1]);t.remaining=t.max;t.respawnAt=0;}}
     for(const r of rocks){if(r.hp<=0&&r.respawnAt&&now>=r.respawnAt){r.hp=r.maxHp;r.respawnAt=0;}}
-    for(const f of fishingSpots){if(f.remaining<=0&&f.respawnAt&&now>=f.respawnAt){f.remaining=randomInt(5,9);f.respawnAt=0;}}
+    for(const f of fishingSpots){if(f.remaining<=0&&f.respawnAt&&now>=f.respawnAt){f.remaining=randomInt(12,20);f.respawnAt=0;}}
     const p=state.player,dx=p.targetX-p.x,dy=p.targetY-p.y,dist=Math.hypot(dx,dy);
     if(dist>2){const move=Math.min(dist,190*dt),nx=p.x+dx/dist*move,ny=p.y+dy/dist*move;if(isWalkable(nx,ny)){p.x=nx;p.y=ny;}else{p.targetX=p.x;p.targetY=p.y;queuedTree=null;queuedFishingSpot=null;queuedRock=null;queuedTown=null;showToast('That route is blocked');}}
     else {p.x=p.targetX;p.y=p.targetY;if(queuedTown && Math.hypot(p.x-queuedTown.x,p.y-queuedTown.y)<105){const town=queuedTown;queuedTown=null;openTown(town);}else if(queuedRock && queuedRock.hp>0 && Math.hypot(p.x-queuedRock.x,p.y-queuedRock.y)<90)beginMining(queuedRock);else if(queuedFishingSpot && queuedFishingSpot.remaining>0 && Math.hypot(p.x-queuedFishingSpot.standX,p.y-queuedFishingSpot.standY)<20)beginFishing(queuedFishingSpot);else if(queuedTree && queuedTree.remaining>0 && Math.hypot(p.x-queuedTree.x,p.y-queuedTree.y)<78)beginChopping(queuedTree);else if(!activeTree&&!activeFishingSpot&&!activeRock){ui.status.textContent='Tap the ground, a tree, a rock, a fishing spot, or a town.';ui.actionName.textContent='Exploring';}}
@@ -513,7 +518,7 @@
   }
   function showSkill(key){const def=SKILL_DEFS[key],xp=state.skills[key]?.xp||0,level=levelFromXp(xp),next=level>=100?xpForLevel(100):xpForLevel(level+1);selectedItemKey=null;ui.itemType.textContent='Skill';ui.itemName.textContent=def.name;ui.itemDescription.textContent=def.description;ui.itemStats.innerHTML=`<div><span>Level</span><strong>${level}${level>=100?' · MAX':''}</strong></div><div><span>Experience</span><strong>${xp.toLocaleString()} XP</strong></div>${level<100?`<div><span>Next level</span><strong>${Math.max(0,next-xp).toLocaleString()} XP</strong></div>`:''}`;ui.itemAction.hidden=true;ui.dialog.showModal();}
   let currentTown = null;
-  let cookingTimer=null;
+  let cookingTimer=null, activeCooking=null;
   function totalLevel(){return Object.values(state.skills).reduce((sum,v)=>sum+levelFromXp(v?.xp||0),0);}
   function openTown(town){
     currentTown=town;ui.townName.textContent=town.name;ui.townDescription.textContent=town.description;
@@ -535,14 +540,35 @@
   function cookingEntries(){return Object.entries(COOKING_DATA).filter(([raw])=>(state.inventory[raw]||0)>0);}
   function openCooking(town){
     const level=levelFromXp(state.skills.cooking?.xp||0),entries=cookingEntries();
-    openService('Cooking Fire',`${town.name} Cooking Fire`,`Cooking level ${level} · Fish take about half their catch time to cook.`,entries.length?entries.map(([raw,d])=>{const ok=level>=d.level;return `<article class="service-card ${ok?'':'locked'}"><div><strong>${d.name}</strong><span>Level ${d.level} · ${d.ticks} ticks · +${d.xp} XP</span><small>${ITEM_DEFS[raw].name} ×${state.inventory[raw]||0}</small></div><div class="service-actions"><button data-cook="${raw}" ${ok?'':'disabled'}>Cook 1</button><button data-cookall="${raw}" ${ok?'':'disabled'}>Cook All</button></div><div class="cook-progress"><i></i></div></article>`}).join(''):'<div class="empty-state"><strong>No raw fish</strong><span>Catch fish before using the fire.</span></div>');
+    const cookingBanner=activeCooking?`<div class="cooking-status"><strong>Cooking ${ITEM_DEFS[activeCooking.raw].name.replace('Raw ','')}</strong><span><b data-cooking-left>${activeCooking.left}</b> remaining · <b data-cooking-done>${activeCooking.done}</b> cooked</span><div class="cook-progress active"><i data-cooking-progress></i></div></div>`:'';
+    openService('Cooking Fire',`${town.name} Cooking Fire`,`Cooking level ${level} · Fish take about half their catch time to cook.`,cookingBanner+(entries.length?entries.map(([raw,d])=>{const ok=level>=d.level,busy=!!activeCooking;return `<article class="service-card ${ok?'':'locked'}" data-cooking-card="${raw}"><div><strong>${d.name}</strong><span>Level ${d.level} · ${d.ticks} ticks · +${d.xp} XP</span><small>${ITEM_DEFS[raw].name} ×<b data-raw-count="${raw}">${state.inventory[raw]||0}</b></small></div><div class="service-actions"><button data-cook="${raw}" ${ok&&!busy?'':'disabled'}>Cook 1</button><button data-cookall="${raw}" ${ok&&!busy?'':'disabled'}>Cook All (${state.inventory[raw]||0})</button></div><div class="cook-progress"><i></i></div></article>`}).join(''):'<div class="empty-state"><strong>No raw fish</strong><span>Catch fish before using the fire.</span></div>'));
     ui.serviceContent.querySelectorAll('[data-cook]').forEach(b=>b.addEventListener('click',()=>startCooking(b.dataset.cook,1,town)));
     ui.serviceContent.querySelectorAll('[data-cookall]').forEach(b=>b.addEventListener('click',()=>startCooking(b.dataset.cook,state.inventory[b.dataset.cook]||0,town)));
+    refreshCookingDisplay();
+  }
+  function refreshCookingDisplay(){
+    if(!activeCooking)return;
+    const progress=ui.serviceContent.querySelector('[data-cooking-progress]');if(progress)progress.style.width=`${activeCooking.progress||0}%`;
+    const left=ui.serviceContent.querySelector('[data-cooking-left]');if(left)left.textContent=activeCooking.left;
+    const done=ui.serviceContent.querySelector('[data-cooking-done]');if(done)done.textContent=activeCooking.done;
+    const count=ui.serviceContent.querySelector(`[data-raw-count="${activeCooking.raw}"]`);if(count)count.textContent=state.inventory[activeCooking.raw]||0;
+  }
+  function finishCooking(town){
+    if(cookingTimer){clearInterval(cookingTimer);cookingTimer=null;}activeCooking=null;ui.actionProgress.style.width='0%';ui.actionName.textContent='In town';ui.status.textContent=`Visiting ${town.name}`;openCooking(town);renderAll();saveGame(false);
   }
   function startCooking(raw,count,town){
-    if(cookingTimer)return showToast('Already cooking');const d=COOKING_DATA[raw],level=levelFromXp(state.skills.cooking?.xp||0);if(!d||level<d.level||count<1)return;
-    let left=Math.min(count,state.inventory[raw]||0);const duration=d.ticks*TICK_SECONDS*1000;ui.actionName.textContent=`Cooking ${d.name.replace('Cooked ','')}`;ui.status.textContent=`Cooking at ${town.name}...`;
-    const cookOne=()=>{if(left<=0||(state.inventory[raw]||0)<=0){clearInterval(cookingTimer);cookingTimer=null;ui.actionProgress.style.width='0%';ui.actionName.textContent='In town';openCooking(town);renderAll();saveGame(false);return;}let elapsed=0;const start=performance.now();cookingTimer=setInterval(()=>{elapsed=performance.now()-start;ui.actionProgress.style.width=`${Math.min(100,elapsed/duration*100)}%`;if(elapsed>=duration){clearInterval(cookingTimer);cookingTimer=null;state.inventory[raw]--;state.inventory[d.cooked]=(state.inventory[d.cooked]||0)+1;state.skills.cooking.xp=(state.skills.cooking.xp||0)+d.xp;left--;showToast(`Cooked ${d.name.replace('Cooked ','')}`);renderInventory();renderSkills();cookOne();}},100);};cookOne();
+    if(cookingTimer||activeCooking)return showToast('Already cooking');const d=COOKING_DATA[raw],level=levelFromXp(state.skills.cooking?.xp||0);if(!d||level<d.level||count<1)return;
+    const amount=Math.min(count,state.inventory[raw]||0);if(amount<1)return;
+    activeCooking={raw,left:amount,done:0,progress:0};const duration=d.ticks*TICK_SECONDS*1000;ui.actionName.textContent=`Cooking ${d.name.replace('Cooked ','')}`;ui.status.textContent=`Cooking ${amount} ${ITEM_DEFS[raw].name.replace('Raw ','')} at ${town.name}...`;openCooking(town);
+    const cookOne=()=>{
+      if(!activeCooking||activeCooking.left<=0||(state.inventory[raw]||0)<=0){finishCooking(town);return;}
+      const start=performance.now();activeCooking.progress=0;refreshCookingDisplay();
+      cookingTimer=setInterval(()=>{
+        const elapsed=performance.now()-start;activeCooking.progress=Math.min(100,elapsed/duration*100);ui.actionProgress.style.width=`${activeCooking.progress}%`;refreshCookingDisplay();
+        if(elapsed>=duration){clearInterval(cookingTimer);cookingTimer=null;state.inventory[raw]--;state.inventory[d.cooked]=(state.inventory[d.cooked]||0)+1;state.skills.cooking.xp=(state.skills.cooking.xp||0)+d.xp;activeCooking.left--;activeCooking.done++;activeCooking.progress=0;showToast(`Cooked ${d.name.replace('Cooked ','')}`);renderInventory();renderSkills();refreshCookingDisplay();setTimeout(cookOne,120);}
+      },80);
+    };
+    cookOne();
   }
   function dayKey(){return new Date().toISOString().slice(0,10);}
   function townQuest(town,index=0){const pool=[['Gather cedar logs','cedarLog',8,45],['Catch minnows','rawMinnow',6,50],['Mine stone','stone',8,55],['Bring copper ore','copperOre',4,75],['Bring cooked fish','cookedMinnow',4,80]];let seed=[...town.name+dayKey()].reduce((a,c)=>a+c.charCodeAt(0),index*17);const q=pool[seed%pool.length];return{id:`${town.name}-${dayKey()}-${index}`,title:q[0],item:q[1],amount:q[2],reward:q[3]};}
