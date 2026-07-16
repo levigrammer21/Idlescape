@@ -1,7 +1,7 @@
 (() => {
   'use strict';
 
-  const VERSION = '0.11.4';
+  const VERSION = '0.11.5';
   const SAVE_KEY = 'idle-wanderer-save-v6';
   const LEGACY_KEYS = ['idle-wanderer-save-v5', 'idle-wanderer-save-v4', 'idle-wanderer-save-v3', 'idle-wanderer-save-v2'];
   const TICK_SECONDS = 0.6;
@@ -701,7 +701,10 @@
       else {const def=FISH_TYPES[activeFishingSpot.type],duration=gatheringDuration(def,'fishingRod');actionElapsed+=dt;ui.actionProgress.style.width=`${Math.min(100,actionElapsed/duration*100)}%`;if(actionElapsed>=duration)awardFish(activeFishingSpot);}
     } else ui.actionProgress.style.width='0%';
     const region=regionAt(p.x,p.y);ui.region.textContent=region.name;if(document.getElementById('map')?.classList.contains('active'))drawMiniMap();
-    const tx=clamp(p.x-canvas.width/2,0,WORLD.width-canvas.width),ty=clamp(p.y-canvas.height/2,0,WORLD.height-canvas.height),follow=1-Math.pow(.018,dt);camera.x+=(tx-camera.x)*follow;camera.y+=(ty-camera.y)*follow;
+    const tx=clamp(p.x-canvas.width/2,0,WORLD.width-canvas.width),ty=clamp(p.y-canvas.height/2,0,WORLD.height-canvas.height),follow=1-Math.pow(.018,dt);
+    const playerScreenX=p.x-camera.x,playerScreenY=p.y-camera.y;
+    const cameraLostPlayer=!Number.isFinite(camera.x)||!Number.isFinite(camera.y)||playerScreenX<-40||playerScreenX>canvas.width+40||playerScreenY<-60||playerScreenY>canvas.height+70;
+    if(cameraLostPlayer){camera.x=tx;camera.y=ty;}else{camera.x+=(tx-camera.x)*follow;camera.y+=(ty-camera.y)*follow;}
     for(let i=floaters.length-1;i>=0;i--){floaters[i].life-=dt;floaters[i].y-=24*dt;if(floaters[i].life<=0)floaters.splice(i,1);}
   }
 
@@ -854,7 +857,8 @@
   function drawPlayer(){
     const working=activeTree||activeFishingSpot||activeRock,bounce=working?Math.sin(animationClock*8)*2:0,combatLunge=playerAttackAnim>0?Math.sin((1-playerAttackAnim/.32)*Math.PI)*9:0,combatDir=activeEnemy?(activeEnemy.x>=state.player.x?1:-1):1,s=worldToScreen(state.player.x+combatDir*combatLunge,state.player.y+bounce);
     const eq=state.equipment,bodyColor=equipmentColor(eq.body),headColor=equipmentColor(eq.head),legsColor=equipmentColor(eq.legs),bootsColor=equipmentColor(eq.boots),shieldColor=equipmentColor(eq.shield);
-    ctx.fillStyle='rgba(0,0,0,.2)';ctx.fillRect(s.x-13,s.y+18,26,7);
+    ctx.save();ctx.strokeStyle='rgba(255,255,255,.9)';ctx.lineWidth=2;ctx.strokeRect(s.x-15,s.y-28,30,82);ctx.restore();
+    ctx.fillStyle='rgba(0,0,0,.28)';ctx.fillRect(s.x-15,s.y+18,30,8);
     if(playerHitFlash>0){ctx.save();ctx.shadowColor='#fff';ctx.shadowBlur=15;}ctx.fillStyle=playerHitFlash>0?'#fff':'#d4a16e';ctx.fillRect(s.x-10,s.y-8,20,16);
     ctx.fillStyle=bodyColor||'#537fc4';ctx.fillRect(s.x-13,s.y+8,26,25);
     if(bodyColor){ctx.fillStyle='rgba(255,255,255,.18)';ctx.fillRect(s.x-10,s.y+11,20,4);ctx.fillStyle='rgba(0,0,0,.18)';ctx.fillRect(s.x-2,s.y+8,4,25);}

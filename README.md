@@ -1,6 +1,6 @@
-# Idle Wanderer v0.11.4 — Runtime Hotfix
+# Idle Wanderer v0.11.5 — Player Camera Hotfix
 
-- Restores missing enemy drawing function that stopped the animation loop before player rendering.
-- Player, enemies, movement, and world animation now render and update normally.
-- Adds defensive handling for unknown enemy visual shapes.
-- Bumps service worker cache to v0.11.4.
+- Camera immediately recenters if migrated player coordinates place the character outside the visible canvas.
+- Invalid camera values recover automatically.
+- Player now has a high-contrast outline for visibility during testing.
+- Existing inventory, skills, equipment, quests, POH, and world progress are preserved.
