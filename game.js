@@ -1,7 +1,7 @@
 (() => {
   'use strict';
 
-  const VERSION = '0.6.1';
+  const VERSION = '0.7.0';
   const SAVE_KEY = 'idle-wanderer-save-v6';
   const LEGACY_KEYS = ['idle-wanderer-save-v5', 'idle-wanderer-save-v4', 'idle-wanderer-save-v3', 'idle-wanderer-save-v2'];
   const TICK_SECONDS = 0.6;
@@ -17,7 +17,8 @@
     map: document.getElementById('map'), toast: document.getElementById('toast'), region: document.getElementById('regionText'),
     dialog: document.getElementById('itemDialog'), itemType: document.getElementById('itemType'), itemName: document.getElementById('itemName'),
     itemDescription: document.getElementById('itemDescription'), itemStats: document.getElementById('itemStats'), itemAction: document.getElementById('itemActionButton'),
-    townDialog: document.getElementById('townDialog'), townName: document.getElementById('townName'), townDescription: document.getElementById('townDescription'), townServices: document.getElementById('townServices')
+    townDialog: document.getElementById('townDialog'), townName: document.getElementById('townName'), townDescription: document.getElementById('townDescription'), townServices: document.getElementById('townServices'),
+    craftingDialog: document.getElementById('craftingDialog'), craftingTownName: document.getElementById('craftingTownName'), craftingLevel: document.getElementById('craftingLevel'), craftingRecipes: document.getElementById('craftingRecipes')
   };
 
   const TREE_TYPES = {
@@ -85,9 +86,73 @@
     arcticPineLog: { name: 'Arctic Pine Log', type: 'Woodcutting material', description: 'A resinous pine log grown in the cold northern reaches.', uses: 'Future Firemaking · Construction' },
     mahoganyLog: { name: 'Mahogany Log', type: 'Woodcutting material', description: 'A rich, heavy tropical hardwood log.', uses: 'Future Construction · Crafting' },
     redwoodLog: { name: 'Redwood Log', type: 'Woodcutting material', description: 'A massive, valuable log cut from an ancient redwood.', uses: 'Future Master Construction · Crafting' },
-    club: { name: 'Crude Club', type: 'Weapon', description: 'A rough club carried over from the earlier test build.', slot: 'weapon', stats: { 'Attack speed': '4 ticks · 2.4 seconds', 'Maximum hit': '3', 'Strength': '+2' } },
+    club: { name: 'Crude Club', type: 'Weapon', description: 'A rough club carried over from the earlier test build.', slot: 'weapon', stats: { 'Attack speed': '4 ticks · 2.4 seconds', 'Accuracy': '+3', 'Strength': '+2' } },
     clothShirt: { name: 'Cloth Shirt', type: 'Body armour', description: 'Basic cloth armour carried over from the earlier test build.', slot: 'body', stats: { 'Defence': '+1', 'Weight': 'Light' } }
   };
+
+
+  const CRAFTING_TIERS = [
+    { key: 'stone', name: 'Stone', level: 1, material: 'stone', bar: null, log: 'cedarLog', toolTier: 1, speed: 0, accuracy: 2, strength: 1, defence: 1 },
+    { key: 'copper', name: 'Copper', level: 10, material: 'copperBar', ore: 'copperOre', bar: 'copperBar', log: 'oakLog', toolTier: 2, speed: 5, accuracy: 4, strength: 2, defence: 2 },
+    { key: 'iron', name: 'Iron', level: 20, material: 'ironBar', ore: 'ironOre', bar: 'ironBar', log: 'willowLog', toolTier: 3, speed: 10, accuracy: 7, strength: 4, defence: 4 },
+    { key: 'silver', name: 'Silver', level: 40, material: 'silverBar', ore: 'silverOre', bar: 'silverBar', log: 'cherryLog', toolTier: 4, speed: 15, accuracy: 10, strength: 6, defence: 6 },
+    { key: 'pyrite', name: 'Pyrite', level: 50, material: 'pyriteBar', ore: 'pyriteOre', bar: 'pyriteBar', log: 'arcticPineLog', toolTier: 5, speed: 20, accuracy: 13, strength: 8, defence: 8 },
+    { key: 'gold', name: 'Gold', level: 60, material: 'goldBar', ore: 'goldOre', bar: 'goldBar', log: 'mahoganyLog', toolTier: 6, speed: 25, accuracy: 16, strength: 10, defence: 10 },
+    { key: 'crystal', name: 'Crystal', level: 70, material: 'crystalBar', ore: 'crystal', bar: 'crystalBar', log: 'redwoodLog', toolTier: 7, speed: 30, accuracy: 20, strength: 13, defence: 13 }
+  ];
+
+  const BOW_TIERS = [
+    ['cedar', 'Cedar', 1, 'cedarLog', 4, 1], ['oak', 'Oak', 10, 'oakLog', 5, 2],
+    ['willow', 'Willow', 20, 'willowLog', 6, 4], ['beech', 'Beech', 30, 'beechLog', 6, 6],
+    ['cherry', 'Cherry', 40, 'cherryLog', 7, 8], ['arcticPine', 'Arctic Pine', 50, 'arcticPineLog', 7, 10],
+    ['mahogany', 'Mahogany', 60, 'mahoganyLog', 8, 12], ['redwood', 'Redwood', 70, 'redwoodLog', 8, 15]
+  ];
+
+  const RECIPES = [];
+  function addRecipe(recipe){ RECIPES.push(recipe); }
+  function defineItem(key, definition){ if(!ITEM_DEFS[key]) ITEM_DEFS[key]=definition; }
+
+  defineItem('stoneBlock', { name:'Stone Block', type:'Crafting material', description:'A squared block made from common stone.', uses:'Future Construction · Stone equipment' });
+  addRecipe({ id:'stoneBlock', category:'Materials', level:1, output:'stoneBlock', amount:1, xp:6, materials:{stone:2} });
+
+  for(const tier of CRAFTING_TIERS){
+    if(tier.bar){
+      defineItem(tier.bar, { name:`${tier.name} Bar`, type:'Refined material', description:`A refined ${tier.name.toLowerCase()} bar ready for tools, weapons, and armour.`, uses:'Crafting · Equipment' });
+      addRecipe({ id:tier.bar, category:'Materials', level:tier.level, output:tier.bar, amount:1, xp:Math.max(12,tier.level*2), materials:{[tier.ore]:1} });
+    }
+    const mat=tier.material;
+    const axeKey=tier.key==='stone'?'stoneAxe':`${tier.key}Axe`;
+    const pickKey=tier.key==='stone'?'stonePickaxe':`${tier.key}Pickaxe`;
+    defineItem(axeKey, { name:`${tier.name} Axe`, type:'Woodcutting tool', description:`A ${tier.name.toLowerCase()} axe. The best usable axe in your inventory is used automatically.`, tool:'axe', toolTier:tier.toolTier, requiredSkillLevel:tier.level, speedBonus:tier.speed, stats:{Skill:'Woodcutting','Required level':String(tier.level),'Speed bonus':`+${tier.speed}%`} });
+    defineItem(pickKey, { name:`${tier.name} Pickaxe`, type:'Mining tool', description:`A ${tier.name.toLowerCase()} pickaxe. The best usable pickaxe in your inventory is used automatically.`, tool:'pickaxe', toolTier:tier.toolTier, requiredSkillLevel:tier.level, speedBonus:tier.speed, stats:{Skill:'Mining','Required level':String(tier.level),'Speed bonus':`+${tier.speed}%`} });
+    const toolMaterials=tier.key==='stone'?{stone:2,cedarLog:1}:{[mat]:2,[tier.log]:1};
+    addRecipe({id:axeKey,category:'Tools',level:tier.level,output:axeKey,amount:1,xp:Math.max(10,tier.level*3),materials:toolMaterials});
+    addRecipe({id:pickKey,category:'Tools',level:tier.level,output:pickKey,amount:1,xp:Math.max(10,tier.level*3),materials:toolMaterials});
+
+    const dagger=`${tier.key}Dagger`, sword=`${tier.key}Sword`;
+    defineItem(dagger,{name:`${tier.name} Dagger`,type:'Weapon',description:`A quick ${tier.name.toLowerCase()} dagger. Damage is determined by combat stats and the target's defence.`,slot:'weapon',stats:{'Attack speed':'3 ticks · 1.8 seconds','Accuracy':`+${tier.accuracy}`,'Strength':`+${tier.strength}`}});
+    defineItem(sword,{name:`${tier.name} Sword`,type:'Weapon',description:`A balanced ${tier.name.toLowerCase()} sword. Damage is determined by combat stats and the target's defence.`,slot:'weapon',stats:{'Attack speed':'4 ticks · 2.4 seconds','Accuracy':`+${tier.accuracy+2}`,'Strength':`+${tier.strength+2}`}});
+    addRecipe({id:dagger,category:'Weapons',level:tier.level,output:dagger,amount:1,xp:Math.max(8,tier.level*2),materials:tier.key==='stone'?{stone:2}:{[mat]:1}});
+    addRecipe({id:sword,category:'Weapons',level:tier.level,output:sword,amount:1,xp:Math.max(12,tier.level*3),materials:tier.key==='stone'?{stone:3,cedarLog:1}:{[mat]:2,[tier.log]:1}});
+
+    const armor=[['Helmet','head',2],['Body','body',5],['Legs','legs',4],['Boots','boots',2],['Shield','shield',3]];
+    for(const [label,slot,count] of armor){
+      const key=`${tier.key}${label}`;
+      defineItem(key,{name:`${tier.name} ${label}`,type:`${label} armour`,description:`Protective ${tier.name.toLowerCase()} ${label.toLowerCase()}.`,slot,stats:{Defence:`+${tier.defence + Math.max(0,count-2)}`,Weight:tier.key==='stone'?'Heavy':'Medium'}});
+      const materials=tier.key==='stone'?{stone:count}:{[mat]:count};
+      if(label==='Shield') materials[tier.log]=1;
+      addRecipe({id:key,category:'Armour',level:tier.level,output:key,amount:1,xp:Math.max(10,tier.level*count),materials});
+    }
+  }
+
+  defineItem('basicFishingRod', ITEM_DEFS.basicFishingRod);
+  addRecipe({id:'basicFishingRod',category:'Tools',level:1,output:'basicFishingRod',amount:1,xp:10,materials:{cedarLog:2}});
+
+  for(const [key,name,level,log,ticks,strength] of BOW_TIERS){
+    const itemKey=`${key}Bow`;
+    defineItem(itemKey,{name:`${name} Bow`,type:'Ranged weapon',description:`A ${name.toLowerCase()} bow. Damage is determined by Ranged skill, ammunition, and the target's defence.`,slot:'weapon',stats:{'Attack speed':`${ticks} ticks · ${(ticks*TICK_SECONDS).toFixed(1)} seconds`,'Ranged accuracy':`+${strength+3}`,'Ranged strength':`+${strength}`,'Range':'6 tiles'}});
+    addRecipe({id:itemKey,category:'Weapons',level,output:itemKey,amount:1,xp:Math.max(10,level*3),materials:{[log]:2}});
+  }
 
   const SKILL_DEFS = {
     woodcutting: { name: 'Woodcutting', description: 'Cuts trees. Higher levels unlock better trees and axes will reduce chopping time.' },
@@ -230,7 +295,15 @@
       .filter(([key, quantity]) => quantity > 0 && ITEM_DEFS[key]?.tool === toolType)
       .sort((a,b) => (ITEM_DEFS[b[0]].toolTier || 0) - (ITEM_DEFS[a[0]].toolTier || 0));
   }
-  function bestOwnedTool(toolType){ return ownedTools(toolType)[0]?.[0] || null; }
+  function bestOwnedTool(toolType){
+    const skillKey = toolType === 'axe' ? 'woodcutting' : toolType === 'pickaxe' ? 'mining' : 'fishing';
+    const level = levelFromXp(state.skills[skillKey]?.xp || 0);
+    return ownedTools(toolType).find(([key]) => (ITEM_DEFS[key].requiredSkillLevel || 1) <= level)?.[0] || null;
+  }
+  function gatheringDuration(def, toolType){
+    const toolKey=bestOwnedTool(toolType), bonus=toolKey ? (ITEM_DEFS[toolKey].speedBonus || 0) : 0;
+    return def.ticks*TICK_SECONDS*(1-bonus/100);
+  }
 
   function loadState(){
     try {
@@ -328,13 +401,13 @@
     else {p.x=p.targetX;p.y=p.targetY;if(queuedTown && Math.hypot(p.x-queuedTown.x,p.y-queuedTown.y)<105){const town=queuedTown;queuedTown=null;openTown(town);}else if(queuedRock && queuedRock.hp>0 && Math.hypot(p.x-queuedRock.x,p.y-queuedRock.y)<90)beginMining(queuedRock);else if(queuedFishingSpot && queuedFishingSpot.remaining>0 && Math.hypot(p.x-queuedFishingSpot.standX,p.y-queuedFishingSpot.standY)<20)beginFishing(queuedFishingSpot);else if(queuedTree && queuedTree.remaining>0 && Math.hypot(p.x-queuedTree.x,p.y-queuedTree.y)<78)beginChopping(queuedTree);else if(!activeTree&&!activeFishingSpot&&!activeRock){ui.status.textContent='Tap the ground, a tree, a rock, a fishing spot, or a town.';ui.actionName.textContent='Exploring';}}
     if(activeTree){
       if(activeTree.remaining<=0 || Math.hypot(p.x-activeTree.x,p.y-activeTree.y)>85)stopAction(false);
-      else {const def=TREE_TYPES[activeTree.type],duration=def.ticks*TICK_SECONDS;actionElapsed+=dt;ui.actionProgress.style.width=`${Math.min(100,actionElapsed/duration*100)}%`;if(actionElapsed>=duration)awardLog(activeTree);}
+      else {const def=TREE_TYPES[activeTree.type],duration=gatheringDuration(def,'axe');actionElapsed+=dt;ui.actionProgress.style.width=`${Math.min(100,actionElapsed/duration*100)}%`;if(actionElapsed>=duration)awardLog(activeTree);}
     } else if(activeRock){
       if(activeRock.hp<=0 || Math.hypot(p.x-activeRock.x,p.y-activeRock.y)>92)stopAction(false);
-      else {const def=ROCK_TYPES[activeRock.type],duration=def.ticks*TICK_SECONDS;actionElapsed+=dt;ui.actionProgress.style.width=`${Math.min(100,actionElapsed/duration*100)}%`;if(actionElapsed>=duration)awardOre(activeRock);}
+      else {const def=ROCK_TYPES[activeRock.type],duration=gatheringDuration(def,'pickaxe');actionElapsed+=dt;ui.actionProgress.style.width=`${Math.min(100,actionElapsed/duration*100)}%`;if(actionElapsed>=duration)awardOre(activeRock);}
     } else if(activeFishingSpot){
       if(activeFishingSpot.remaining<=0 || Math.hypot(p.x-activeFishingSpot.standX,p.y-activeFishingSpot.standY)>30)stopAction(false);
-      else {const def=FISH_TYPES[activeFishingSpot.type],duration=def.ticks*TICK_SECONDS;actionElapsed+=dt;ui.actionProgress.style.width=`${Math.min(100,actionElapsed/duration*100)}%`;if(actionElapsed>=duration)awardFish(activeFishingSpot);}
+      else {const def=FISH_TYPES[activeFishingSpot.type],duration=gatheringDuration(def,'fishingRod');actionElapsed+=dt;ui.actionProgress.style.width=`${Math.min(100,actionElapsed/duration*100)}%`;if(actionElapsed>=duration)awardFish(activeFishingSpot);}
     } else ui.actionProgress.style.width='0%';
     const region=regionAt(p.x,p.y);ui.region.textContent=region.name;if(document.getElementById('map')?.classList.contains('active'))drawMiniMap();
     const tx=clamp(p.x-canvas.width/2,0,WORLD.width-canvas.width),ty=clamp(p.y-canvas.height/2,0,WORLD.height-canvas.height),follow=1-Math.pow(.018,dt);camera.x+=(tx-camera.x)*follow;camera.y+=(ty-camera.y)*follow;
@@ -367,7 +440,51 @@
     ui.skills.querySelectorAll('[data-skill]').forEach(b=>b.addEventListener('click',()=>showSkill(b.dataset.skill)));
   }
   function showSkill(key){const def=SKILL_DEFS[key],xp=state.skills[key]?.xp||0,level=levelFromXp(xp),next=level>=100?xpForLevel(100):xpForLevel(level+1);selectedItemKey=null;ui.itemType.textContent='Skill';ui.itemName.textContent=def.name;ui.itemDescription.textContent=def.description;ui.itemStats.innerHTML=`<div><span>Level</span><strong>${level}${level>=100?' · MAX':''}</strong></div><div><span>Experience</span><strong>${xp.toLocaleString()} XP</strong></div>${level<100?`<div><span>Next level</span><strong>${Math.max(0,next-xp).toLocaleString()} XP</strong></div>`:''}`;ui.itemAction.hidden=true;ui.dialog.showModal();}
-  function openTown(town){ui.townName.textContent=town.name;ui.townDescription.textContent=town.description;const services=[['NPCs','Talk to residents and receive quests.'],['Crafting Table','Create items from gathered materials.'],['Cooking Fire','Cook fish and meat into food.'],['Player-Owned Home','Enter and improve your family home.'],['Shop','Buy supplies and sell gathered items.'],['Bank','Store items outside your carried inventory.'],['Notice Board','View town work, requests, and local quests.'],['Inn','Rest, meet travellers, and hear local information.']];ui.townServices.innerHTML=services.map(([name,description])=>`<button class="town-service" data-service="${name}"><strong>${name}</strong><span>${description}</span></button>`).join('');ui.townServices.querySelectorAll('[data-service]').forEach(b=>b.addEventListener('click',()=>showToast(`${b.dataset.service} · coming in a future system update`)));ui.townDialog.showModal();ui.status.textContent=`Visiting ${town.name}`;ui.actionName.textContent='In town';}
+  let currentTown = null;
+  function openTown(town){
+    currentTown=town;ui.townName.textContent=town.name;ui.townDescription.textContent=town.description;
+    const services=[['NPCs','Talk to residents and receive quests.'],['Crafting Table','Create tools, weapons, armour, bows, and refined materials.'],['Cooking Fire','Cook fish and meat into food.'],['Player-Owned Home','Enter and improve your family home.'],['Shop','Buy supplies and sell gathered items.'],['Bank','Store items outside your carried inventory.'],['Notice Board','View town work, requests, and local quests.'],['Inn','Rest, meet travellers, and hear local information.']];
+    ui.townServices.innerHTML=services.map(([name,description])=>`<button class="town-service" data-service="${name}"><strong>${name}</strong><span>${description}</span></button>`).join('');
+    ui.townServices.querySelectorAll('[data-service]').forEach(b=>b.addEventListener('click',()=>{
+      if(b.dataset.service==='Crafting Table'){ui.townDialog.close();openCrafting(town);return;}
+      showToast(`${b.dataset.service} · coming in a future system update`);
+    }));
+    ui.townDialog.showModal();ui.status.textContent=`Visiting ${town.name}`;ui.actionName.textContent='In town';
+  }
+  function materialText(materials){
+    return Object.entries(materials).map(([key,need])=>`${ITEM_DEFS[key]?.name||key} ${state.inventory[key]||0}/${need}`).join(' · ');
+  }
+  function maxCraftable(recipe){
+    return Math.min(...Object.entries(recipe.materials).map(([key,need])=>Math.floor((state.inventory[key]||0)/need)));
+  }
+  function openCrafting(town=currentTown){
+    currentTown=town;ui.craftingTownName.textContent=`${town?.name||'Town'} Crafting Table`;renderCraftingMenu();ui.craftingDialog.showModal();
+  }
+  function renderCraftingMenu(){
+    const xp=state.skills.crafting?.xp||0,level=levelFromXp(xp);ui.craftingLevel.textContent=`Crafting level ${level} · ${xp.toLocaleString()} XP`;
+    const groups=['Materials','Tools','Weapons','Armour'];
+    ui.craftingRecipes.innerHTML=groups.map(category=>{
+      const cards=RECIPES.filter(r=>r.category===category).map(recipe=>{
+        const item=ITEM_DEFS[recipe.output],levelOk=level>=recipe.level,max=maxCraftable(recipe),can=levelOk&&max>0;
+        return `<article class="recipe-card ${can?'craftable':'locked'}"><div class="recipe-copy"><strong>${item.name}</strong><span>Level ${recipe.level} · +${recipe.xp} XP</span><small>${materialText(recipe.materials)}</small></div><div class="recipe-actions"><button data-craft="${recipe.id}" data-amount="1" ${can?'':'disabled'}>Craft 1</button><button data-craft="${recipe.id}" data-amount="max" ${can?'':'disabled'}>Max${max>0?` (${max})`:''}</button></div></article>`;
+      }).join('');
+      return `<section class="recipe-group"><h3>${category}</h3>${cards}</section>`;
+    }).join('');
+    ui.craftingRecipes.querySelectorAll('[data-craft]').forEach(button=>button.addEventListener('click',()=>{
+      const recipe=RECIPES.find(r=>r.id===button.dataset.craft);if(!recipe)return;
+      const amount=button.dataset.amount==='max'?maxCraftable(recipe):1;craftRecipe(recipe,amount);
+    }));
+  }
+  function craftRecipe(recipe,amount){
+    const level=levelFromXp(state.skills.crafting?.xp||0),possible=maxCraftable(recipe),count=Math.min(amount,possible);
+    if(level<recipe.level){showToast(`Crafting level ${recipe.level} required`);return;}
+    if(count<1){showToast('You do not have the required materials');return;}
+    for(const [key,need] of Object.entries(recipe.materials))state.inventory[key]-=need*count;
+    state.inventory[recipe.output]=(state.inventory[recipe.output]||0)+recipe.amount*count;
+    state.skills.crafting.xp=(state.skills.crafting.xp||0)+recipe.xp*count;
+    showToast(`Crafted ${ITEM_DEFS[recipe.output].name}${count>1?` ×${count}`:''}`);renderInventory();renderSkills();renderEquipment();renderCraftingMenu();saveGame(false);
+  }
+
   function renderEquipment(){const slots=[['head','Head'],['cape','Cape'],['body','Body'],['weapon','Weapon'],['shield','Shield'],['legs','Legs'],['boots','Boots'],['ring','Ring']];ui.equipment.innerHTML=`<div class="equipment-slots">${slots.map(([k,l])=>{const item=state.equipment[k]&&ITEM_DEFS[state.equipment[k]];return `<button class="slot ${item?'filled':''}" data-slot="${k}" ${item?'':'disabled'}><span>${l}</span><strong>${item?item.name:'Empty'}</strong></button>`}).join('')}</div>`;ui.equipment.querySelectorAll('.slot.filled').forEach(b=>b.addEventListener('click',()=>showItem(state.equipment[b.dataset.slot])));}
   function renderMapPanel(){
     ui.map.innerHTML='<div class="minimap-wrap"><canvas id="miniMapCanvas" width="720" height="720" aria-label="Draggable world minimap"></canvas><span class="minimap-hint">Drag to explore · tap your marker button to recenter</span><button id="recenterMapButton" class="minimap-recenter">◎</button></div>';
@@ -387,6 +504,6 @@
   function renderAll(){renderInventory();renderSkills();renderEquipment();renderMapPanel();}
   function frame(now){const dt=Math.min((now-lastFrame)/1000,.05);lastFrame=now;update(dt);draw();if(now-miniMapView.lastDraw>180&&document.getElementById('map')?.classList.contains('active')){miniMapView.lastDraw=now;drawMiniMap();}requestAnimationFrame(frame);}
 
-  canvas.addEventListener('pointerdown',handlePointer,{passive:false});document.getElementById('saveButton').addEventListener('click',()=>saveGame(true));document.getElementById('stopButton').addEventListener('click',()=>stopAction(true));document.querySelectorAll('.tab').forEach(t=>t.addEventListener('click',()=>openPanel(t.dataset.panel)));document.getElementById('closeItemButton').addEventListener('click',()=>ui.dialog.close());document.getElementById('closeTownButton').addEventListener('click',()=>ui.townDialog.close());ui.itemAction.addEventListener('click',toggleSelectedEquipment);ui.dialog.addEventListener('click',e=>{if(e.target===ui.dialog)ui.dialog.close();});ui.townDialog.addEventListener('click',e=>{if(e.target===ui.townDialog)ui.townDialog.close();});document.getElementById('exportButton').addEventListener('click',()=>{saveGame(false);const blob=new Blob([JSON.stringify(state,null,2)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`idle-wanderer-save-${Date.now()}.json`;a.click();URL.revokeObjectURL(a.href);});document.getElementById('importInput').addEventListener('change',async e=>{const file=e.target.files?.[0];if(!file)return;try{localStorage.setItem(SAVE_KEY,JSON.stringify(JSON.parse(await file.text())));location.reload();}catch{showToast('Invalid save file');}});document.getElementById('resetButton').addEventListener('click',()=>{if(confirm('Reset all progress on this device?')){localStorage.removeItem(SAVE_KEY);location.reload();}});window.addEventListener('pagehide',()=>saveGame(false));setInterval(()=>saveGame(false),15000);if('serviceWorker'in navigator)navigator.serviceWorker.register('./service-worker.js').catch(console.error);
+  canvas.addEventListener('pointerdown',handlePointer,{passive:false});document.getElementById('saveButton').addEventListener('click',()=>saveGame(true));document.getElementById('stopButton').addEventListener('click',()=>stopAction(true));document.querySelectorAll('.tab').forEach(t=>t.addEventListener('click',()=>openPanel(t.dataset.panel)));document.getElementById('closeItemButton').addEventListener('click',()=>ui.dialog.close());document.getElementById('closeTownButton').addEventListener('click',()=>ui.townDialog.close());document.getElementById('closeCraftingButton').addEventListener('click',()=>ui.craftingDialog.close());ui.itemAction.addEventListener('click',toggleSelectedEquipment);ui.dialog.addEventListener('click',e=>{if(e.target===ui.dialog)ui.dialog.close();});ui.townDialog.addEventListener('click',e=>{if(e.target===ui.townDialog)ui.townDialog.close();});ui.craftingDialog.addEventListener('click',e=>{if(e.target===ui.craftingDialog)ui.craftingDialog.close();});document.getElementById('exportButton').addEventListener('click',()=>{saveGame(false);const blob=new Blob([JSON.stringify(state,null,2)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`idle-wanderer-save-${Date.now()}.json`;a.click();URL.revokeObjectURL(a.href);});document.getElementById('importInput').addEventListener('change',async e=>{const file=e.target.files?.[0];if(!file)return;try{localStorage.setItem(SAVE_KEY,JSON.stringify(JSON.parse(await file.text())));location.reload();}catch{showToast('Invalid save file');}});document.getElementById('resetButton').addEventListener('click',()=>{if(confirm('Reset all progress on this device?')){localStorage.removeItem(SAVE_KEY);location.reload();}});window.addEventListener('pagehide',()=>saveGame(false));setInterval(()=>saveGame(false),15000);if('serviceWorker'in navigator)navigator.serviceWorker.register('./service-worker.js').catch(console.error);
   camera.x=clamp(state.player.x-canvas.width/2,0,WORLD.width-canvas.width);camera.y=clamp(state.player.y-canvas.height/2,0,WORLD.height-canvas.height);renderAll();requestAnimationFrame(frame);
 })();

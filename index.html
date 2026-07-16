@@ -52,7 +52,7 @@
           <button id="resetButton" class="wide-button muted-button">Reset Game</button>
         </div>
         <p class="hint">Town services are opened from the world itself. Skills will be developed one at a time, beginning with Woodcutting.</p>
-        <p class="version">Version 0.6.1 · Movement Fixes</p>
+        <p class="version">Version 0.7.0 · Town Crafting</p>
       </section>
     </section>
   </main>
@@ -68,6 +68,12 @@
     <div class="dialog-head"><div><span class="label">Town</span><h2 id="townName">Town</h2></div><button id="closeTownButton" class="close-button" aria-label="Close">×</button></div>
     <p id="townDescription" class="item-description"></p>
     <div id="townServices" class="town-services"></div>
+  </dialog>
+
+  <dialog id="craftingDialog" class="item-dialog crafting-dialog">
+    <div class="dialog-head"><div><span class="label">Crafting</span><h2 id="craftingTownName">Town Crafting Table</h2></div><button id="closeCraftingButton" class="close-button" aria-label="Close">×</button></div>
+    <p id="craftingLevel" class="item-description"></p>
+    <div id="craftingRecipes" class="crafting-recipes"></div>
   </dialog>
 
   <script src="game.js"></script>
