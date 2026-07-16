@@ -1,7 +1,12 @@
-# Idle Wanderer v0.9.2 — Combat Visual Polish
+# Idle Wanderer v0.11.2 — World Population
 
-- Player defeat now instantly teleports the player and camera to Starting Town.
-- All enemies disengage and return home after the player is defeated.
-- Added player and enemy attack lunges, hit flashes, impact arcs, and defeat feedback.
-- Upgraded geometric creature designs with more distinct silhouettes and details.
-- Existing saves migrate automatically.
+Mobile-first GitHub Pages build.
+
+## New in this version
+- Increased common and mid-tier creature populations across their existing biome zones.
+- Kept elite creatures uncommon and the Frost Dragon unique.
+- Enlarged town visuals with multiple buildings, paths, fencing, lamps, crates, a well, and a central banner.
+- Increased town tap radius to match the larger settlement artwork.
+- Existing progress remains compatible.
+
+Upload every file in this folder to the root of your GitHub Pages repository.

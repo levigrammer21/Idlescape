@@ -1,11 +1,12 @@
 (() => {
   'use strict';
 
-  const VERSION = '0.9.2';
+  const VERSION = '0.11.2';
   const SAVE_KEY = 'idle-wanderer-save-v6';
   const LEGACY_KEYS = ['idle-wanderer-save-v5', 'idle-wanderer-save-v4', 'idle-wanderer-save-v3', 'idle-wanderer-save-v2'];
   const TICK_SECONDS = 0.6;
-  const WORLD = { width: 3800, height: 4300 };
+  const MAP_SCALE = 1.5;
+  const WORLD = { width: Math.round(3800 * MAP_SCALE), height: Math.round(4300 * MAP_SCALE) };
   const canvas = document.getElementById('gameCanvas');
   const ctx = canvas.getContext('2d');
   ctx.imageSmoothingEnabled = false;
@@ -263,14 +264,33 @@
     frostDragon:{name:'Frost Dragon',behaviour:'aggressive',shape:'dragon',hp:650,defence:105,accuracy:85,maxHit:42,ticks:5,color:'#8fc5d4',aggro:340,respawn:600,drops:[['dragonMeat',2,4,1],['crystal',1,3,.5],['frostScale',1,1,.025],['frozenHeart',1,1,.01]]}
   };
   const enemySeeds=[
-    ['rabbit',1580,2450],['rabbit',1940,2320],['rabbit',2240,2070],
-    ['giantRat',1360,2380],['giantRat',2520,2280],['deer',2650,1920],['deer',2910,2450],
-    ['wildBoar',2380,2620],['wolf',3150,2350],['wolf',2900,2740],['bandit',850,2360],
-    ['skeleton',1200,2920],['skeleton',2020,3150],['wraith',620,3000],
-    ['scorpion',470,1770],['scorpion',700,2200],['sandSerpent',330,2450],['sandGolem',330,1520],
-    ['bogSlime',1250,720],['bogSlime',2050,870],['crocodile',2370,720],['crocodile',770,600],['marshLurker',2750,510],
-    ['jungleSpider',1180,3650],['jungleSpider',2270,3540],['venomSnake',950,3910],['jaguar',2670,3790],['gorilla',2250,4050],
-    ['iceWolf',1120,1040],['iceWolf',2580,1120],['frostTroll',2850,850],['frostDragon',2750,360]
+    // Central grasslands — common beginner creatures
+    ['rabbit',1460,2380],['rabbit',1580,2450],['rabbit',1740,2260],['rabbit',1940,2320],['rabbit',2080,2480],['rabbit',2240,2070],['rabbit',2420,2210],['rabbit',2570,2380],['rabbit',2720,2080],['rabbit',2860,2320],['rabbit',3050,2150],['rabbit',3180,2460],
+    ['giantRat',1260,2460],['giantRat',1360,2380],['giantRat',1510,2630],['giantRat',1880,2580],['giantRat',2190,2460],['giantRat',2520,2280],['giantRat',2810,2540],['giantRat',3060,2620],
+    ['deer',2350,1880],['deer',2650,1920],['deer',2910,2450],['deer',3190,2240],['deer',3000,2780],['deer',2550,2750],
+    ['wildBoar',2180,2670],['wildBoar',2380,2620],['wildBoar',2680,2820],['wildBoar',3000,2920],['wildBoar',3250,2650],
+    ['wolf',2860,2600],['wolf',3150,2350],['wolf',2900,2740],['wolf',3320,2480],['wolf',3200,3000],['wolf',2740,2960],
+    ['bandit',760,2260],['bandit',850,2360],['bandit',950,2510],
+    // Dead grass and undead
+    ['skeleton',980,2860],['skeleton',1200,2920],['skeleton',1450,3090],['skeleton',1740,3000],['skeleton',2020,3150],['skeleton',2280,3250],
+    ['wraith',520,2880],['wraith',620,3000],['wraith',790,3160],
+    // Desert
+    ['scorpion',420,1580],['scorpion',470,1770],['scorpion',610,1960],['scorpion',700,2200],['scorpion',520,2380],['scorpion',820,2500],
+    ['sandSerpent',260,2200],['sandSerpent',330,2450],['sandSerpent',430,2650],['sandSerpent',650,2730],
+    ['sandGolem',300,1420],['sandGolem',330,1520],['sandGolem',520,1320],
+    // Swamp
+    ['bogSlime',980,620],['bogSlime',1250,720],['bogSlime',1510,560],['bogSlime',1770,820],['bogSlime',2050,870],['bogSlime',2330,910],
+    ['crocodile',690,520],['crocodile',770,600],['crocodile',1160,880],['crocodile',1930,640],['crocodile',2370,720],
+    ['marshLurker',2480,480],['marshLurker',2750,510],['marshLurker',2920,700],
+    // Jungle
+    ['jungleSpider',980,3520],['jungleSpider',1180,3650],['jungleSpider',1450,3820],['jungleSpider',1840,3610],['jungleSpider',2270,3540],['jungleSpider',2540,3740],
+    ['venomSnake',850,3790],['venomSnake',950,3910],['venomSnake',1320,4020],['venomSnake',2050,3950],['venomSnake',2480,4050],
+    ['jaguar',2200,3650],['jaguar',2670,3790],['jaguar',2860,3950],
+    ['gorilla',1980,4020],['gorilla',2250,4050],['gorilla',2550,4140],
+    // Northern high-level region
+    ['iceWolf',920,1020],['iceWolf',1120,1040],['iceWolf',1560,950],['iceWolf',2140,1080],['iceWolf',2580,1120],['iceWolf',2910,1000],
+    ['frostTroll',2470,780],['frostTroll',2850,850],['frostTroll',3050,650],
+    ['frostDragon',2750,360]
   ];
   function makeEnemies(saved={}){
     return enemySeeds.map(([type,x,y],index)=>{const id=`enemy-${type}-${index}`,d=ENEMY_TYPES[type],old=saved[id]||{};return {id,type,x:old.x??x,y:old.y??y,homeX:x,homeY:y,hp:Math.min(old.hp??d.hp,d.hp),maxHp:d.hp,respawnAt:old.respawnAt||0,target:null,returning:false,attackElapsed:0,wanderElapsed:Math.random()*3,wanderX:x,wanderY:y,attackAnim:0,hitFlash:0,deathAnim:0,facing:1};});
@@ -297,20 +317,38 @@
   ];
 
   const fishingSeeds = [
-    ['minnow', 1470, 1880, 1335, 1830, 'Cedar Pond'],
-    ['minnow', 1660, 1940, 1760, 2070, 'Cedar Pond'],
-    ['crappie', 2850, 2100, 2690, 2050, 'Willow Mere'],
-    ['crappie', 2980, 2210, 3125, 2290, 'Willow Mere'],
-    ['bass', 1960, 3765, 1810, 3650, 'Jungle Lagoon'],
-    ['bass', 1780, 3820, 1660, 3925, 'Jungle Lagoon'],
-    ['catfish', 2180, 620, 2050, 770, 'Swamp Pool'],
-    ['catfish', 2370, 560, 2470, 720, 'Swamp Pool'],
-    ['tuna', 3480, 1750, 3310, 1760, 'Eastern Ocean'],
-    ['tuna', 3060, 3620, 2920, 3520, 'Southern Ocean'],
-    ['grouper', 2450, 4190, 2450, 4010, 'Southern Ocean'],
-    ['grouper', 510, 3370, 690, 3370, 'Western Ocean'],
-    ['shark', 1720, 4260, 1720, 4080, 'Deep Southern Ocean'],
-    ['shark', 3300, 2870, 3150, 2790, 'Deep Eastern Ocean']
+    // Starter and central freshwater
+    ['minnow', 1450, 1840, 1315, 1800, 'Cedar Pond'],
+    ['minnow', 1600, 1900, 1740, 2015, 'Cedar Pond'],
+    ['minnow', 1515, 1980, 1390, 2070, 'Cedar Pond'],
+    ['minnow', 1680, 1840, 1780, 1740, 'Cedar Pond'],
+    ['crappie', 2780, 2090, 2630, 2035, 'Willow Mere'],
+    ['crappie', 2940, 2170, 3090, 2250, 'Willow Mere'],
+    ['crappie', 2860, 2270, 2730, 2370, 'Willow Mere'],
+    ['crappie', 3020, 2040, 3120, 1940, 'Willow Mere'],
+    // Jungle lagoon
+    ['bass', 1860, 3730, 1710, 3630, 'Jungle Lagoon'],
+    ['bass', 2000, 3800, 2140, 3900, 'Jungle Lagoon'],
+    ['bass', 1740, 3860, 1610, 3950, 'Jungle Lagoon'],
+    ['bass', 2080, 3710, 2210, 3620, 'Jungle Lagoon'],
+    // Swamp pool
+    ['catfish', 2140, 600, 2010, 750, 'Swamp Pool'],
+    ['catfish', 2300, 555, 2420, 705, 'Swamp Pool'],
+    ['catfish', 2210, 700, 2070, 820, 'Swamp Pool'],
+    ['catfish', 2390, 650, 2520, 790, 'Swamp Pool'],
+    // Coastal ocean
+    ['tuna', 3470, 1650, 3295, 1670, 'Eastern Ocean'],
+    ['tuna', 3500, 2020, 3325, 2020, 'Eastern Ocean'],
+    ['tuna', 3020, 3610, 2880, 3500, 'Southern Ocean'],
+    ['tuna', 620, 1190, 760, 1270, 'Western Ocean'],
+    ['grouper', 2380, 4190, 2380, 4005, 'Southern Ocean'],
+    ['grouper', 2740, 4080, 2660, 3920, 'Southern Ocean'],
+    ['grouper', 500, 3340, 680, 3340, 'Western Ocean'],
+    ['grouper', 3300, 2760, 3140, 2710, 'Eastern Ocean'],
+    ['shark', 1660, 4270, 1660, 4085, 'Deep Southern Ocean'],
+    ['shark', 2050, 4250, 2050, 4070, 'Deep Southern Ocean'],
+    ['shark', 3440, 2890, 3260, 2820, 'Deep Eastern Ocean'],
+    ['shark', 360, 2550, 540, 2550, 'Deep Western Ocean']
   ];
 
   function makeFishingSpots(saved = {}) {
@@ -328,14 +366,29 @@
   ];
 
   const treeSeeds = [
-    ['cedar',1450,1690],['cedar',1740,1580],['cedar',2060,1810],['cedar',1320,2240],
-    ['oak',1120,1800],['oak',2150,2280],['oak',2500,1760],
-    ['willow',2670,2040],['willow',3030,2300],['willow',1450,2050],
-    ['beech',920,2450],['beech',2500,2700],['beech',1120,2850],
-    ['cherry',750,3060],['cherry',1480,3330],['cherry',2240,3230],
-    ['arcticPine',980,620],['arcticPine',1590,440],['arcticPine',2700,700],
-    ['mahogany',1120,3710],['mahogany',2450,3890],['mahogany',2720,3450],
-    ['redwood',1620,3950],['redwood',2200,4020]
+    // Cedar — dense around the central starter region
+    ['cedar',1360,1640],['cedar',1540,1540],['cedar',1770,1580],['cedar',1980,1740],
+    ['cedar',1280,2040],['cedar',1510,2230],['cedar',1860,2290],['cedar',2190,1990],
+    // Oak — central and eastern woodland
+    ['oak',1080,1740],['oak',1180,1960],['oak',2080,2200],['oak',2350,1840],
+    ['oak',2540,1670],['oak',2720,1900],
+    // Willow — kept close to freshwater
+    ['willow',1390,2000],['willow',1730,2060],['willow',2630,2030],['willow',2780,2380],
+    ['willow',3050,2290],['willow',3150,2070],
+    // Beech — transitional forests farther from the starter town
+    ['beech',860,2380],['beech',1030,2610],['beech',1200,2820],['beech',2240,2730],
+    ['beech',2530,2670],['beech',2860,2490],
+    // Cherry — southern/eastern grass and dead-grass edges
+    ['cherry',700,3010],['cherry',940,3180],['cherry',1410,3290],['cherry',1770,3370],
+    ['cherry',2180,3190],['cherry',2450,3020],
+    // Arctic Pine — far north only
+    ['arcticPine',850,560],['arcticPine',1120,420],['arcticPine',1510,380],['arcticPine',1840,500],
+    ['arcticPine',2320,500],['arcticPine',2730,650],
+    // Mahogany — jungle interior
+    ['mahogany',980,3650],['mahogany',1230,3840],['mahogany',2050,3700],['mahogany',2380,3870],
+    ['mahogany',2650,3470],['mahogany',2780,3770],
+    // Redwood — rare, deepest jungle
+    ['redwood',1460,3970],['redwood',1760,4070],['redwood',2140,4040],['redwood',2440,3950]
   ];
 
   function makeTrees(saved = {}) {
@@ -347,14 +400,23 @@
   }
 
   const rockSeeds = [
-    ['stone',1650,2440],['stone',1930,2490],['stone',2200,2360],
-    ['copper',2380,1580],['copper',2740,1710],
-    ['iron',2700,2520],['iron',3060,2400],
-    ['coal',1080,1360],['coal',1420,1280],
-    ['silver',760,2350],['silver',520,2200],
-    ['pyrite',1080,3130],['pyrite',1520,3020],
-    ['gold',2320,3440],['gold',2650,3600],
-    ['crystal',1200,520],['crystal',1920,420]
+    // Stone — widespread beginner deposits
+    ['stone',1440,2380],['stone',1680,2480],['stone',1920,2450],['stone',2160,2330],
+    ['stone',2440,2450],['stone',1120,2250],['stone',2720,2240],
+    // Copper — central/eastern grass foothills
+    ['copper',2260,1510],['copper',2470,1610],['copper',2700,1730],['copper',2890,1850],
+    // Iron — eastern and southern approaches
+    ['iron',2510,2460],['iron',2760,2570],['iron',3020,2410],['iron',3160,2590],
+    // Coal — northern dead-grass hills
+    ['coal',930,1310],['coal',1160,1390],['coal',1410,1260],['coal',1660,1380],
+    // Silver — deep desert
+    ['silver',420,2060],['silver',610,2220],['silver',790,2370],['silver',500,2570],
+    // Pyrite — southern dead grass and rough borderlands
+    ['pyrite',930,3010],['pyrite',1180,3160],['pyrite',1480,3000],['pyrite',1770,3150],
+    // Gold — jungle ridges
+    ['gold',2110,3430],['gold',2350,3550],['gold',2600,3640],['gold',2780,3440],
+    // Crystal — rare remote northern deposits
+    ['crystal',1040,460],['crystal',1420,330],['crystal',1940,390],['crystal',2480,480]
   ];
 
   function makeRocks(saved = {}) {
@@ -364,10 +426,25 @@
     });
   }
 
+  // v0.11.0 world expansion: preserve the exact hand-built layout while
+  // increasing all distances and biome areas by 50% in each direction.
+  function scaleWorldPoint(point){ point[0] = Math.round(point[0] * MAP_SCALE); point[1] = Math.round(point[1] * MAP_SCALE); }
+  continent.forEach(scaleWorldPoint);
+  regions.forEach(region => region.points.forEach(scaleWorldPoint));
+  waters.forEach(water => {
+    water.x = Math.round(water.x * MAP_SCALE); water.y = Math.round(water.y * MAP_SCALE);
+    water.rx = Math.round(water.rx * MAP_SCALE); water.ry = Math.round(water.ry * MAP_SCALE);
+  });
+  fishingSeeds.forEach(seed => { for(let i=1;i<=4;i++) seed[i] = Math.round(seed[i] * MAP_SCALE); });
+  towns.forEach(town => { town.x = Math.round(town.x * MAP_SCALE); town.y = Math.round(town.y * MAP_SCALE); });
+  treeSeeds.forEach(seed => { seed[1] = Math.round(seed[1] * MAP_SCALE); seed[2] = Math.round(seed[2] * MAP_SCALE); });
+  rockSeeds.forEach(seed => { seed[1] = Math.round(seed[1] * MAP_SCALE); seed[2] = Math.round(seed[2] * MAP_SCALE); });
+  enemySeeds.forEach(seed => { seed[1] = Math.round(seed[1] * MAP_SCALE); seed[2] = Math.round(seed[2] * MAP_SCALE); });
+
   const defaultInventory = () => Object.fromEntries(Object.keys(ITEM_DEFS).map(k => [k, 0]));
   const defaultState = () => ({
     version: VERSION,
-    player: { x: 1780, y: 2340, targetX: 1780, targetY: 2340 },
+    player: { x: Math.round(1780 * MAP_SCALE), y: Math.round(2340 * MAP_SCALE), targetX: Math.round(1780 * MAP_SCALE), targetY: Math.round(2340 * MAP_SCALE) },
     inventory: { ...defaultInventory(), stoneAxe: 1, stonePickaxe: 1, basicFishingRod: 1, coins: 100 },
     skills: Object.fromEntries(Object.keys(SKILL_DEFS).map(k => [k, { xp: 0 }])),
     equipment: { head: null, body: null, legs: null, boots: null, weapon: null, shield: null, cape: null, ring: null, food: null },
@@ -385,7 +462,7 @@
   let activeTree = null, queuedTree = null, activeFishingSpot = null, queuedFishingSpot = null, activeRock = null, queuedRock = null, queuedTown = null, activeEnemy = null, queuedEnemy = null, combatElapsed = 0, actionElapsed = 0;
   let animationClock = 0;
   const floaters = [];
-  let playerAttackAnim=0, playerHitFlash=0, defeatFlash=0;
+  let playerAttackAnim=0, playerHitFlash=0, defeatFlash=0, respawnLock=0;
   const miniMapView = { zoom: 1.8, centerX: state.player.x, centerY: state.player.y, dragging: false, lastX: 0, lastY: 0, lastDraw: 0 };
 
   function randomInt(min,max){ return Math.floor(Math.random()*(max-min+1))+min; }
@@ -426,7 +503,15 @@
       for(const key of Object.keys(SKILL_DEFS)) if(old.skills?.[key]) fresh.skills[key]=old.skills[key];
       if(!old.skills?.fortitude || (old.skills.fortitude.xp||0)<xpForLevel(10)) fresh.skills.fortitude={xp:xpForLevel(10)};
       fresh.equipment={...fresh.equipment,...(old.equipment||{})}; fresh.treeState=old.treeState||{}; fresh.fishingState=old.fishingState||{}; fresh.rockState=old.rockState||{}; fresh.enemyState=old.enemyState||{}; fresh.combat={...fresh.combat,...(old.combat||{})}; fresh.poh=old.poh||{}; fresh.quests=old.quests||{};
-      if(old.player && isWalkable(old.player.x,old.player.y)) fresh.player={...fresh.player,x:old.player.x,y:old.player.y,targetX:old.player.x,targetY:old.player.y};
+      const expandOldWorld = old.version !== VERSION;
+      if(expandOldWorld){
+        fresh.enemyState=Object.fromEntries(Object.entries(fresh.enemyState).map(([id,enemy])=>[id,{...enemy,x:typeof enemy.x==='number'?Math.round(enemy.x*MAP_SCALE):enemy.x,y:typeof enemy.y==='number'?Math.round(enemy.y*MAP_SCALE):enemy.y}]));
+      }
+      if(old.player){
+        const px=expandOldWorld?Math.round(old.player.x*MAP_SCALE):old.player.x;
+        const py=expandOldWorld?Math.round(old.player.y*MAP_SCALE):old.player.y;
+        if(isWalkable(px,py)) fresh.player={...fresh.player,x:px,y:py,targetX:px,targetY:py};
+      }
       if(old.version && old.version !== VERSION){
         for(const [id,node] of Object.entries(fresh.treeState||{})){const type=id.replace(/-\d+$/,'');const def=TREE_TYPES[type];if(def&&node.remaining>0){node.remaining=Math.max(node.remaining,def.capacity[0]);node.max=Math.max(node.max||0,def.capacity[1]);}}
         for(const node of Object.values(fresh.fishingState||{}))if(node.remaining>0)node.remaining=Math.max(node.remaining,12);
@@ -447,7 +532,7 @@
   function worldToScreen(x,y){ return {x:x-camera.x,y:y-camera.y}; }
   function screenToWorld(x,y){ return {x:x+camera.x,y:y+camera.y}; }
 
-  function townAt(x,y){ let best=null,bestD=72; for(const t of towns){const d=Math.hypot(x-t.x,y-t.y);if(d<bestD){best=t;bestD=d;}} return best; }
+  function townAt(x,y){ let best=null,bestD=112; for(const t of towns){const d=Math.hypot(x-t.x,y-t.y);if(d<bestD){best=t;bestD=d;}} return best; }
   function treeAt(x,y){ let best=null,bestD=44; for(const t of trees){if(t.remaining<=0)continue;const d=Math.hypot(x-t.x,y-t.y);if(d<bestD){best=t;bestD=d;}} return best; }
   function rockAt(x,y){ let best=null,bestD=48; for(const r of rocks){if(r.hp<=0)continue;const d=Math.hypot(x-r.x,y-r.y);if(d<bestD){best=r;bestD=d;}} return best; }
   function fishingSpotAt(x,y){ let best=null,bestD=52; for(const f of fishingSpots){if(f.remaining<=0)continue;const d=Math.hypot(x-f.x,y-f.y);if(d<bestD){best=f;bestD=d;}} return best; }
@@ -487,18 +572,28 @@
     const skill=ps.style==='range'?'range':'melee';state.skills[skill].xp=(state.skills[skill].xp||0)+dmg*4;state.skills.fortitude.xp=(state.skills.fortitude.xp||0)+dmg*2;renderSkills();
     if(enemy.hp<=0){enemy.deathAnim=.5;killEnemy(enemy);}
   }
+  function respawnAtStartingTown(){
+    const spawn={x:Math.round(1770*MAP_SCALE),y:Math.round(2295*MAP_SCALE)};
+    state.combat.hp=maxPlayerHp();
+    state.player.x=spawn.x;state.player.y=spawn.y;state.player.targetX=spawn.x;state.player.targetY=spawn.y;
+    activeTree=queuedTree=activeRock=queuedRock=activeFishingSpot=queuedFishingSpot=queuedTown=activeEnemy=queuedEnemy=null;
+    actionElapsed=0;combatElapsed=0;respawnLock=1.1;
+    for(const foe of enemies){foe.target=null;foe.returning=true;foe.attackElapsed=0;foe.wanderX=foe.homeX;foe.wanderY=foe.homeY;}
+    camera.x=clamp(spawn.x-canvas.width/2,0,WORLD.width-canvas.width);
+    camera.y=clamp(spawn.y-canvas.height/2,0,WORLD.height-canvas.height);
+    miniMapView.centerX=spawn.x;miniMapView.centerY=spawn.y;
+    ui.actionProgress.style.width='0%';ui.actionName.textContent='Recovering at Starting Town';
+    ui.status.textContent='You were defeated and returned to Starting Town.';
+    defeatFlash=.85;showToast('Returned to Starting Town');renderCombatHud();saveGame(false);
+  }
   function enemyAttack(enemy){
+    if(respawnLock>0)return false;
     const d=ENEMY_TYPES[enemy.type],ps=playerCombatStats(),hit=Math.random()<hitChance(d.accuracy,ps.defence);
     enemy.attackAnim=.34;enemy.facing=state.player.x>=enemy.x?1:-1;
-    if(!hit){damageFloater(state.player.x,state.player.y-58,0,false);return;}
+    if(!hit){damageFloater(state.player.x,state.player.y-58,0,false);return false;}
     const dmg=randomInt(1,d.maxHit);state.combat.hp=Math.max(0,state.combat.hp-dmg);playerHitFlash=.2;damageFloater(state.player.x,state.player.y-58,dmg,true);renderCombatHud();
-    if(state.combat.hp<=0){
-      state.combat.hp=maxPlayerHp();
-      state.player.x=1780;state.player.y=2340;state.player.targetX=1780;state.player.targetY=2340;
-      camera.x=clamp(1780-canvas.width/2,0,WORLD.width-canvas.width);camera.y=clamp(2340-canvas.height/2,0,WORLD.height-canvas.height);
-      for(const foe of enemies){foe.target=null;foe.returning=true;foe.attackElapsed=0;}
-      defeatFlash=.55;showToast('You were defeated and returned to Starting Town');endCombat('Recovering at Starting Town');saveGame(false);
-    }
+    if(state.combat.hp<=0){respawnAtStartingTown();return true;}
+    return false;
   }
   function eatFood(){const key=state.equipment.food,item=ITEM_DEFS[key];if(!key||!item?.heal||(state.inventory[key]||0)<1)return;const max=maxPlayerHp();if(state.combat.hp>=max)return showToast('Already at full health');state.inventory[key]--;state.combat.hp=Math.min(max,state.combat.hp+item.heal);if(state.inventory[key]<=0)state.equipment.food=null;showToast(`Ate ${item.name} · +${item.heal} HP`);renderInventory();renderEquipment();renderCombatHud();saveGame(false);}
   function renderCombatHud(){const max=maxPlayerHp();state.combat.hp=clamp(state.combat.hp||max,0,max);if(ui.combatHp){ui.combatHp.textContent=`${state.combat.hp}/${max}`;ui.combatHpFill.style.width=`${state.combat.hp/max*100}%`;}const key=state.equipment.food,count=key?(state.inventory[key]||0):0;if(ui.eatButton){ui.eatButton.hidden=!key||count<1;ui.eatButton.textContent=key?`Eat ${ITEM_DEFS[key].name.replace('Cooked ','')}`:'Eat';ui.eatCount.textContent=count;}}
@@ -562,11 +657,11 @@
   }
 
   function update(dt){
-    animationClock+=dt; playerAttackAnim=Math.max(0,playerAttackAnim-dt);playerHitFlash=Math.max(0,playerHitFlash-dt);defeatFlash=Math.max(0,defeatFlash-dt); const now=Date.now(); for(const t of trees){if(t.remaining<=0&&t.respawnAt&&now>=t.respawnAt){const def=TREE_TYPES[t.type];t.max=randomInt(def.capacity[0],def.capacity[1]);t.remaining=t.max;t.respawnAt=0;}}
+    animationClock+=dt; playerAttackAnim=Math.max(0,playerAttackAnim-dt);playerHitFlash=Math.max(0,playerHitFlash-dt);defeatFlash=Math.max(0,defeatFlash-dt);respawnLock=Math.max(0,respawnLock-dt); const now=Date.now(); for(const t of trees){if(t.remaining<=0&&t.respawnAt&&now>=t.respawnAt){const def=TREE_TYPES[t.type];t.max=randomInt(def.capacity[0],def.capacity[1]);t.remaining=t.max;t.respawnAt=0;}}
     for(const r of rocks){if(r.hp<=0&&r.respawnAt&&now>=r.respawnAt){r.hp=r.maxHp;r.respawnAt=0;}}
     for(const f of fishingSpots){if(f.remaining<=0&&f.respawnAt&&now>=f.respawnAt){f.remaining=randomInt(12,20);f.respawnAt=0;}}
-    for(const e of enemies){const d=ENEMY_TYPES[e.type];e.attackAnim=Math.max(0,(e.attackAnim||0)-dt);e.hitFlash=Math.max(0,(e.hitFlash||0)-dt);e.deathAnim=Math.max(0,(e.deathAnim||0)-dt);if(e.hp<=0){if(e.respawnAt&&now>=e.respawnAt){e.hp=e.maxHp;e.respawnAt=0;e.x=e.homeX;e.y=e.homeY;}continue;}e.wanderElapsed-=dt;if(!e.target&&d.behaviour==='aggressive'&&Math.hypot(e.x-state.player.x,e.y-state.player.y)<d.aggro&&regionAt(e.x,e.y).id===regionAt(state.player.x,state.player.y).id){e.target='player';activeEnemy=e;ui.actionName.textContent=`Attacked by ${d.name}`;}if(e.target==='player'){const dd=Math.hypot(state.player.x-e.x,state.player.y-e.y);if(regionAt(e.x,e.y).id!==regionAt(e.homeX,e.homeY).id||Math.hypot(e.x-e.homeX,e.y-e.homeY)>520){e.target=null;e.returning=true;}else if(dd>52){const step=Math.min(dd-48,135*dt);e.x+=(state.player.x-e.x)/dd*step;e.y+=(state.player.y-e.y)/dd*step;}e.attackElapsed+=dt;if(dd<=62&&e.attackElapsed>=d.ticks*TICK_SECONDS){e.attackElapsed=0;enemyAttack(e);}}else if(e.returning){const dd=Math.hypot(e.homeX-e.x,e.homeY-e.y);if(dd<5){e.x=e.homeX;e.y=e.homeY;e.returning=false;}else{const step=Math.min(dd,120*dt);e.x+=(e.homeX-e.x)/dd*step;e.y+=(e.homeY-e.y)/dd*step;}}else if(e.wanderElapsed<=0){e.wanderElapsed=randomInt(2,5);const a=Math.random()*Math.PI*2,r=Math.random()*70;e.wanderX=e.homeX+Math.cos(a)*r;e.wanderY=e.homeY+Math.sin(a)*r;}else{const dd=Math.hypot(e.wanderX-e.x,e.wanderY-e.y);if(dd>3){const step=Math.min(dd,45*dt);e.x+=(e.wanderX-e.x)/dd*step;e.y+=(e.wanderY-e.y)/dd*step;}}}
-    const p=state.player,dx=p.targetX-p.x,dy=p.targetY-p.y,dist=Math.hypot(dx,dy);
+    for(const e of enemies){const d=ENEMY_TYPES[e.type];e.attackAnim=Math.max(0,(e.attackAnim||0)-dt);e.hitFlash=Math.max(0,(e.hitFlash||0)-dt);e.deathAnim=Math.max(0,(e.deathAnim||0)-dt);if(e.hp<=0){if(e.respawnAt&&now>=e.respawnAt){e.hp=e.maxHp;e.respawnAt=0;e.x=e.homeX;e.y=e.homeY;}continue;}e.wanderElapsed-=dt;if(!e.target&&d.behaviour==='aggressive'&&Math.hypot(e.x-state.player.x,e.y-state.player.y)<d.aggro&&regionAt(e.x,e.y).id===regionAt(state.player.x,state.player.y).id){e.target='player';activeEnemy=e;ui.actionName.textContent=`Attacked by ${d.name}`;}if(e.target==='player'){const dd=Math.hypot(state.player.x-e.x,state.player.y-e.y);if(regionAt(e.x,e.y).id!==regionAt(e.homeX,e.homeY).id||Math.hypot(e.x-e.homeX,e.y-e.homeY)>520){e.target=null;e.returning=true;}else if(dd>52){const step=Math.min(dd-48,135*dt);e.x+=(state.player.x-e.x)/dd*step;e.y+=(state.player.y-e.y)/dd*step;}e.attackElapsed+=dt;if(dd<=62&&e.attackElapsed>=d.ticks*TICK_SECONDS){e.attackElapsed=0;if(enemyAttack(e))break;}}else if(e.returning){const dd=Math.hypot(e.homeX-e.x,e.homeY-e.y);if(dd<5){e.x=e.homeX;e.y=e.homeY;e.returning=false;}else{const step=Math.min(dd,120*dt);e.x+=(e.homeX-e.x)/dd*step;e.y+=(e.homeY-e.y)/dd*step;}}else if(e.wanderElapsed<=0){e.wanderElapsed=randomInt(2,5);const a=Math.random()*Math.PI*2,r=Math.random()*70;e.wanderX=e.homeX+Math.cos(a)*r;e.wanderY=e.homeY+Math.sin(a)*r;}else{const dd=Math.hypot(e.wanderX-e.x,e.wanderY-e.y);if(dd>3){const step=Math.min(dd,45*dt);e.x+=(e.wanderX-e.x)/dd*step;e.y+=(e.wanderY-e.y)/dd*step;}}}
+    const p=state.player;if(respawnLock>0){p.targetX=p.x;p.targetY=p.y;}const dx=p.targetX-p.x,dy=p.targetY-p.y,dist=Math.hypot(dx,dy);
     if(dist>2){const move=Math.min(dist,190*dt),nx=p.x+dx/dist*move,ny=p.y+dy/dist*move;if(isWalkable(nx,ny)){p.x=nx;p.y=ny;}else{p.targetX=p.x;p.targetY=p.y;queuedTree=null;queuedFishingSpot=null;queuedRock=null;queuedTown=null;showToast('That route is blocked');}}
     else {p.x=p.targetX;p.y=p.targetY;if(queuedEnemy && queuedEnemy.hp>0 && Math.hypot(p.x-queuedEnemy.x,p.y-queuedEnemy.y)<=playerCombatStats().range+12){beginCombat(queuedEnemy);}else if(queuedTown && Math.hypot(p.x-queuedTown.x,p.y-queuedTown.y)<105){const town=queuedTown;queuedTown=null;openTown(town);}else if(queuedRock && queuedRock.hp>0 && Math.hypot(p.x-queuedRock.x,p.y-queuedRock.y)<90)beginMining(queuedRock);else if(queuedFishingSpot && queuedFishingSpot.remaining>0 && Math.hypot(p.x-queuedFishingSpot.standX,p.y-queuedFishingSpot.standY)<20)beginFishing(queuedFishingSpot);else if(queuedTree && queuedTree.remaining>0 && Math.hypot(p.x-queuedTree.x,p.y-queuedTree.y)<78)beginChopping(queuedTree);else if(!activeTree&&!activeFishingSpot&&!activeRock&&!activeEnemy){ui.status.textContent='Tap the ground, a resource, a creature, or a town.';ui.actionName.textContent='Exploring';}}
     if(activeEnemy){
@@ -614,70 +709,77 @@
     ctx.restore();
   }
   function drawFishingSpot(f){if(f.remaining<=0)return;const bob=Math.sin(animationClock*3+f.phase)*4,s=worldToScreen(f.x,f.y+bob);if(s.x<-70||s.y<-70||s.x>canvas.width+70||s.y>canvas.height+70)return;const d=FISH_TYPES[f.type];ctx.strokeStyle='rgba(233,249,255,.72)';ctx.lineWidth=3;for(let i=0;i<2;i++){ctx.beginPath();ctx.arc(s.x,s.y,12+i*11+Math.sin(animationClock*2+f.phase)*2,0,Math.PI*2);ctx.stroke();}drawFishShape(f.type,s.x,s.y,d.color);if(activeFishingSpot===f){ctx.strokeStyle='#f0cc64';ctx.lineWidth=3;ctx.beginPath();ctx.arc(s.x,s.y,38,0,Math.PI*2);ctx.stroke();}}
-  function drawTown(t){const s=worldToScreen(t.x,t.y);if(s.x<-100||s.y<-100||s.x>canvas.width+100||s.y>canvas.height+100)return;ctx.fillStyle='rgba(35,31,27,.2)';ctx.fillRect(s.x-54,s.y-38,108,76);ctx.strokeStyle='#e0d0a5';ctx.lineWidth=3;ctx.strokeRect(s.x-50,s.y-34,100,68);ctx.fillStyle='#b8895b';ctx.fillRect(s.x-25,s.y-17,50,34);ctx.fillStyle='#6b4c34';ctx.fillRect(s.x-6,s.y+1,12,16);ctx.fillStyle='#f0e9d2';ctx.font='bold 13px system-ui';ctx.textAlign='center';ctx.fillText(t.name,s.x,s.y-45);ctx.textAlign='start';}
-  function drawTree(t){if(t.remaining<=0)return;const sway=Math.sin(animationClock*1.6+t.x*.01)*1.8+(activeTree===t?Math.sin(animationClock*12)*3:0);const s=worldToScreen(t.x+sway,t.y);if(s.x<-60||s.y<-90||s.x>canvas.width+60||s.y>canvas.height+60)return;const d=TREE_TYPES[t.type],scale=t.type==='redwood'?1.28:t.type==='mahogany'?1.12:1;ctx.fillStyle='rgba(0,0,0,.18)';ctx.fillRect(s.x-24*scale,s.y+22,48*scale,9);ctx.fillStyle=d.trunk;ctx.fillRect(s.x-7*scale,s.y-1,14*scale,34*scale);ctx.fillStyle=d.leaves;if(t.type==='arcticPine'){for(let i=0;i<3;i++){ctx.beginPath();ctx.moveTo(s.x,s.y-55+i*17);ctx.lineTo(s.x-27*scale+i*2,s.y-10+i*14);ctx.lineTo(s.x+27*scale-i*2,s.y-10+i*14);ctx.closePath();ctx.fill();}}else{ctx.fillRect(s.x-25*scale,s.y-44,50*scale,35*scale);ctx.fillRect(s.x-17*scale,s.y-56,34*scale,20*scale);if(t.type==='cherry'){ctx.fillStyle='#e6a1a9';ctx.fillRect(s.x-18,s.y-49,7,7);ctx.fillRect(s.x+11,s.y-39,6,6);}}if(activeTree===t){ctx.strokeStyle='#f0cc64';ctx.lineWidth=3;ctx.strokeRect(s.x-31*scale,s.y-61,62*scale,96);}}
-  function drawRock(r){if(r.hp<=0)return;const s=worldToScreen(r.x,r.y);if(s.x<-60||s.y<-60||s.x>canvas.width+60||s.y>canvas.height+60)return;const d=ROCK_TYPES[r.type],ratio=r.hp/r.maxHp,shake=activeRock===r?Math.sin(animationClock*15)*2:0;ctx.save();ctx.translate(s.x+shake,s.y);ctx.fillStyle='rgba(0,0,0,.2)';ctx.fillRect(-25,18,50,8);ctx.fillStyle=d.color;ctx.beginPath();ctx.moveTo(-24,15);ctx.lineTo(-18,-18);ctx.lineTo(2,-30);ctx.lineTo(24,-12);ctx.lineTo(28,15);ctx.closePath();ctx.fill();ctx.strokeStyle='rgba(30,35,40,.6)';ctx.lineWidth=2;if(ratio<.8){ctx.beginPath();ctx.moveTo(-4,-26);ctx.lineTo(2,-8);ctx.lineTo(-8,7);ctx.stroke();}if(ratio<.5){ctx.beginPath();ctx.moveTo(17,-13);ctx.lineTo(5,-1);ctx.lineTo(15,12);ctx.stroke();}if(activeRock===r){ctx.strokeStyle='#f0cc64';ctx.lineWidth=3;ctx.strokeRect(-32,-36,64,58);ctx.fillStyle='#1a2028';ctx.fillRect(-28,-44,56,6);ctx.fillStyle='#68c77e';ctx.fillRect(-28,-44,56*ratio,6);}ctx.restore();}
-  function equipmentColor(key){
-    if(!key)return null;
-    const colors={stone:'#8c9299',copper:'#b9784f',iron:'#707986',silver:'#c7d0d7',pyrite:'#c79c38',gold:'#d7b83f',crystal:'#82d9e9',cloth:'#7b8798',cedar:'#7b5a38',oak:'#6f5635',willow:'#80966a',beech:'#a09a62',cherry:'#b86f77',arcticPine:'#78a797',mahogany:'#7b4030',redwood:'#6d382a'};
-    return Object.entries(colors).find(([prefix])=>key.startsWith(prefix))?.[1]||'#9aa4b0';
-  }
-  function drawEquippedWeapon(s){
-    const key=state.equipment.weapon;if(!key)return;const item=ITEM_DEFS[key],color=equipmentColor(key),working=activeTree||activeRock;
-    ctx.save();ctx.translate(s.x+13,s.y+10);ctx.rotate(working?(-.8+Math.sin(animationClock*8)*.65):-.35);ctx.lineCap='round';
-    if(key.endsWith('Bow')){ctx.strokeStyle=color;ctx.lineWidth=3;ctx.beginPath();ctx.arc(9,-4,15,-1.25,1.25);ctx.stroke();ctx.strokeStyle='#e5d9af';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(13,-18);ctx.lineTo(13,10);ctx.stroke();}
-    else if(key.endsWith('Sword')){ctx.strokeStyle='#76543b';ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(0,2);ctx.lineTo(7,-5);ctx.stroke();ctx.strokeStyle=color;ctx.lineWidth=6;ctx.beginPath();ctx.moveTo(7,-5);ctx.lineTo(27,-25);ctx.stroke();ctx.strokeStyle='#e7eef2';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(9,-7);ctx.lineTo(27,-25);ctx.stroke();}
-    else if(key.endsWith('Dagger')){ctx.strokeStyle='#76543b';ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(0,2);ctx.lineTo(6,-4);ctx.stroke();ctx.strokeStyle=color;ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(6,-4);ctx.lineTo(18,-16);ctx.stroke();}
-    else {ctx.strokeStyle='#795739';ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(0,2);ctx.lineTo(20,-15);ctx.stroke();ctx.fillStyle=color;ctx.fillRect(15,-21,11,10);}
+  function drawTown(t){
+    const s=worldToScreen(t.x,t.y); if(s.x<-150||s.y<-150||s.x>canvas.width+150||s.y>canvas.height+150)return;
+    const pulse=1+Math.sin(animationClock*1.4+t.x*.002)*.015;
+    ctx.save();ctx.translate(s.x,s.y);ctx.scale(pulse,pulse);
+    // town clearing and path
+    ctx.fillStyle='rgba(44,37,29,.18)';ctx.beginPath();ctx.ellipse(0,10,92,64,0,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#b9a77f';ctx.fillRect(-10,-74,20,148);ctx.fillRect(-82,-8,164,18);
+    ctx.fillStyle='#8b7655';ctx.fillRect(-7,-74,14,148);ctx.fillRect(-82,-5,164,12);
+    // fence corners
+    ctx.strokeStyle='#7b5636';ctx.lineWidth=4;for(const x of [-78,78]){ctx.beginPath();ctx.moveTo(x,-42);ctx.lineTo(x,46);ctx.stroke();}for(const y of [-43,47]){ctx.beginPath();ctx.moveTo(-78,y);ctx.lineTo(-35,y);ctx.moveTo(35,y);ctx.lineTo(78,y);ctx.stroke();}
+    // three small buildings
+    const houses=[[-48,-31,34,28,'#b8895b'],[25,-29,38,31,'#a87951'],[-18,22,42,30,'#c39a68']];
+    for(const [x,y,w,h,c] of houses){ctx.fillStyle='rgba(0,0,0,.18)';ctx.fillRect(x-3,y+h-1,w+6,7);ctx.fillStyle=c;ctx.fillRect(x,y,w,h);ctx.fillStyle='#6c4730';ctx.beginPath();ctx.moveTo(x-5,y);ctx.lineTo(x+w/2,y-15);ctx.lineTo(x+w+5,y);ctx.closePath();ctx.fill();ctx.fillStyle='#5a3827';ctx.fillRect(x+w/2-4,y+h-12,8,12);ctx.fillStyle='#e9d58f';ctx.fillRect(x+5,y+7,6,6);ctx.fillRect(x+w-11,y+7,6,6);}
+    // well, crates and lamps
+    ctx.fillStyle='#68717a';ctx.beginPath();ctx.arc(46,26,10,0,Math.PI*2);ctx.fill();ctx.fillStyle='#26313b';ctx.beginPath();ctx.arc(46,26,5,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#8a5e37';ctx.fillRect(-66,25,12,12);ctx.fillRect(-54,30,10,9);
+    ctx.strokeStyle='#3d352d';ctx.lineWidth=3;for(const lx of [-70,70]){ctx.beginPath();ctx.moveTo(lx,-5);ctx.lineTo(lx,-25);ctx.stroke();ctx.fillStyle='#f4d56b';ctx.fillRect(lx-4,-30,8,8);}
+    // central banner
+    ctx.fillStyle='#e0d0a5';ctx.fillRect(-3,-10,6,28);ctx.fillStyle='#8a3f44';ctx.fillRect(3,-9,18,12);
     ctx.restore();
+    ctx.fillStyle='#f0e9d2';ctx.font='bold 14px system-ui';ctx.textAlign='center';ctx.strokeStyle='rgba(20,20,20,.8)';ctx.lineWidth=4;ctx.strokeText(t.name,s.x,s.y-92);ctx.fillText(t.name,s.x,s.y-92);ctx.textAlign='start';
   }
-  function drawEnemy(e){
-    if(e.hp<=0)return;
-    const d=ENEMY_TYPES[e.type],base=worldToScreen(e.x,e.y),idle=Math.sin(animationClock*3+e.homeX*.01)*1.5;
-    if(base.x<-110||base.y<-110||base.x>canvas.width+110||base.y>canvas.height+110)return;
-    const attack=(e.attackAnim||0)>0?Math.sin((1-e.attackAnim/.34)*Math.PI):0;
-    const facing=e.facing||1, lunge=attack*10, squash=1-attack*.08;
-    ctx.save();ctx.translate(base.x+facing*lunge,base.y+idle);ctx.scale(facing,squash);
-    if(e.hitFlash>0){ctx.shadowColor='#fff';ctx.shadowBlur=14;}
-    ctx.fillStyle='rgba(0,0,0,.22)';ctx.beginPath();ctx.ellipse(0,24,24,7,0,0,Math.PI*2);ctx.fill();
-    ctx.fillStyle=e.hitFlash>0?'#ffffff':d.color;ctx.strokeStyle='rgba(20,24,28,.55)';ctx.lineWidth=2;
-    const eye=()=>{ctx.fillStyle='#171b20';ctx.fillRect(10,-7,4,4);};
-    const shape=d.shape;
-    if(shape==='rabbit'){
-      ctx.fillRect(-15,-1,28,20);ctx.fillRect(-10,-25,7,25);ctx.fillRect(2,-25,7,25);ctx.fillRect(10,4,12,11);ctx.strokeRect(-15,-1,28,20);eye();ctx.fillStyle='#f2d5d9';ctx.fillRect(-8,-22,3,14);ctx.fillRect(4,-22,3,14);
-    }else if(shape==='rat'){
-      ctx.beginPath();ctx.ellipse(0,5,22,13,0,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.beginPath();ctx.arc(15,-4,10,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.strokeStyle='#ba8f92';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(-19,8);ctx.quadraticCurveTo(-36,16,-42,2);ctx.stroke();eye();
-    }else if(shape==='deer'){
-      ctx.fillRect(-18,-5,34,24);ctx.fillRect(-13,17,6,20);ctx.fillRect(8,17,6,20);ctx.fillRect(8,-21,18,19);ctx.strokeRect(-18,-5,34,24);ctx.strokeStyle='#6b4d32';ctx.beginPath();ctx.moveTo(20,-19);ctx.lineTo(26,-34);ctx.moveTo(20,-25);ctx.lineTo(31,-29);ctx.moveTo(15,-19);ctx.lineTo(9,-34);ctx.moveTo(15,-25);ctx.lineTo(4,-29);ctx.stroke();eye();
-    }else if(shape==='serpent'){
-      ctx.strokeStyle=e.hitFlash>0?'#fff':d.color;ctx.lineWidth=12;ctx.beginPath();ctx.moveTo(-26,14);ctx.quadraticCurveTo(-12,-14,3,9);ctx.quadraticCurveTo(17,29,29,-7);ctx.stroke();ctx.fillStyle=e.hitFlash>0?'#fff':d.color;ctx.beginPath();ctx.moveTo(20,-15);ctx.lineTo(38,-9);ctx.lineTo(29,5);ctx.lineTo(17,-3);ctx.closePath();ctx.fill();eye();
-    }else if(shape==='spider'){
-      ctx.beginPath();ctx.arc(-5,3,14,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.beginPath();ctx.arc(10,1,10,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.lineWidth=4;ctx.strokeStyle=e.hitFlash>0?'#fff':d.color;for(const side of [-1,1])for(let i=0;i<4;i++){ctx.beginPath();ctx.moveTo(side*6,-4+i*5);ctx.lineTo(side*(25+i*2),-14+i*10);ctx.stroke();}eye();
-    }else if(shape==='slime'){
-      ctx.beginPath();ctx.arc(0,8,22,Math.PI,0);ctx.lineTo(22,19);ctx.quadraticCurveTo(12,13,5,19);ctx.quadraticCurveTo(-4,13,-12,19);ctx.lineTo(-22,19);ctx.closePath();ctx.fill();ctx.stroke();ctx.fillStyle='#d9f3d2';ctx.fillRect(-9,3,4,5);ctx.fillRect(7,3,4,5);
-    }else if(shape==='crocodile'){
-      ctx.fillRect(-34,-4,54,19);ctx.fillRect(13,-10,30,16);ctx.strokeRect(-34,-4,54,19);ctx.strokeRect(13,-10,30,16);ctx.beginPath();ctx.moveTo(-31,0);ctx.lineTo(-50,-12);ctx.lineTo(-38,13);ctx.closePath();ctx.fill();ctx.fillStyle='#d8e0bf';for(let x=-24;x<13;x+=10)ctx.fillRect(x,-5,6,3);eye();
-    }else if(shape==='humanoid'||shape==='skeleton'||shape==='wraith'||shape==='troll'){
-      const big=shape==='troll'?1.45:1;ctx.fillRect(-10*big,-20*big,20*big,22*big);ctx.fillRect(-15*big,1,30*big,27*big);ctx.fillRect(-13*big,26,8*big,18*big);ctx.fillRect(5*big,26,8*big,18*big);ctx.strokeRect(-15*big,1,30*big,27*big);
-      if(shape==='skeleton'){ctx.fillStyle='#35383a';ctx.fillRect(-5,-14,3,3);ctx.fillRect(4,-14,3,3);ctx.fillRect(-4,-5,9,3);ctx.strokeStyle='#aaa795';for(let y=6;y<23;y+=6){ctx.beginPath();ctx.moveTo(-10,y);ctx.lineTo(10,y);ctx.stroke();}}
-      if(shape==='humanoid'){ctx.fillStyle='#4e382b';ctx.fillRect(-13,-24,26,7);ctx.fillStyle='#d0a174';ctx.fillRect(-8,-15,16,10);eye();}
-      if(shape==='wraith'){ctx.globalAlpha=.7;ctx.beginPath();ctx.moveTo(-15,23);ctx.lineTo(-23,46);ctx.lineTo(-8,38);ctx.lineTo(0,47);ctx.lineTo(9,38);ctx.lineTo(23,46);ctx.lineTo(15,23);ctx.fill();ctx.globalAlpha=1;ctx.fillStyle='#d9d1ff';ctx.fillRect(-7,-12,4,5);ctx.fillRect(5,-12,4,5);}
-      if(shape==='troll'){ctx.fillStyle='#b9d8df';ctx.fillRect(-8,-18,5,4);ctx.fillRect(5,-18,5,4);ctx.fillStyle='#556d73';ctx.fillRect(-18,4,36,8);}
-    }else if(shape==='golem'||shape==='gorilla'||shape==='lurker'){
-      const big=shape==='gorilla'?1.3:1.15;ctx.fillRect(-19*big,-19,38*big,36);ctx.fillRect(-31*big,-9,12*big,35);ctx.fillRect(19*big,-9,12*big,35);ctx.fillRect(-15*big,17,11*big,22);ctx.fillRect(4*big,17,11*big,22);ctx.strokeRect(-19*big,-19,38*big,36);if(shape==='golem'){ctx.strokeStyle='#8f7954';ctx.beginPath();ctx.moveTo(-12,-8);ctx.lineTo(4,2);ctx.lineTo(-3,16);ctx.moveTo(12,-15);ctx.lineTo(5,-4);ctx.stroke();}eye();
-    }else if(shape==='scorpion'){
-      ctx.beginPath();ctx.ellipse(0,5,20,12,0,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.strokeStyle=e.hitFlash>0?'#fff':d.color;ctx.lineWidth=6;ctx.beginPath();ctx.moveTo(-16,4);ctx.quadraticCurveTo(-38,-10,-24,-29);ctx.stroke();ctx.beginPath();ctx.moveTo(17,-2);ctx.lineTo(35,-10);ctx.moveTo(17,10);ctx.lineTo(35,18);ctx.stroke();ctx.fillStyle='#1c2024';ctx.fillRect(8,-3,4,4);
-    }else if(shape==='dragon'){
-      ctx.fillRect(-34,-10,55,30);ctx.fillRect(13,-24,34,23);ctx.strokeRect(-34,-10,55,30);ctx.beginPath();ctx.moveTo(-18,-5);ctx.lineTo(-49,-38);ctx.lineTo(-42,3);ctx.moveTo(0,-5);ctx.lineTo(34,-43);ctx.lineTo(25,5);ctx.fill();ctx.beginPath();ctx.moveTo(-31,1);ctx.lineTo(-58,-18);ctx.lineTo(-45,15);ctx.fill();ctx.fillStyle='#d8f6ff';for(let x=-20;x<16;x+=10)ctx.fillRect(x,-9,6,4);eye();
-    }else{
-      ctx.fillRect(-22,-6,42,23);ctx.fillRect(10,-19,24,20);ctx.strokeRect(-22,-6,42,23);ctx.beginPath();ctx.moveTo(-20,-1);ctx.lineTo(-34,-16);ctx.lineTo(-29,7);ctx.closePath();ctx.fill();eye();
+  function drawTree(t){
+    const d=TREE_TYPES[t.type],scale=t.type==='redwood'?1.38:t.type==='mahogany'?1.18:t.type==='arcticPine'?1.12:1;
+    const sway=t.remaining>0?(Math.sin(animationClock*1.45+t.x*.011)*2.2+(activeTree===t?Math.sin(animationClock*15)*4.2:0)):0;
+    const s=worldToScreen(t.x+sway,t.y);if(s.x<-80||s.y<-110||s.x>canvas.width+80||s.y>canvas.height+80)return;
+    ctx.save();ctx.translate(s.x,s.y);
+    ctx.fillStyle='rgba(0,0,0,.2)';ctx.beginPath();ctx.ellipse(0,29,28*scale,8,0,0,Math.PI*2);ctx.fill();
+    if(t.remaining<=0){
+      ctx.fillStyle=d.trunk;ctx.fillRect(-11*scale,8,22*scale,20);ctx.fillStyle='rgba(238,205,151,.72)';ctx.beginPath();ctx.ellipse(0,8,11*scale,4.5,0,0,Math.PI*2);ctx.fill();
+      ctx.fillStyle='rgba(65,45,31,.65)';ctx.fillRect(-20,24,9,4);ctx.fillRect(12,22,8,4);ctx.restore();return;
     }
-    if(attack>0){ctx.globalAlpha=.45;ctx.strokeStyle='#fff0b0';ctx.lineWidth=3;ctx.beginPath();ctx.arc(18*facing,-2,22+attack*10,-1.1,1.1);ctx.stroke();ctx.globalAlpha=1;}
+    // trunk with lighter face and branch nubs
+    ctx.fillStyle=d.trunk;ctx.fillRect(-8*scale,-6,16*scale,40);ctx.fillStyle='rgba(255,255,255,.10)';ctx.fillRect(-5*scale,-4,4*scale,35);
+    ctx.fillStyle=d.trunk;ctx.fillRect(-18*scale,1,12*scale,7);ctx.fillRect(6*scale,-10,14*scale,7);
+    ctx.fillStyle=d.leaves;
+    if(t.type==='arcticPine'){
+      for(let i=0;i<4;i++){const yy=-66+i*17,w=(28-i*2)*scale;ctx.beginPath();ctx.moveTo(0,yy);ctx.lineTo(-w,yy+38);ctx.lineTo(w,yy+38);ctx.closePath();ctx.fill();}
+      ctx.fillStyle='rgba(225,241,239,.45)';ctx.fillRect(-17,-48,12,5);ctx.fillRect(8,-31,13,5);
+    }else if(t.type==='redwood'){
+      ctx.fillRect(-34*scale,-58,68*scale,43);ctx.fillRect(-27*scale,-78,54*scale,28);ctx.fillRect(-18*scale,-91,36*scale,20);
+    }else{
+      ctx.beginPath();ctx.arc(-16*scale,-38,19*scale,0,Math.PI*2);ctx.arc(12*scale,-45,22*scale,0,Math.PI*2);ctx.arc(0,-61,20*scale,0,Math.PI*2);ctx.arc(25*scale,-28,15*scale,0,Math.PI*2);ctx.fill();
+    }
+    if(t.type==='cherry'){ctx.fillStyle='#f2b0b9';for(const [x,y] of [[-19,-55],[8,-67],[24,-39],[-2,-31]]){ctx.fillRect(x,y,7,7);}}
+    if(t.type==='mahogany'){ctx.fillStyle='rgba(29,82,52,.72)';ctx.fillRect(-25,-52,16,11);ctx.fillRect(13,-59,15,12);}
+    const ratio=Math.max(0,t.remaining/(t.max||t.remaining));
+    if(activeTree===t){ctx.strokeStyle='#f0cc64';ctx.lineWidth=3;ctx.strokeRect(-38*scale,-96,76*scale,132);ctx.fillStyle='#151b22';ctx.fillRect(-30,-105,60,7);ctx.fillStyle='#68c77e';ctx.fillRect(-30,-105,60*ratio,7);}
     ctx.restore();
-    const ratio=e.hp/e.maxHp;ctx.fillStyle='rgba(8,10,13,.84)';ctx.fillRect(base.x-28,base.y-48,56,7);ctx.fillStyle=ratio>.5?'#67c77b':ratio>.25?'#d9b653':'#cc6268';ctx.fillRect(base.x-28,base.y-48,56*ratio,7);ctx.strokeStyle='rgba(255,255,255,.25)';ctx.strokeRect(base.x-28,base.y-48,56,7);
-    if(activeEnemy===e){ctx.strokeStyle='#efcc61';ctx.lineWidth=2;ctx.strokeRect(base.x-36,base.y-55,72,92);}
   }
-
+  function drawRock(r){
+    const s=worldToScreen(r.x,r.y);if(s.x<-75||s.y<-75||s.x>canvas.width+75||s.y>canvas.height+75)return;const d=ROCK_TYPES[r.type],ratio=Math.max(0,r.hp/r.maxHp),shake=activeRock===r?Math.sin(animationClock*17)*2.7:0;
+    ctx.save();ctx.translate(s.x+shake,s.y);
+    ctx.fillStyle='rgba(0,0,0,.22)';ctx.beginPath();ctx.ellipse(0,23,31,8,0,0,Math.PI*2);ctx.fill();
+    if(r.hp<=0){
+      ctx.fillStyle=d.color;for(const [x,y,w,h] of [[-24,10,17,10],[-7,15,18,9],[10,8,20,13],[-12,4,12,8]]){ctx.beginPath();ctx.moveTo(x,y+h);ctx.lineTo(x+3,y);ctx.lineTo(x+w-3,y+2);ctx.lineTo(x+w,y+h);ctx.closePath();ctx.fill();}ctx.restore();return;
+    }
+    // multi-faceted geometric deposit
+    ctx.fillStyle=d.color;ctx.beginPath();ctx.moveTo(-30,17);ctx.lineTo(-24,-13);ctx.lineTo(-8,-32);ctx.lineTo(12,-29);ctx.lineTo(29,-9);ctx.lineTo(32,17);ctx.closePath();ctx.fill();
+    ctx.fillStyle='rgba(255,255,255,.16)';ctx.beginPath();ctx.moveTo(-24,-13);ctx.lineTo(-8,-32);ctx.lineTo(-3,8);ctx.lineTo(-24,17);ctx.closePath();ctx.fill();
+    ctx.fillStyle='rgba(0,0,0,.14)';ctx.beginPath();ctx.moveTo(-3,8);ctx.lineTo(12,-29);ctx.lineTo(29,-9);ctx.lineTo(32,17);ctx.closePath();ctx.fill();
+    // ore flecks distinguish tiers
+    ctx.fillStyle=r.type==='crystal'?'rgba(235,250,255,.9)':r.type==='gold'?'#ffe176':r.type==='pyrite'?'#f2cf55':'rgba(255,255,255,.28)';
+    for(const [x,y] of [[-14,-11],[9,-15],[18,2]]){ctx.fillRect(x,y,5,4);}
+    ctx.strokeStyle='rgba(24,29,34,.72)';ctx.lineWidth=2.2;
+    if(ratio<.82){ctx.beginPath();ctx.moveTo(-5,-28);ctx.lineTo(1,-10);ctx.lineTo(-10,5);ctx.lineTo(-2,18);ctx.stroke();}
+    if(ratio<.56){ctx.beginPath();ctx.moveTo(19,-12);ctx.lineTo(7,0);ctx.lineTo(18,14);ctx.stroke();}
+    if(ratio<.3){ctx.beginPath();ctx.moveTo(-24,-10);ctx.lineTo(-13,-2);ctx.lineTo(-20,14);ctx.stroke();}
+    if(activeRock===r){ctx.strokeStyle='#f0cc64';ctx.lineWidth=3;ctx.strokeRect(-38,-40,76,65);ctx.fillStyle='#151b22';ctx.fillRect(-30,-49,60,7);ctx.fillStyle='#68c77e';ctx.fillRect(-30,-49,60*ratio,7);}
+    ctx.restore();
+  }
   function drawPlayer(){
     const working=activeTree||activeFishingSpot||activeRock,bounce=working?Math.sin(animationClock*8)*2:0,combatLunge=playerAttackAnim>0?Math.sin((1-playerAttackAnim/.32)*Math.PI)*9:0,combatDir=activeEnemy?(activeEnemy.x>=state.player.x?1:-1):1,s=worldToScreen(state.player.x+combatDir*combatLunge,state.player.y+bounce);
     const eq=state.equipment,bodyColor=equipmentColor(eq.body),headColor=equipmentColor(eq.head),legsColor=equipmentColor(eq.legs),bootsColor=equipmentColor(eq.boots),shieldColor=equipmentColor(eq.shield);
