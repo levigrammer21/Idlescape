@@ -1,7 +1,7 @@
 (() => {
   'use strict';
 
-  const VERSION = '0.8.1';
+  const VERSION = '0.9.1';
   const SAVE_KEY = 'idle-wanderer-save-v6';
   const LEGACY_KEYS = ['idle-wanderer-save-v5', 'idle-wanderer-save-v4', 'idle-wanderer-save-v3', 'idle-wanderer-save-v2'];
   const TICK_SECONDS = 0.6;
@@ -19,6 +19,7 @@
     itemDescription: document.getElementById('itemDescription'), itemStats: document.getElementById('itemStats'), itemAction: document.getElementById('itemActionButton'),
     townDialog: document.getElementById('townDialog'), townName: document.getElementById('townName'), townDescription: document.getElementById('townDescription'), townServices: document.getElementById('townServices'),
     craftingDialog: document.getElementById('craftingDialog'), craftingTownName: document.getElementById('craftingTownName'), craftingLevel: document.getElementById('craftingLevel'), craftingRecipes: document.getElementById('craftingRecipes'),
+    combatHp: document.getElementById('combatHp'), combatHpFill: document.getElementById('combatHpFill'), eatButton: document.getElementById('eatButton'), eatCount: document.getElementById('eatCount'),
     serviceDialog: document.getElementById('serviceDialog'), serviceType: document.getElementById('serviceType'), serviceTitle: document.getElementById('serviceTitle'), serviceDescription: document.getElementById('serviceDescription'), serviceContent: document.getElementById('serviceContent')
   };
 
@@ -159,14 +160,52 @@
   defineItem('coins',{name:'Coins',type:'Currency',description:'Used in shops and to improve your player-owned home.',stats:{Currency:'Family world coins'}});
   const COOKING_DATA = {
     rawMinnow:{cooked:'cookedMinnow',name:'Cooked Minnow',level:1,xp:8,ticks:1.5,heal:2},
+    ratMeat:{cooked:'cookedRat',name:'Cooked Rat',level:5,xp:12,ticks:2,heal:5},
+    rawRabbit:{cooked:'cookedRabbit',name:'Cooked Rabbit',level:1,xp:10,ticks:2,heal:4},
     rawCrappie:{cooked:'cookedCrappie',name:'Cooked Crappie',level:10,xp:18,ticks:2.5,heal:4},
+    rawVenison:{cooked:'cookedVenison',name:'Cooked Venison',level:10,xp:20,ticks:3,heal:7},
+    rawPork:{cooked:'cookedPork',name:'Cooked Pork',level:15,xp:26,ticks:3.5,heal:9},
     rawBass:{cooked:'cookedBass',name:'Cooked Bass',level:20,xp:32,ticks:3.5,heal:7},
+    wolfMeat:{cooked:'cookedWolfMeat',name:'Cooked Wolf Meat',level:20,xp:35,ticks:4,heal:11},
+    scorpionMeat:{cooked:'cookedScorpion',name:'Cooked Scorpion',level:25,xp:44,ticks:4.5,heal:12},
     rawCatfish:{cooked:'cookedCatfish',name:'Cooked Catfish',level:30,xp:55,ticks:4.5,heal:10},
+    crocodileMeat:{cooked:'cookedCrocodile',name:'Cooked Crocodile',level:30,xp:58,ticks:5,heal:15},
+    serpentMeat:{cooked:'cookedSerpent',name:'Cooked Serpent',level:35,xp:70,ticks:5.5,heal:16},
+    snakeMeat:{cooked:'cookedSnake',name:'Cooked Snake',level:35,xp:72,ticks:5.5,heal:17},
     rawTuna:{cooked:'cookedTuna',name:'Cooked Tuna',level:40,xp:90,ticks:6,heal:14},
+    jaguarMeat:{cooked:'cookedJaguar',name:'Cooked Jaguar',level:40,xp:95,ticks:6.5,heal:20},
     rawGrouper:{cooked:'cookedGrouper',name:'Cooked Grouper',level:50,xp:140,ticks:8,heal:18},
-    rawShark:{cooked:'cookedShark',name:'Cooked Shark',level:70,xp:220,ticks:10,heal:25}
+    gorillaMeat:{cooked:'cookedGorilla',name:'Cooked Gorilla',level:50,xp:145,ticks:8,heal:25},
+    frozenMeat:{cooked:'cookedFrozenMeat',name:'Cooked Frozen Meat',level:55,xp:175,ticks:9,heal:28},
+    rawShark:{cooked:'cookedShark',name:'Cooked Shark',level:70,xp:220,ticks:10,heal:25},
+    dragonMeat:{cooked:'cookedDragonMeat',name:'Cooked Dragon Meat',level:70,xp:260,ticks:12,heal:40}
   };
-  for(const [raw,d] of Object.entries(COOKING_DATA)) defineItem(d.cooked,{name:d.name,type:'Cooked food',description:`A properly cooked ${d.name.replace('Cooked ','').toLowerCase()}.`,stats:{'Cooking level':String(d.level),'Future healing':String(d.heal)}});
+  const COMBAT_ITEM_DEFS = {
+    rawRabbit:['Raw Rabbit','Raw meat','Fresh rabbit meat. Cook it at a town fire.'], rabbitFoot:['Rabbit Foot','Rare combat drop','A lucky foot dropped very rarely by rabbits.'],
+    ratMeat:['Rat Meat','Raw meat','Questionable meat from a giant rat. It can still be cooked.'], ratTail:['Rat Tail','Rare combat drop','A long tail prized by unusual collectors.'],
+    rawVenison:['Raw Venison','Raw meat','Lean meat from a deer.'], animalHide:['Animal Hide','Combat material','A basic hide useful for future leather crafting.'], antler:['Antler','Rare combat drop','A well-shaped deer antler.'],
+    rawPork:['Raw Pork','Raw meat','A thick cut from a wild boar.'], boarTusk:['Boar Tusk','Rare combat drop','A heavy curved tusk.'],
+    wolfMeat:['Wolf Meat','Raw meat','Tough meat from a wolf.'], wolfFang:['Wolf Fang','Rare combat drop','A sharp wolf fang.'],
+    clothScrap:['Cloth Scrap','Combat material','Rough cloth taken from a bandit.'], banditDagger:['Bandit Dagger','Weapon','A quick dagger taken from a bandit.',{slot:'weapon',stats:{'Attack speed':'3 ticks · 1.8 seconds','Accuracy':'+9','Strength':'+5'}}],
+    bones:['Bones','Combat material','Ordinary bones.'], ancientBone:['Ancient Bone','Rare combat drop','A bone darkened by age and strange energy.'],
+    spiritResidue:['Spirit Residue','Combat material','Cold residue left behind by a wraith.'], wraithCloth:['Wraith Cloth','Rare combat drop','A nearly weightless strip of spectral cloth.'],
+    scorpionMeat:['Scorpion Meat','Raw meat','Edible once carefully cooked.'], venomGland:['Venom Gland','Rare combat drop','A gland containing potent venom.'],
+    serpentMeat:['Serpent Meat','Raw meat','A long cut of desert serpent meat.'], serpentScale:['Serpent Scale','Combat material','A durable scale from a large serpent.'], sandFang:['Sand Fang','Rare combat drop','A fang polished by desert sand.'],
+    golemCore:['Golem Core','Rare combat drop','The compact core that animated a sand golem.'], slimeGel:['Slime Gel','Combat material','Sticky gel from a bog slime.'], clearGel:['Clear Gel','Rare combat drop','An unusually pure glob of slime gel.'],
+    crocodileMeat:['Crocodile Meat','Raw meat','Dense meat from a swamp crocodile.'], crocodileHide:['Crocodile Hide','Combat material','Thick scaled hide.'], crocodileTooth:['Crocodile Tooth','Rare combat drop','A large crocodile tooth.'],
+    murkyHide:['Murky Hide','Combat material','Dark hide from a marsh lurker.'], lurkerEye:['Lurker Eye','Rare combat drop','The unsettling eye of a marsh lurker.'],
+    spiderSilk:['Spider Silk','Combat material','Strong silk from a jungle spider.'], venomSac:['Venom Sac','Rare combat drop','A full venom sac.'],
+    snakeMeat:['Snake Meat','Raw meat','Fresh jungle snake meat.'], venomFang:['Venom Fang','Rare combat drop','A venom-coated jungle fang.'],
+    jaguarMeat:['Jaguar Meat','Raw meat','Rich meat from a jungle jaguar.'], jaguarHide:['Jaguar Hide','Combat material','A patterned hide.'], jaguarClaw:['Jaguar Claw','Rare combat drop','A razor-sharp claw.'],
+    gorillaMeat:['Gorilla Meat','Raw meat','A large heavy cut of meat.'], gorillaKnuckle:['Gorilla Knuckle','Rare combat drop','A massive knuckle bone.'],
+    frozenMeat:['Frozen Meat','Raw meat','Meat preserved by the northern cold.'], frozenHide:['Frozen Hide','Combat material','A hide hardened by ice.'], iceFang:['Ice Fang','Rare combat drop','A fang that remains freezing cold.'],
+    trollClub:['Troll Club','Weapon','A huge crude club dropped by a frost troll.',{slot:'weapon',stats:{'Attack speed':'6 ticks · 3.6 seconds','Accuracy':'+18','Strength':'+20'}}],
+    dragonMeat:['Dragon Meat','Raw meat','Extremely valuable meat from a frost dragon.'], frostScale:['Frost Scale','Rare combat drop','A pale scale carrying deep frost magic.'], frozenHeart:['Frozen Heart','Rare combat drop','The impossibly cold heart of a frost dragon.']
+  };
+  for(const [key,data] of Object.entries(COMBAT_ITEM_DEFS)){
+    const [name,type,description,extra={}] = data; defineItem(key,{name,type,description,...extra});
+  }
+  for(const [raw,d] of Object.entries(COOKING_DATA)) defineItem(d.cooked,{name:d.name,type:'Cooked food',description:`A properly cooked ${d.name.replace('Cooked ','').toLowerCase()}.`,slot:'food',heal:d.heal,stats:{'Cooking level':String(d.level),'Healing':`${d.heal} HP`}});
 
   const TOWN_NPCS = {
     'Starting Town':[['Mira','A cheerful guide who keeps an eye on new wanderers.'],['Old Fen','A retired woodcutter with too many stories.']],
@@ -198,6 +237,44 @@
     farming: { name: 'Farming', description: 'Grow crops in your player-owned home and return later to harvest them.' },
     ranching: { name: 'Ranching', description: 'Raise animals by providing food, then collect products or sell livestock.' }
   };
+
+
+  const ENEMY_TYPES = {
+    rabbit:{name:'Rabbit',behaviour:'passive',shape:'rabbit',hp:8,defence:1,accuracy:3,maxHit:1,ticks:5,color:'#d9cfb8',respawn:20,drops:[['rawRabbit',1,1,1],['rabbitFoot',1,1,.0125]]},
+    giantRat:{name:'Giant Rat',behaviour:'passive',shape:'rat',hp:14,defence:3,accuracy:6,maxHit:2,ticks:4,color:'#746d68',respawn:24,drops:[['ratMeat',1,1,1],['ratTail',1,1,.025]]},
+    deer:{name:'Deer',behaviour:'passive',shape:'deer',hp:24,defence:7,accuracy:9,maxHit:3,ticks:5,color:'#a6774e',respawn:32,drops:[['rawVenison',1,2,1],['animalHide',1,1,.55],['antler',1,1,.0167]]},
+    wildBoar:{name:'Wild Boar',behaviour:'aggressive',shape:'boar',hp:30,defence:9,accuracy:12,maxHit:5,ticks:4,color:'#74523c',aggro:190,respawn:38,drops:[['rawPork',1,2,1],['animalHide',1,1,.45],['boarTusk',1,1,.02]]},
+    wolf:{name:'Wolf',behaviour:'aggressive',shape:'wolf',hp:40,defence:12,accuracy:15,maxHit:6,ticks:3,color:'#66717b',aggro:230,respawn:45,drops:[['wolfMeat',1,2,1],['animalHide',1,1,.5],['wolfFang',1,1,.0154]]},
+    bandit:{name:'Bandit',behaviour:'aggressive',shape:'humanoid',hp:48,defence:14,accuracy:18,maxHit:7,ticks:4,color:'#8d6548',aggro:220,respawn:55,drops:[['coins',8,24,1],['clothScrap',1,2,.7],['banditDagger',1,1,.01]]},
+    skeleton:{name:'Skeleton',behaviour:'aggressive',shape:'skeleton',hp:55,defence:17,accuracy:20,maxHit:8,ticks:4,color:'#ded9c8',aggro:220,respawn:60,drops:[['bones',1,2,1],['coins',10,30,.7],['ancientBone',1,1,.0133]]},
+    wraith:{name:'Wraith',behaviour:'aggressive',shape:'wraith',hp:85,defence:25,accuracy:29,maxHit:11,ticks:5,color:'#8c85ad',aggro:250,respawn:150,drops:[['spiritResidue',1,2,1],['wraithCloth',1,1,.01]]},
+    scorpion:{name:'Scorpion',behaviour:'aggressive',shape:'scorpion',hp:36,defence:10,accuracy:16,maxHit:6,ticks:3,color:'#b4773f',aggro:190,respawn:42,drops:[['scorpionMeat',1,1,1],['venomGland',1,1,.0167]]},
+    sandSerpent:{name:'Sand Serpent',behaviour:'aggressive',shape:'serpent',hp:62,defence:19,accuracy:24,maxHit:9,ticks:4,color:'#b89b58',aggro:230,respawn:70,drops:[['serpentMeat',1,2,1],['serpentScale',1,2,.5],['sandFang',1,1,.0118]]},
+    sandGolem:{name:'Sand Golem',behaviour:'aggressive',shape:'golem',hp:110,defence:34,accuracy:30,maxHit:13,ticks:6,color:'#c4a66d',aggro:200,respawn:180,drops:[['stone',2,5,1],['goldOre',1,2,.3],['golemCore',1,1,.01]]},
+    bogSlime:{name:'Bog Slime',behaviour:'passive',shape:'slime',hp:32,defence:8,accuracy:10,maxHit:4,ticks:5,color:'#739d75',respawn:38,drops:[['slimeGel',1,3,1],['clearGel',1,1,.02]]},
+    crocodile:{name:'Crocodile',behaviour:'aggressive',shape:'crocodile',hp:78,defence:24,accuracy:28,maxHit:11,ticks:4,color:'#526f47',aggro:240,respawn:85,drops:[['crocodileMeat',1,2,1],['crocodileHide',1,1,.65],['crocodileTooth',1,1,.0143]]},
+    marshLurker:{name:'Marsh Lurker',behaviour:'aggressive',shape:'lurker',hp:120,defence:37,accuracy:38,maxHit:15,ticks:5,color:'#47675c',aggro:260,respawn:210,drops:[['murkyHide',1,2,1],['lurkerEye',1,1,.01]]},
+    jungleSpider:{name:'Jungle Spider',behaviour:'aggressive',shape:'spider',hp:50,defence:15,accuracy:23,maxHit:8,ticks:3,color:'#563d4a',aggro:210,respawn:55,drops:[['spiderSilk',1,2,1],['venomSac',1,1,.0182]]},
+    venomSnake:{name:'Venom Snake',behaviour:'aggressive',shape:'serpent',hp:65,defence:21,accuracy:29,maxHit:10,ticks:3,color:'#4e8b52',aggro:230,respawn:75,drops:[['snakeMeat',1,2,1],['serpentScale',1,1,.55],['venomFang',1,1,.0133]]},
+    jaguar:{name:'Jaguar',behaviour:'aggressive',shape:'cat',hp:100,defence:31,accuracy:39,maxHit:14,ticks:3,color:'#c39a45',aggro:270,respawn:130,drops:[['jaguarMeat',1,2,1],['jaguarHide',1,1,.7],['jaguarClaw',1,1,.0111]]},
+    gorilla:{name:'Gorilla',behaviour:'aggressive',shape:'gorilla',hp:150,defence:43,accuracy:42,maxHit:18,ticks:5,color:'#4e4b47',aggro:240,respawn:240,drops:[['gorillaMeat',1,2,1],['mahoganyLog',1,2,.35],['gorillaKnuckle',1,1,.01]]},
+    iceWolf:{name:'Ice Wolf',behaviour:'aggressive',shape:'wolf',hp:115,defence:36,accuracy:43,maxHit:16,ticks:3,color:'#a8c4cc',aggro:280,respawn:145,drops:[['frozenMeat',1,2,1],['frozenHide',1,1,.65],['iceFang',1,1,.0125]]},
+    frostTroll:{name:'Frost Troll',behaviour:'aggressive',shape:'troll',hp:200,defence:55,accuracy:50,maxHit:23,ticks:6,color:'#78939b',aggro:250,respawn:300,drops:[['frozenMeat',2,3,1],['goldOre',1,3,.45],['trollClub',1,1,.01]]},
+    frostDragon:{name:'Frost Dragon',behaviour:'aggressive',shape:'dragon',hp:650,defence:105,accuracy:85,maxHit:42,ticks:5,color:'#8fc5d4',aggro:340,respawn:600,drops:[['dragonMeat',2,4,1],['crystal',1,3,.5],['frostScale',1,1,.025],['frozenHeart',1,1,.01]]}
+  };
+  const enemySeeds=[
+    ['rabbit',1580,2450],['rabbit',1940,2320],['rabbit',2240,2070],
+    ['giantRat',1360,2380],['giantRat',2520,2280],['deer',2650,1920],['deer',2910,2450],
+    ['wildBoar',2380,2620],['wolf',3150,2350],['wolf',2900,2740],['bandit',850,2360],
+    ['skeleton',1200,2920],['skeleton',2020,3150],['wraith',620,3000],
+    ['scorpion',470,1770],['scorpion',700,2200],['sandSerpent',330,2450],['sandGolem',330,1520],
+    ['bogSlime',1250,720],['bogSlime',2050,870],['crocodile',2370,720],['crocodile',770,600],['marshLurker',2750,510],
+    ['jungleSpider',1180,3650],['jungleSpider',2270,3540],['venomSnake',950,3910],['jaguar',2670,3790],['gorilla',2250,4050],
+    ['iceWolf',1120,1040],['iceWolf',2580,1120],['frostTroll',2850,850],['frostDragon',2750,360]
+  ];
+  function makeEnemies(saved={}){
+    return enemySeeds.map(([type,x,y],index)=>{const id=`enemy-${type}-${index}`,d=ENEMY_TYPES[type],old=saved[id]||{};return {id,type,x:old.x??x,y:old.y??y,homeX:x,homeY:y,hp:Math.min(old.hp??d.hp,d.hp),maxHp:d.hp,respawnAt:old.respawnAt||0,target:null,returning:false,attackElapsed:0,wanderElapsed:Math.random()*3,wanderX:x,wanderY:y};});
+  }
 
   // One continuous continent. Biomes overlap the base land so there are no black seams.
   const continent = [[680,210],[1450,100],[2250,180],[2920,430],[3240,900],[3160,1420],[3520,1880],[3430,2550],[3090,2920],[3020,3500],[2630,4070],[1840,4210],[1080,4060],[650,3610],[520,3020],[190,2470],[260,1700],[470,1250],[390,740]];
@@ -293,17 +370,19 @@
     player: { x: 1780, y: 2340, targetX: 1780, targetY: 2340 },
     inventory: { ...defaultInventory(), stoneAxe: 1, stonePickaxe: 1, basicFishingRod: 1, coins: 100 },
     skills: Object.fromEntries(Object.keys(SKILL_DEFS).map(k => [k, { xp: 0 }])),
-    equipment: { head: null, body: null, legs: null, boots: null, weapon: null, shield: null, cape: null, ring: null },
-    treeState: {}, fishingState: {}, rockState: {}, poh: {}, quests: {}, shopDay: '', lastSavedAt: Date.now()
+    equipment: { head: null, body: null, legs: null, boots: null, weapon: null, shield: null, cape: null, ring: null, food: null },
+    treeState: {}, fishingState: {}, rockState: {}, enemyState: {}, combat: { hp: 10 }, poh: {}, quests: {}, shopDay: '', lastSavedAt: Date.now()
   });
 
   const camera = { x: 0, y: 0 };
   let state = loadState();
+  if((state.skills.fortitude?.xp||0)<xpForLevel(10)) state.skills.fortitude={xp:xpForLevel(10)};
   let trees = makeTrees(state.treeState);
   let fishingSpots = makeFishingSpots(state.fishingState);
   let rocks = makeRocks(state.rockState);
+  let enemies = makeEnemies(state.enemyState);
   let lastFrame = performance.now(), toastTimer = null, selectedItemKey = null;
-  let activeTree = null, queuedTree = null, activeFishingSpot = null, queuedFishingSpot = null, activeRock = null, queuedRock = null, queuedTown = null, actionElapsed = 0;
+  let activeTree = null, queuedTree = null, activeFishingSpot = null, queuedFishingSpot = null, activeRock = null, queuedRock = null, queuedTown = null, activeEnemy = null, queuedEnemy = null, combatElapsed = 0, actionElapsed = 0;
   let animationClock = 0;
   const floaters = [];
   const miniMapView = { zoom: 1.8, centerX: state.player.x, centerY: state.player.y, dragging: false, lastX: 0, lastY: 0, lastDraw: 0 };
@@ -344,7 +423,8 @@
         if (!fresh.inventory[starter] || fresh.inventory[starter] < 1) fresh.inventory[starter] = 1;
       }
       for(const key of Object.keys(SKILL_DEFS)) if(old.skills?.[key]) fresh.skills[key]=old.skills[key];
-      fresh.equipment={...fresh.equipment,...(old.equipment||{})}; fresh.treeState=old.treeState||{}; fresh.fishingState=old.fishingState||{}; fresh.rockState=old.rockState||{}; fresh.poh=old.poh||{}; fresh.quests=old.quests||{};
+      if(!old.skills?.fortitude || (old.skills.fortitude.xp||0)<xpForLevel(10)) fresh.skills.fortitude={xp:xpForLevel(10)};
+      fresh.equipment={...fresh.equipment,...(old.equipment||{})}; fresh.treeState=old.treeState||{}; fresh.fishingState=old.fishingState||{}; fresh.rockState=old.rockState||{}; fresh.enemyState=old.enemyState||{}; fresh.combat={...fresh.combat,...(old.combat||{})}; fresh.poh=old.poh||{}; fresh.quests=old.quests||{};
       if(old.player && isWalkable(old.player.x,old.player.y)) fresh.player={...fresh.player,x:old.player.x,y:old.player.y,targetX:old.player.x,targetY:old.player.y};
       if(old.version && old.version !== VERSION){
         for(const [id,node] of Object.entries(fresh.treeState||{})){const type=id.replace(/-\d+$/,'');const def=TREE_TYPES[type];if(def&&node.remaining>0){node.remaining=Math.max(node.remaining,def.capacity[0]);node.max=Math.max(node.max||0,def.capacity[1]);}}
@@ -359,6 +439,7 @@
     state.treeState=Object.fromEntries(trees.map(t=>[t.id,{remaining:t.remaining,respawnAt:t.respawnAt,max:t.max}]));
     state.fishingState=Object.fromEntries(fishingSpots.map(f=>[f.id,{remaining:f.remaining,respawnAt:f.respawnAt}]));
     state.rockState=Object.fromEntries(rocks.map(r=>[r.id,{hp:r.hp,respawnAt:r.respawnAt}]));
+    state.enemyState=Object.fromEntries(enemies.map(e=>[e.id,{x:e.x,y:e.y,hp:e.hp,respawnAt:e.respawnAt}]));
     state.lastSavedAt=Date.now(); state.version=VERSION; localStorage.setItem(SAVE_KEY,JSON.stringify(state)); if(show)showToast('Game saved');
   }
   function showToast(message){ ui.toast.textContent=message;ui.toast.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>ui.toast.classList.remove('show'),1800); }
@@ -369,9 +450,54 @@
   function treeAt(x,y){ let best=null,bestD=44; for(const t of trees){if(t.remaining<=0)continue;const d=Math.hypot(x-t.x,y-t.y);if(d<bestD){best=t;bestD=d;}} return best; }
   function rockAt(x,y){ let best=null,bestD=48; for(const r of rocks){if(r.hp<=0)continue;const d=Math.hypot(x-r.x,y-r.y);if(d<bestD){best=r;bestD=d;}} return best; }
   function fishingSpotAt(x,y){ let best=null,bestD=52; for(const f of fishingSpots){if(f.remaining<=0)continue;const d=Math.hypot(x-f.x,y-f.y);if(d<bestD){best=f;bestD=d;}} return best; }
+
+  function maxPlayerHp(){return 10+Math.max(0,levelFromXp(state.skills.fortitude?.xp||0)-10)*2;}
+  function weaponData(){
+    const key=state.equipment.weapon,item=ITEM_DEFS[key];
+    if(!item)return {key:null,style:'melee',ticks:4,accuracy:0,strength:0,range:58};
+    const stats=item.stats||{},speed=parseFloat(String(stats['Attack speed']||'4'))||4;
+    const ranged=item.type==='Ranged weapon';
+    const accuracy=parseInt(String(stats[ranged?'Ranged accuracy':'Accuracy']||'0').replace(/[^-\d]/g,''))||0;
+    const strength=parseInt(String(stats[ranged?'Ranged strength':'Strength']||'0').replace(/[^-\d]/g,''))||0;
+    return {key,style:ranged?'range':'melee',ticks:speed,accuracy,strength,range:ranged?260:58};
+  }
+  function armourDefence(){return Object.values(state.equipment).reduce((sum,key)=>sum+(parseInt(String(ITEM_DEFS[key]?.stats?.Defence||'0').replace(/[^-\d]/g,''))||0),0);}
+  function playerCombatStats(){const w=weaponData(),skill=w.style==='range'?'range':'melee',level=levelFromXp(state.skills[skill]?.xp||0);return {style:w.style,level,ticks:w.ticks,range:w.range,accuracy:level*2+w.accuracy+5,maxHit:Math.max(1,Math.floor(level/8)+w.strength),defence:levelFromXp(state.skills.fortitude?.xp||0)+armourDefence()};}
+  function hitChance(attack,defence){return clamp(attack/(attack+defence*1.35+8),.05,.95);}
+  function enemyAt(x,y){let best=null,bestD=48;for(const e of enemies){if(e.hp<=0)continue;const d=Math.hypot(x-e.x,y-e.y);if(d<bestD){best=e;bestD=d;}}return best;}
+  function beginCombat(enemy){activeEnemy=enemy;queuedEnemy=null;combatElapsed=0;enemy.target='player';enemy.returning=false;ui.actionName.textContent=`Fighting ${ENEMY_TYPES[enemy.type].name}`;ui.status.textContent=`Fighting ${ENEMY_TYPES[enemy.type].name}...`;}
+  function endCombat(message='Exploring'){if(activeEnemy)activeEnemy.target=null;activeEnemy=null;queuedEnemy=null;combatElapsed=0;ui.actionProgress.style.width='0%';ui.actionName.textContent=message;renderCombatHud();}
+  function damageFloater(x,y,amount,hit=true){floaters.push({x,y,text:hit?String(amount):'0',life:1.1,damage:true,miss:!hit});}
+  function rollEnemyDrops(enemy){
+    const d=ENEMY_TYPES[enemy.type],received=[];
+    for(const [key,min,max,chance] of d.drops||[]){
+      if(Math.random()>chance)continue;const amount=randomInt(min,max);state.inventory[key]=(state.inventory[key]||0)+amount;received.push(`${ITEM_DEFS[key]?.name||key}${amount>1?` ×${amount}`:''}`);
+    }
+    renderInventory();
+    if(received.length)floaters.push({x:enemy.x,y:enemy.y-72,text:received.slice(0,2).join(' · '),life:2});
+    return received;
+  }
+  function killEnemy(enemy){const name=ENEMY_TYPES[enemy.type].name,drops=rollEnemyDrops(enemy);enemy.hp=0;enemy.respawnAt=Date.now()+ENEMY_TYPES[enemy.type].respawn*1000;enemy.target=null;showToast(`${name} defeated${drops.length?` · ${drops.join(', ')}`:''}`);endCombat('Victory');saveGame(false);}
+  function playerAttack(enemy){
+    const ps=playerCombatStats(),ed=ENEMY_TYPES[enemy.type],hit=Math.random()<hitChance(ps.accuracy,ed.defence);
+    if(!hit){damageFloater(enemy.x,enemy.y-55,0,false);return;}
+    const dmg=randomInt(1,ps.maxHit);enemy.hp=Math.max(0,enemy.hp-dmg);damageFloater(enemy.x,enemy.y-55,dmg,true);
+    const skill=ps.style==='range'?'range':'melee';state.skills[skill].xp=(state.skills[skill].xp||0)+dmg*4;state.skills.fortitude.xp=(state.skills.fortitude.xp||0)+dmg*2;renderSkills();
+    if(enemy.hp<=0)killEnemy(enemy);
+  }
+  function enemyAttack(enemy){
+    const d=ENEMY_TYPES[enemy.type],ps=playerCombatStats(),hit=Math.random()<hitChance(d.accuracy,ps.defence);
+    if(!hit){damageFloater(state.player.x,state.player.y-58,0,false);return;}
+    const dmg=randomInt(1,d.maxHit);state.combat.hp=Math.max(0,state.combat.hp-dmg);damageFloater(state.player.x,state.player.y-58,dmg,true);renderCombatHud();
+    if(state.combat.hp<=0){state.combat.hp=maxPlayerHp();state.player.x=1780;state.player.y=2340;state.player.targetX=1780;state.player.targetY=2340;showToast('You were defeated and returned home');endCombat('Recovering');}
+  }
+  function eatFood(){const key=state.equipment.food,item=ITEM_DEFS[key];if(!key||!item?.heal||(state.inventory[key]||0)<1)return;const max=maxPlayerHp();if(state.combat.hp>=max)return showToast('Already at full health');state.inventory[key]--;state.combat.hp=Math.min(max,state.combat.hp+item.heal);if(state.inventory[key]<=0)state.equipment.food=null;showToast(`Ate ${item.name} · +${item.heal} HP`);renderInventory();renderEquipment();renderCombatHud();saveGame(false);}
+  function renderCombatHud(){const max=maxPlayerHp();state.combat.hp=clamp(state.combat.hp||max,0,max);if(ui.combatHp){ui.combatHp.textContent=`${state.combat.hp}/${max}`;ui.combatHpFill.style.width=`${state.combat.hp/max*100}%`;}const key=state.equipment.food,count=key?(state.inventory[key]||0):0;if(ui.eatButton){ui.eatButton.hidden=!key||count<1;ui.eatButton.textContent=key?`Eat ${ITEM_DEFS[key].name.replace('Cooked ','')}`:'Eat';ui.eatCount.textContent=count;}}
+
   function handlePointer(event){
     event.preventDefault(); const rect=canvas.getBoundingClientRect(); const sx=(event.clientX-rect.left)*canvas.width/rect.width, sy=(event.clientY-rect.top)*canvas.height/rect.height; const p=screenToWorld(sx,sy);
-    const town=townAt(p.x,p.y), tree=treeAt(p.x,p.y), rock=rockAt(p.x,p.y), fishingSpot=fishingSpotAt(p.x,p.y); stopAction(false);
+    const town=townAt(p.x,p.y), tree=treeAt(p.x,p.y), rock=rockAt(p.x,p.y), fishingSpot=fishingSpotAt(p.x,p.y), enemy=enemyAt(p.x,p.y); stopAction(false);
+    if(enemy){const d=ENEMY_TYPES[enemy.type],ps=playerCombatStats();queuedEnemy=enemy;queuedTree=queuedRock=queuedFishingSpot=queuedTown=null;const dist=Math.hypot(state.player.x-enemy.x,state.player.y-enemy.y);showToast(`${d.name} · ${enemy.hp}/${enemy.maxHp} HP · ${d.behaviour}`);if(dist<=ps.range){beginCombat(enemy);state.player.targetX=state.player.x;state.player.targetY=state.player.y;}else{const dx=state.player.x-enemy.x,dy=state.player.y-enemy.y,len=Math.hypot(dx,dy)||1;state.player.targetX=enemy.x+dx/len*(ps.range-8);state.player.targetY=enemy.y+dy/len*(ps.range-8);ui.actionName.textContent=`Approaching ${d.name}`;}return;}
     if(town){
       queuedTown=town; queuedTree=null; queuedFishingSpot=null; queuedRock=null; const dx=state.player.x-town.x,dy=state.player.y-town.y,d=Math.hypot(dx,dy)||1;
       state.player.targetX=town.x+dx/d*82;state.player.targetY=town.y+dy/d*82;ui.status.textContent=`Walking to ${town.name}...`;ui.actionName.textContent='Walking';showToast(town.name);return;
@@ -404,7 +530,7 @@
     queuedTree=null;queuedFishingSpot=null;queuedRock=null;queuedTown=null;state.player.targetX=p.x;state.player.targetY=p.y;ui.status.textContent='Walking...';ui.actionName.textContent='Exploring';
   }
 
-  function stopAction(stopMovement=true){ activeTree=null;queuedTree=null;activeFishingSpot=null;queuedFishingSpot=null;activeRock=null;queuedRock=null;queuedTown=null;actionElapsed=0;ui.actionProgress.style.width='0%';if(stopMovement){state.player.targetX=state.player.x;state.player.targetY=state.player.y;}ui.actionName.textContent='Exploring'; }
+  function stopAction(stopMovement=true){ if(activeEnemy)activeEnemy.target=null;activeEnemy=null;queuedEnemy=null; activeTree=null;queuedTree=null;activeFishingSpot=null;queuedFishingSpot=null;activeRock=null;queuedRock=null;queuedTown=null;actionElapsed=0;ui.actionProgress.style.width='0%';if(stopMovement){state.player.targetX=state.player.x;state.player.targetY=state.player.y;}ui.actionName.textContent='Exploring'; }
   function beginChopping(tree){ activeTree=tree;queuedTree=null;actionElapsed=0;const def=TREE_TYPES[tree.type], tool=ITEM_DEFS[bestOwnedTool('axe')];ui.actionName.textContent=`Chopping ${def.name}`;ui.status.textContent=`Chopping ${def.name} tree with ${tool?.name || 'an axe'}...`; }
   function beginMining(rock){ activeRock=rock;queuedRock=null;actionElapsed=0;const def=ROCK_TYPES[rock.type],tool=ITEM_DEFS[bestOwnedTool('pickaxe')];ui.actionName.textContent=`Mining ${def.name}`;ui.status.textContent=`Mining ${def.name} with ${tool?.name || 'a pickaxe'}...`; }
   function beginFishing(spot){ activeFishingSpot=spot;queuedFishingSpot=null;actionElapsed=0;const def=FISH_TYPES[spot.type],tool=ITEM_DEFS[bestOwnedTool('fishingRod')];ui.actionName.textContent=`Fishing ${def.name}`;ui.status.textContent=`Fishing for ${def.name} with ${tool?.name || 'a fishing rod'}...`; }
@@ -430,10 +556,13 @@
     animationClock+=dt; const now=Date.now(); for(const t of trees){if(t.remaining<=0&&t.respawnAt&&now>=t.respawnAt){const def=TREE_TYPES[t.type];t.max=randomInt(def.capacity[0],def.capacity[1]);t.remaining=t.max;t.respawnAt=0;}}
     for(const r of rocks){if(r.hp<=0&&r.respawnAt&&now>=r.respawnAt){r.hp=r.maxHp;r.respawnAt=0;}}
     for(const f of fishingSpots){if(f.remaining<=0&&f.respawnAt&&now>=f.respawnAt){f.remaining=randomInt(12,20);f.respawnAt=0;}}
+    for(const e of enemies){const d=ENEMY_TYPES[e.type];if(e.hp<=0){if(e.respawnAt&&now>=e.respawnAt){e.hp=e.maxHp;e.respawnAt=0;e.x=e.homeX;e.y=e.homeY;}continue;}e.wanderElapsed-=dt;if(!e.target&&d.behaviour==='aggressive'&&Math.hypot(e.x-state.player.x,e.y-state.player.y)<d.aggro&&regionAt(e.x,e.y).id===regionAt(state.player.x,state.player.y).id){e.target='player';activeEnemy=e;ui.actionName.textContent=`Attacked by ${d.name}`;}if(e.target==='player'){const dd=Math.hypot(state.player.x-e.x,state.player.y-e.y);if(regionAt(e.x,e.y).id!==regionAt(e.homeX,e.homeY).id||Math.hypot(e.x-e.homeX,e.y-e.homeY)>520){e.target=null;e.returning=true;}else if(dd>52){const step=Math.min(dd-48,135*dt);e.x+=(state.player.x-e.x)/dd*step;e.y+=(state.player.y-e.y)/dd*step;}e.attackElapsed+=dt;if(dd<=62&&e.attackElapsed>=d.ticks*TICK_SECONDS){e.attackElapsed=0;enemyAttack(e);}}else if(e.returning){const dd=Math.hypot(e.homeX-e.x,e.homeY-e.y);if(dd<5){e.x=e.homeX;e.y=e.homeY;e.returning=false;}else{const step=Math.min(dd,120*dt);e.x+=(e.homeX-e.x)/dd*step;e.y+=(e.homeY-e.y)/dd*step;}}else if(e.wanderElapsed<=0){e.wanderElapsed=randomInt(2,5);const a=Math.random()*Math.PI*2,r=Math.random()*70;e.wanderX=e.homeX+Math.cos(a)*r;e.wanderY=e.homeY+Math.sin(a)*r;}else{const dd=Math.hypot(e.wanderX-e.x,e.wanderY-e.y);if(dd>3){const step=Math.min(dd,45*dt);e.x+=(e.wanderX-e.x)/dd*step;e.y+=(e.wanderY-e.y)/dd*step;}}}
     const p=state.player,dx=p.targetX-p.x,dy=p.targetY-p.y,dist=Math.hypot(dx,dy);
     if(dist>2){const move=Math.min(dist,190*dt),nx=p.x+dx/dist*move,ny=p.y+dy/dist*move;if(isWalkable(nx,ny)){p.x=nx;p.y=ny;}else{p.targetX=p.x;p.targetY=p.y;queuedTree=null;queuedFishingSpot=null;queuedRock=null;queuedTown=null;showToast('That route is blocked');}}
-    else {p.x=p.targetX;p.y=p.targetY;if(queuedTown && Math.hypot(p.x-queuedTown.x,p.y-queuedTown.y)<105){const town=queuedTown;queuedTown=null;openTown(town);}else if(queuedRock && queuedRock.hp>0 && Math.hypot(p.x-queuedRock.x,p.y-queuedRock.y)<90)beginMining(queuedRock);else if(queuedFishingSpot && queuedFishingSpot.remaining>0 && Math.hypot(p.x-queuedFishingSpot.standX,p.y-queuedFishingSpot.standY)<20)beginFishing(queuedFishingSpot);else if(queuedTree && queuedTree.remaining>0 && Math.hypot(p.x-queuedTree.x,p.y-queuedTree.y)<78)beginChopping(queuedTree);else if(!activeTree&&!activeFishingSpot&&!activeRock){ui.status.textContent='Tap the ground, a tree, a rock, a fishing spot, or a town.';ui.actionName.textContent='Exploring';}}
-    if(activeTree){
+    else {p.x=p.targetX;p.y=p.targetY;if(queuedEnemy && queuedEnemy.hp>0 && Math.hypot(p.x-queuedEnemy.x,p.y-queuedEnemy.y)<=playerCombatStats().range+12){beginCombat(queuedEnemy);}else if(queuedTown && Math.hypot(p.x-queuedTown.x,p.y-queuedTown.y)<105){const town=queuedTown;queuedTown=null;openTown(town);}else if(queuedRock && queuedRock.hp>0 && Math.hypot(p.x-queuedRock.x,p.y-queuedRock.y)<90)beginMining(queuedRock);else if(queuedFishingSpot && queuedFishingSpot.remaining>0 && Math.hypot(p.x-queuedFishingSpot.standX,p.y-queuedFishingSpot.standY)<20)beginFishing(queuedFishingSpot);else if(queuedTree && queuedTree.remaining>0 && Math.hypot(p.x-queuedTree.x,p.y-queuedTree.y)<78)beginChopping(queuedTree);else if(!activeTree&&!activeFishingSpot&&!activeRock&&!activeEnemy){ui.status.textContent='Tap the ground, a resource, a creature, or a town.';ui.actionName.textContent='Exploring';}}
+    if(activeEnemy){
+      const ps=playerCombatStats(),dist=Math.hypot(p.x-activeEnemy.x,p.y-activeEnemy.y);if(activeEnemy.hp<=0)endCombat('Victory');else if(dist>ps.range+25){queuedEnemy=activeEnemy;activeEnemy=null;}else{combatElapsed+=dt;ui.actionProgress.style.width=`${Math.min(100,combatElapsed/(ps.ticks*TICK_SECONDS)*100)}%`;if(combatElapsed>=ps.ticks*TICK_SECONDS){combatElapsed=0;playerAttack(activeEnemy);}}
+    } else if(activeTree){
       if(activeTree.remaining<=0 || Math.hypot(p.x-activeTree.x,p.y-activeTree.y)>85)stopAction(false);
       else {const def=TREE_TYPES[activeTree.type],duration=gatheringDuration(def,'axe');actionElapsed+=dt;ui.actionProgress.style.width=`${Math.min(100,actionElapsed/duration*100)}%`;if(actionElapsed>=duration)awardLog(activeTree);}
     } else if(activeRock){
@@ -493,6 +622,25 @@
     else {ctx.strokeStyle='#795739';ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(0,2);ctx.lineTo(20,-15);ctx.stroke();ctx.fillStyle=color;ctx.fillRect(15,-21,11,10);}
     ctx.restore();
   }
+  function drawEnemy(e){
+    if(e.hp<=0)return;const d=ENEMY_TYPES[e.type],s=worldToScreen(e.x,e.y),bob=Math.sin(animationClock*3+e.homeX*.01)*1.5;
+    if(s.x<-90||s.y<-90||s.x>canvas.width+90||s.y>canvas.height+90)return;ctx.save();ctx.translate(s.x,s.y+bob);ctx.fillStyle='rgba(0,0,0,.2)';ctx.fillRect(-22,19,44,7);ctx.fillStyle=d.color;
+    const shape=d.shape;
+    if(shape==='rabbit'){ctx.fillRect(-11,-2,22,20);ctx.fillRect(-9,-21,6,20);ctx.fillRect(3,-21,6,20);}
+    else if(shape==='rat'){ctx.beginPath();ctx.ellipse(0,5,20,12,0,0,Math.PI*2);ctx.fill();ctx.strokeStyle='#ba8f92';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(-17,8);ctx.quadraticCurveTo(-31,13,-38,3);ctx.stroke();}
+    else if(shape==='deer'){ctx.fillRect(-14,-5,28,23);ctx.fillRect(-10,17,5,17);ctx.fillRect(6,17,5,17);ctx.fillRect(7,-19,15,17);ctx.strokeStyle='#6b4d32';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(17,-18);ctx.lineTo(22,-30);ctx.moveTo(17,-18);ctx.lineTo(11,-30);ctx.stroke();}
+    else if(shape==='serpent'){ctx.strokeStyle=d.color;ctx.lineWidth=10;ctx.beginPath();ctx.moveTo(-22,14);ctx.quadraticCurveTo(-8,-10,5,10);ctx.quadraticCurveTo(18,25,25,-5);ctx.stroke();ctx.fillStyle=d.color;ctx.fillRect(19,-14,15,13);}
+    else if(shape==='spider'){ctx.beginPath();ctx.arc(0,2,13,0,Math.PI*2);ctx.fill();ctx.lineWidth=4;ctx.strokeStyle=d.color;for(const side of [-1,1])for(let i=0;i<4;i++){ctx.beginPath();ctx.moveTo(side*7,-3+i*5);ctx.lineTo(side*(22+i*2),-12+i*10);ctx.stroke();}}
+    else if(shape==='slime'){ctx.beginPath();ctx.arc(0,8,20,Math.PI,0);ctx.lineTo(20,18);ctx.lineTo(-20,18);ctx.closePath();ctx.fill();}
+    else if(shape==='crocodile'){ctx.fillRect(-29,-4,48,18);ctx.fillRect(12,-9,25,14);ctx.beginPath();ctx.moveTo(-27,0);ctx.lineTo(-43,-10);ctx.lineTo(-32,11);ctx.fill();}
+    else if(shape==='humanoid'||shape==='skeleton'||shape==='wraith'||shape==='troll'){const big=shape==='troll'?1.35:1;ctx.fillRect(-9*big,-18*big,18*big,20*big);ctx.fillRect(-13*big,2,26*big,24*big);ctx.fillRect(-11*big,24,7*big,16*big);ctx.fillRect(4*big,24,7*big,16*big);if(shape==='wraith'){ctx.globalAlpha=.65;ctx.beginPath();ctx.moveTo(-13,23);ctx.lineTo(-20,42);ctx.lineTo(0,34);ctx.lineTo(20,42);ctx.lineTo(13,23);ctx.fill();ctx.globalAlpha=1;}}
+    else if(shape==='golem'||shape==='gorilla'||shape==='lurker'){const big=shape==='gorilla'?1.25:1.1;ctx.fillRect(-18*big,-18,36*big,34);ctx.fillRect(-29*big,-9,11*big,32);ctx.fillRect(18*big,-9,11*big,32);ctx.fillRect(-14*big,16,10*big,20);ctx.fillRect(4*big,16,10*big,20);}
+    else if(shape==='scorpion'){ctx.beginPath();ctx.ellipse(0,5,18,11,0,0,Math.PI*2);ctx.fill();ctx.strokeStyle=d.color;ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(-15,5);ctx.quadraticCurveTo(-34,-8,-22,-23);ctx.stroke();ctx.fillRect(15,-3,16,6);}
+    else if(shape==='dragon'){ctx.fillRect(-28,-8,48,27);ctx.fillRect(13,-20,28,20);ctx.beginPath();ctx.moveTo(-16,-4);ctx.lineTo(-42,-30);ctx.lineTo(-38,2);ctx.moveTo(2,-4);ctx.lineTo(31,-36);ctx.lineTo(23,4);ctx.fill();ctx.beginPath();ctx.moveTo(-27,0);ctx.lineTo(-48,-15);ctx.lineTo(-39,12);ctx.fill();}
+    else {ctx.fillRect(-18,-5,36,20);ctx.fillRect(8,-16,20,17);ctx.beginPath();ctx.moveTo(-18,-1);ctx.lineTo(-29,-13);ctx.lineTo(-24,5);ctx.closePath();ctx.fill();}
+    ctx.fillStyle='#20242a';ctx.fillRect(8,-5,3,3);ctx.restore();const ratio=e.hp/e.maxHp;ctx.fillStyle='rgba(8,10,13,.8)';ctx.fillRect(s.x-26,s.y-43,52,6);ctx.fillStyle=ratio>.5?'#67c77b':ratio>.25?'#d9b653':'#cc6268';ctx.fillRect(s.x-26,s.y-43,52*ratio,6);if(activeEnemy===e){ctx.strokeStyle='#efcc61';ctx.lineWidth=2;ctx.strokeRect(s.x-32,s.y-50,64,82);}
+  }
+
   function drawPlayer(){
     const working=activeTree||activeFishingSpot||activeRock,bounce=working?Math.sin(animationClock*8)*2:0,s=worldToScreen(state.player.x,state.player.y+bounce);
     const eq=state.equipment,bodyColor=equipmentColor(eq.body),headColor=equipmentColor(eq.head),legsColor=equipmentColor(eq.legs),bootsColor=equipmentColor(eq.boots),shieldColor=equipmentColor(eq.shield);
@@ -508,7 +656,7 @@
     if(activeTree||activeRock){const swing=Math.sin(animationClock*8)*.65;ctx.save();ctx.translate(s.x+11,s.y+8);ctx.rotate(-.8+swing);ctx.strokeStyle=activeRock?'#7b8590':'#8a6540';ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(21,-15);ctx.stroke();ctx.restore();}else drawEquippedWeapon(s);
     if(activeFishingSpot){const fs=worldToScreen(activeFishingSpot.x,activeFishingSpot.y);ctx.strokeStyle='#dbc68b';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(s.x+12,s.y+8);ctx.quadraticCurveTo((s.x+fs.x)/2,s.y-28,fs.x,fs.y);ctx.stroke();ctx.fillStyle='#f1d267';ctx.fillRect(fs.x-2,fs.y-2,4,4);}
   }
-  function draw(){ctx.clearRect(0,0,canvas.width,canvas.height);ctx.fillStyle='#397f9f';ctx.fillRect(0,0,canvas.width,canvas.height);ctx.strokeStyle='rgba(210,240,248,.22)';ctx.lineWidth=3;for(let y=-30+(animationClock*12)%46;y<canvas.height+40;y+=46){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(canvas.width,y+10);ctx.stroke();}fillSmooth(continent,'#72ae61','#d5c68b',8);drawTileTexture(continent);for(const r of regions){fillSmooth(r.points,r.color);drawTileTexture(r.points);}for(const w of waters)drawWater(w);for(const f of fishingSpots)drawFishingSpot(f);for(const t of towns)drawTown(t);for(const t of trees)drawTree(t);for(const r of rocks)drawRock(r);drawPlayer();for(const f of floaters){const s=worldToScreen(f.x,f.y);ctx.globalAlpha=Math.min(1,f.life*1.4);ctx.fillStyle='#fff4b8';ctx.strokeStyle='rgba(20,20,20,.8)';ctx.lineWidth=4;ctx.font='bold 14px system-ui';ctx.textAlign='center';ctx.strokeText(f.text,s.x,s.y);ctx.fillText(f.text,s.x,s.y);ctx.textAlign='start';ctx.globalAlpha=1;}}
+  function draw(){ctx.clearRect(0,0,canvas.width,canvas.height);ctx.fillStyle='#397f9f';ctx.fillRect(0,0,canvas.width,canvas.height);ctx.strokeStyle='rgba(210,240,248,.22)';ctx.lineWidth=3;for(let y=-30+(animationClock*12)%46;y<canvas.height+40;y+=46){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(canvas.width,y+10);ctx.stroke();}fillSmooth(continent,'#72ae61','#d5c68b',8);drawTileTexture(continent);for(const r of regions){fillSmooth(r.points,r.color);drawTileTexture(r.points);}for(const w of waters)drawWater(w);for(const f of fishingSpots)drawFishingSpot(f);for(const t of towns)drawTown(t);for(const t of trees)drawTree(t);for(const r of rocks)drawRock(r);for(const e of enemies)drawEnemy(e);drawPlayer();for(const f of floaters){const s=worldToScreen(f.x,f.y);ctx.globalAlpha=Math.min(1,f.life*1.4);ctx.fillStyle=f.damage?(f.miss?'#d7dbe2':'#ff6b6b'):'#fff4b8';ctx.strokeStyle='rgba(20,20,20,.8)';ctx.lineWidth=4;ctx.font='bold 14px system-ui';ctx.textAlign='center';ctx.strokeText(f.text,s.x,s.y);ctx.fillText(f.text,s.x,s.y);ctx.textAlign='start';ctx.globalAlpha=1;}}
 
   function openPanel(name){document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active',t.dataset.panel===name));document.querySelectorAll('.panel').forEach(p=>p.classList.toggle('active',p.id===name));}
   function renderInventory(){const owned=Object.entries(state.inventory).filter(([k,q])=>q>0&&ITEM_DEFS[k]);ui.inventory.innerHTML=owned.length?`<div class="item-grid">${owned.map(([k,q])=>`<button class="item" data-item="${k}"><strong>${ITEM_DEFS[k].name}</strong><span>×${q}</span><small>${ITEM_DEFS[k].type}</small></button>`).join('')}</div>`:`<div class="empty-state"><strong>Your inventory is empty</strong><span>Gather logs, fish, or ore to fill it.</span></div>`;ui.inventory.querySelectorAll('[data-item]').forEach(b=>b.addEventListener('click',()=>showItem(b.dataset.item)));}
@@ -541,7 +689,7 @@
   function openCooking(town){
     const level=levelFromXp(state.skills.cooking?.xp||0),entries=cookingEntries();
     const cookingBanner=activeCooking?`<div class="cooking-status"><strong>Cooking ${ITEM_DEFS[activeCooking.raw].name.replace('Raw ','')}</strong><span><b data-cooking-left>${activeCooking.left}</b> remaining · <b data-cooking-done>${activeCooking.done}</b> cooked</span><div class="cook-progress active"><i data-cooking-progress></i></div></div>`:'';
-    openService('Cooking Fire',`${town.name} Cooking Fire`,`Cooking level ${level} · Fish take about half their catch time to cook.`,cookingBanner+(entries.length?entries.map(([raw,d])=>{const ok=level>=d.level,busy=!!activeCooking;return `<article class="service-card ${ok?'':'locked'}" data-cooking-card="${raw}"><div><strong>${d.name}</strong><span>Level ${d.level} · ${d.ticks} ticks · +${d.xp} XP</span><small>${ITEM_DEFS[raw].name} ×<b data-raw-count="${raw}">${state.inventory[raw]||0}</b></small></div><div class="service-actions"><button data-cook="${raw}" ${ok&&!busy?'':'disabled'}>Cook 1</button><button data-cookall="${raw}" ${ok&&!busy?'':'disabled'}>Cook All (${state.inventory[raw]||0})</button></div><div class="cook-progress"><i></i></div></article>`}).join(''):'<div class="empty-state"><strong>No raw fish</strong><span>Catch fish before using the fire.</span></div>'));
+    openService('Cooking Fire',`${town.name} Cooking Fire`,`Cooking level ${level} · Food cooks one item at a time.`,cookingBanner+(entries.length?entries.map(([raw,d])=>{const ok=level>=d.level,busy=!!activeCooking;return `<article class="service-card ${ok?'':'locked'}" data-cooking-card="${raw}"><div><strong>${d.name}</strong><span>Level ${d.level} · ${d.ticks} ticks · +${d.xp} XP</span><small>${ITEM_DEFS[raw].name} ×<b data-raw-count="${raw}">${state.inventory[raw]||0}</b></small></div><div class="service-actions"><button data-cook="${raw}" ${ok&&!busy?'':'disabled'}>Cook 1</button><button data-cookall="${raw}" ${ok&&!busy?'':'disabled'}>Cook All (${state.inventory[raw]||0})</button></div><div class="cook-progress"><i></i></div></article>`}).join(''):'<div class="empty-state"><strong>No raw food</strong><span>Catch fish or defeat creatures before using the fire.</span></div>'));
     ui.serviceContent.querySelectorAll('[data-cook]').forEach(b=>b.addEventListener('click',()=>startCooking(b.dataset.cook,1,town)));
     ui.serviceContent.querySelectorAll('[data-cookall]').forEach(b=>b.addEventListener('click',()=>startCooking(b.dataset.cook,state.inventory[b.dataset.cook]||0,town)));
     refreshCookingDisplay();
@@ -617,7 +765,7 @@
     showToast(`Crafted ${ITEM_DEFS[recipe.output].name}${count>1?` ×${count}`:''}`);renderInventory();renderSkills();renderEquipment();renderCraftingMenu();saveGame(false);
   }
 
-  function renderEquipment(){const slots=[['head','Head'],['cape','Cape'],['body','Body'],['weapon','Weapon'],['shield','Shield'],['legs','Legs'],['boots','Boots'],['ring','Ring']];ui.equipment.innerHTML=`<div class="equipment-slots">${slots.map(([k,l])=>{const item=state.equipment[k]&&ITEM_DEFS[state.equipment[k]];return `<button class="slot ${item?'filled':''}" data-slot="${k}" ${item?'':'disabled'}><span>${l}</span><strong>${item?item.name:'Empty'}</strong></button>`}).join('')}</div>`;ui.equipment.querySelectorAll('.slot.filled').forEach(b=>b.addEventListener('click',()=>showItem(state.equipment[b.dataset.slot])));}
+  function renderEquipment(){const slots=[['head','Head'],['cape','Cape'],['body','Body'],['weapon','Weapon'],['shield','Shield'],['legs','Legs'],['boots','Boots'],['ring','Ring'],['food','Food']];ui.equipment.innerHTML=`<div class="equipment-slots">${slots.map(([k,l])=>{const item=state.equipment[k]&&ITEM_DEFS[state.equipment[k]];return `<button class="slot ${item?'filled':''}" data-slot="${k}" ${item?'':'disabled'}><span>${l}</span><strong>${item?item.name:'Empty'}</strong></button>`}).join('')}</div>`;ui.equipment.querySelectorAll('.slot.filled').forEach(b=>b.addEventListener('click',()=>showItem(state.equipment[b.dataset.slot])));}
   function renderMapPanel(){
     ui.map.innerHTML='<div class="minimap-wrap"><canvas id="miniMapCanvas" width="720" height="720" aria-label="Draggable world minimap"></canvas><span class="minimap-hint">Drag to explore · tap your marker button to recenter</span><button id="recenterMapButton" class="minimap-recenter">◎</button></div>';
     const mini=document.getElementById('miniMapCanvas');
@@ -632,10 +780,10 @@
   function drawMiniMap(){const mini=document.getElementById('miniMapCanvas');if(!mini)return;const m=mini.getContext('2d'),viewW=WORLD.width/miniMapView.zoom,viewH=WORLD.height/miniMapView.zoom,left=miniMapView.centerX-viewW/2,top=miniMapView.centerY-viewH/2,sx=mini.width/viewW,sy=mini.height/viewH,toX=x=>(x-left)*sx,toY=y=>(y-top)*sy;m.clearRect(0,0,mini.width,mini.height);m.fillStyle='#397f9f';m.fillRect(0,0,mini.width,mini.height);const poly=(pts,color)=>{m.beginPath();m.moveTo(toX(pts[0][0]),toY(pts[0][1]));for(const [x,y] of pts.slice(1))m.lineTo(toX(x),toY(y));m.closePath();m.fillStyle=color;m.fill();};poly(continent,'#72ae61');for(const r of regions)poly(r.points,r.color);for(const w of waters){m.beginPath();m.ellipse(toX(w.x),toY(w.y),w.rx*sx,w.ry*sy,0,0,Math.PI*2);m.fillStyle=w.color;m.fill();}for(const t of towns){m.fillStyle='#f0e9d2';m.fillRect(toX(t.x)-5,toY(t.y)-5,10,10);}m.fillStyle='#ffdf65';m.beginPath();m.arc(toX(state.player.x),toY(state.player.y),9,0,Math.PI*2);m.fill();m.strokeStyle='#1d232b';m.lineWidth=4;m.stroke();}
 
   function showItem(key){const item=ITEM_DEFS[key];if(!item)return;selectedItemKey=key;ui.itemType.textContent=item.type;ui.itemName.textContent=item.name;ui.itemDescription.textContent=item.description;const rows=[];if(item.uses)rows.push(['Used for',item.uses]);for(const [k,v] of Object.entries(item.stats||{}))rows.push([k,v]);ui.itemStats.innerHTML=rows.map(([k,v])=>`<div><span>${k}</span><strong>${v}</strong></div>`).join('');const equipped=Object.keys(state.equipment).find(s=>state.equipment[s]===key);if(item.slot&&state.inventory[key]>0){ui.itemAction.hidden=false;ui.itemAction.textContent=equipped?'Unequip':'Equip';}else ui.itemAction.hidden=true;ui.dialog.showModal();}
-  function toggleSelectedEquipment(){const key=selectedItemKey,item=ITEM_DEFS[key];if(!item?.slot)return;const existing=Object.keys(state.equipment).find(s=>state.equipment[s]===key);if(existing)state.equipment[existing]=null;else state.equipment[item.slot]=key;ui.dialog.close();renderEquipment();saveGame(false);}
-  function renderAll(){renderInventory();renderSkills();renderEquipment();renderMapPanel();}
+  function toggleSelectedEquipment(){const key=selectedItemKey,item=ITEM_DEFS[key];if(!item?.slot)return;const existing=Object.keys(state.equipment).find(s=>state.equipment[s]===key);if(existing)state.equipment[existing]=null;else state.equipment[item.slot]=key;ui.dialog.close();renderEquipment();renderCombatHud();saveGame(false);}
+  function renderAll(){renderInventory();renderSkills();renderEquipment();renderMapPanel();renderCombatHud();}
   function frame(now){const dt=Math.min((now-lastFrame)/1000,.05);lastFrame=now;update(dt);draw();if(now-miniMapView.lastDraw>180&&document.getElementById('map')?.classList.contains('active')){miniMapView.lastDraw=now;drawMiniMap();}requestAnimationFrame(frame);}
 
-  canvas.addEventListener('pointerdown',handlePointer,{passive:false});document.getElementById('saveButton').addEventListener('click',()=>saveGame(true));document.getElementById('stopButton').addEventListener('click',()=>stopAction(true));document.querySelectorAll('.tab').forEach(t=>t.addEventListener('click',()=>openPanel(t.dataset.panel)));document.getElementById('closeItemButton').addEventListener('click',()=>ui.dialog.close());document.getElementById('closeTownButton').addEventListener('click',()=>ui.townDialog.close());document.getElementById('closeCraftingButton').addEventListener('click',()=>ui.craftingDialog.close());document.getElementById('closeServiceButton').addEventListener('click',()=>ui.serviceDialog.close());ui.itemAction.addEventListener('click',toggleSelectedEquipment);ui.dialog.addEventListener('click',e=>{if(e.target===ui.dialog)ui.dialog.close();});ui.townDialog.addEventListener('click',e=>{if(e.target===ui.townDialog)ui.townDialog.close();});ui.craftingDialog.addEventListener('click',e=>{if(e.target===ui.craftingDialog)ui.craftingDialog.close();});ui.serviceDialog.addEventListener('click',e=>{if(e.target===ui.serviceDialog)ui.serviceDialog.close();});document.getElementById('exportButton').addEventListener('click',()=>{saveGame(false);const blob=new Blob([JSON.stringify(state,null,2)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`idle-wanderer-save-${Date.now()}.json`;a.click();URL.revokeObjectURL(a.href);});document.getElementById('importInput').addEventListener('change',async e=>{const file=e.target.files?.[0];if(!file)return;try{localStorage.setItem(SAVE_KEY,JSON.stringify(JSON.parse(await file.text())));location.reload();}catch{showToast('Invalid save file');}});document.getElementById('resetButton').addEventListener('click',()=>{if(confirm('Reset all progress on this device?')){localStorage.removeItem(SAVE_KEY);location.reload();}});window.addEventListener('pagehide',()=>saveGame(false));setInterval(()=>saveGame(false),15000);if('serviceWorker'in navigator)navigator.serviceWorker.register('./service-worker.js').catch(console.error);
+  canvas.addEventListener('pointerdown',handlePointer,{passive:false});document.getElementById('saveButton').addEventListener('click',()=>saveGame(true));document.getElementById('stopButton').addEventListener('click',()=>stopAction(true));ui.eatButton.addEventListener('click',eatFood);document.querySelectorAll('.tab').forEach(t=>t.addEventListener('click',()=>openPanel(t.dataset.panel)));document.getElementById('closeItemButton').addEventListener('click',()=>ui.dialog.close());document.getElementById('closeTownButton').addEventListener('click',()=>ui.townDialog.close());document.getElementById('closeCraftingButton').addEventListener('click',()=>ui.craftingDialog.close());document.getElementById('closeServiceButton').addEventListener('click',()=>ui.serviceDialog.close());ui.itemAction.addEventListener('click',toggleSelectedEquipment);ui.dialog.addEventListener('click',e=>{if(e.target===ui.dialog)ui.dialog.close();});ui.townDialog.addEventListener('click',e=>{if(e.target===ui.townDialog)ui.townDialog.close();});ui.craftingDialog.addEventListener('click',e=>{if(e.target===ui.craftingDialog)ui.craftingDialog.close();});ui.serviceDialog.addEventListener('click',e=>{if(e.target===ui.serviceDialog)ui.serviceDialog.close();});document.getElementById('exportButton').addEventListener('click',()=>{saveGame(false);const blob=new Blob([JSON.stringify(state,null,2)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`idle-wanderer-save-${Date.now()}.json`;a.click();URL.revokeObjectURL(a.href);});document.getElementById('importInput').addEventListener('change',async e=>{const file=e.target.files?.[0];if(!file)return;try{localStorage.setItem(SAVE_KEY,JSON.stringify(JSON.parse(await file.text())));location.reload();}catch{showToast('Invalid save file');}});document.getElementById('resetButton').addEventListener('click',()=>{if(confirm('Reset all progress on this device?')){localStorage.removeItem(SAVE_KEY);location.reload();}});window.addEventListener('pagehide',()=>saveGame(false));setInterval(()=>saveGame(false),15000);if('serviceWorker'in navigator)navigator.serviceWorker.register('./service-worker.js').catch(console.error);
   camera.x=clamp(state.player.x-canvas.width/2,0,WORLD.width-canvas.width);camera.y=clamp(state.player.y-canvas.height/2,0,WORLD.height-canvas.height);renderAll();requestAnimationFrame(frame);
 })();

@@ -34,3 +34,6 @@
 @media(max-width:390px){.shop-row{align-items:stretch;flex-direction:column}.shop-row button{width:100%}}
 
 .cooking-status{border:1px solid #8f7945;border-radius:10px;background:#2a2d28;padding:10px;margin-bottom:10px}.cooking-status strong{display:block;font-size:.84rem}.cooking-status span{display:block;color:var(--muted);font-size:.68rem;margin:4px 0 8px}.cook-progress.active{height:8px}.cook-progress.active i{transition:width .08s linear}
+
+.combat-hud{top:8px;right:8px;padding:6px 8px;display:grid;grid-template-columns:auto 54px auto;align-items:center;gap:6px;font-size:.65rem}.combat-hud span{color:var(--muted);font-weight:800}.hp-track{width:54px;height:7px;background:#090c10;border-radius:999px;overflow:hidden}.hp-track i{display:block;height:100%;background:#68c77e}.eat-button{border:0;border-radius:9px;background:#3d6d48;color:#eaffef;font-weight:800;padding:7px 9px;font-size:.68rem;white-space:nowrap}.eat-button b{display:inline-grid;place-items:center;min-width:18px;height:18px;margin-left:3px;border-radius:999px;background:rgba(0,0,0,.25)}
+.action-strip{grid-template-columns:minmax(88px,auto) 1fr auto auto}

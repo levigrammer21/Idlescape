@@ -14,7 +14,7 @@
   <main id="app">
     <header class="topbar">
       <div class="title-block">
-        <h1>Idle Wanderer <span id="headerVersion" class="header-version">v0.8.1</span></h1>
+        <h1>Idle Wanderer <span id="headerVersion" class="header-version">v0.9.1</span></h1>
         <p id="statusText">Tap the ground, a tree, a rock, a fishing spot, or a town.</p>
       </div>
       <button id="saveButton" class="icon-button">Save</button>
@@ -23,12 +23,14 @@
     <section class="game-shell">
       <canvas id="gameCanvas" width="480" height="640" aria-label="Idle Wanderer world map"></canvas>
       <div class="hud location-hud"><span>Region</span><strong id="regionText">Central Grass</strong></div>
+      <div class="hud combat-hud"><span>HP</span><div class="hp-track"><i id="combatHpFill"></i></div><strong id="combatHp">10/10</strong></div>
       <div id="toast" class="toast" aria-live="polite"></div>
     </section>
 
     <section class="action-strip">
       <div class="action-copy"><span class="label">Current action</span><strong id="actionName">Exploring</strong></div>
       <div class="progress-track"><div id="actionProgress" class="progress-fill"></div></div>
+      <button id="eatButton" class="eat-button" hidden>Eat <b id="eatCount">0</b></button>
       <button id="stopButton" class="stop-button">Stop</button>
     </section>
 
@@ -52,7 +54,7 @@
           <button id="resetButton" class="wide-button muted-button">Reset Game</button>
         </div>
         <p class="hint">Town services are opened from the world itself. Skills will be developed one at a time, beginning with Woodcutting.</p>
-        <p class="version">Version 0.8.1 · Cooking Queue & Resource Capacity</p>
+        <p class="version">Version 0.9.1 · Combat Core</p>
       </section>
     </section>
   </main>

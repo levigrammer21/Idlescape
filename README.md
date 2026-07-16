@@ -1,7 +1,11 @@
-# Idle Wanderer v0.8.1 — Cooking Queue & Resource Capacity
+# Idle Wanderer v0.9.1 — Creatures & Drops
 
-- Cooking Fire now visibly shows the active fish, queue remaining, completed count, and live progress.
-- Cook All processes the full selected stack one fish at a time.
-- Tree, fishing spot, and mining rock capacities were increased to more than double their previous values.
-- Existing active resource nodes are upgraded when this version first loads.
-- Version and service-worker cache bumped to v0.8.1.
+- Expanded combat roster to 21 creature types across every biome.
+- Passive and aggressive behaviour with biome leashing.
+- Common, uncommon, and rare drop tables.
+- Rare and boss creatures use longer respawn timers.
+- Added raw creature meats and timed cooking recipes.
+- Added cooked combat foods that can be equipped and eaten.
+- Enemy health remains damaged until death or respawn.
+
+Upload every file in this folder to the root of your GitHub Pages repository.
