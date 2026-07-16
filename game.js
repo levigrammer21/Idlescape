@@ -1,7 +1,7 @@
 (() => {
   'use strict';
 
-  const VERSION = '0.6.0';
+  const VERSION = '0.6.1';
   const SAVE_KEY = 'idle-wanderer-save-v6';
   const LEGACY_KEYS = ['idle-wanderer-save-v5', 'idle-wanderer-save-v4', 'idle-wanderer-save-v3', 'idle-wanderer-save-v2'];
   const TICK_SECONDS = 0.6;
@@ -212,6 +212,7 @@
   let activeTree = null, queuedTree = null, activeFishingSpot = null, queuedFishingSpot = null, activeRock = null, queuedRock = null, queuedTown = null, actionElapsed = 0;
   let animationClock = 0;
   const floaters = [];
+  const miniMapView = { zoom: 1.8, centerX: state.player.x, centerY: state.player.y, dragging: false, lastX: 0, lastY: 0, lastDraw: 0 };
 
   function randomInt(min,max){ return Math.floor(Math.random()*(max-min+1))+min; }
   function clamp(v,min,max){ return Math.max(min,Math.min(max,v)); }
@@ -221,7 +222,8 @@
 
   function pointInPolygon(x,y,points){ let inside=false; for(let i=0,j=points.length-1;i<points.length;j=i++) { const [xi,yi]=points[i],[xj,yj]=points[j]; const hit=((yi>y)!==(yj>y)) && x<(xj-xi)*(y-yi)/((yj-yi)||.00001)+xi; if(hit)inside=!inside; } return inside; }
   function pointInWater(x,y){ return waters.some(w => ((x-w.x)/w.rx)**2 + ((y-w.y)/w.ry)**2 <= 1); }
-  function isWalkable(x,y){ return pointInPolygon(x,y,continent) && !pointInWater(x,y); }
+  // Inland ponds are walkable for now. The ocean remains blocked because it lies outside the continent.
+  function isWalkable(x,y){ return pointInPolygon(x,y,continent); }
   function regionAt(x,y){ return regions.slice().reverse().find(r=>pointInPolygon(x,y,r.points)) || { name:'Grasslands', color:'#72ae61' }; }
   function ownedTools(toolType){
     return Object.entries(state.inventory)
@@ -259,8 +261,7 @@
   function townAt(x,y){ let best=null,bestD=72; for(const t of towns){const d=Math.hypot(x-t.x,y-t.y);if(d<bestD){best=t;bestD=d;}} return best; }
   function treeAt(x,y){ let best=null,bestD=44; for(const t of trees){if(t.remaining<=0)continue;const d=Math.hypot(x-t.x,y-t.y);if(d<bestD){best=t;bestD=d;}} return best; }
   function rockAt(x,y){ let best=null,bestD=48; for(const r of rocks){if(r.hp<=0)continue;const d=Math.hypot(x-r.x,y-r.y);if(d<bestD){best=r;bestD=d;}} return best; }
-  function fishingSpotAt(x,y){ let best=null,bestD=52; for(const r of rocks){if(r.hp<=0&&r.respawnAt&&now>=r.respawnAt){r.hp=r.maxHp;r.respawnAt=0;}}
-    for(const f of fishingSpots){if(f.remaining<=0)continue;const d=Math.hypot(x-f.x,y-f.y);if(d<bestD){best=f;bestD=d;}} return best; }
+  function fishingSpotAt(x,y){ let best=null,bestD=52; for(const f of fishingSpots){if(f.remaining<=0)continue;const d=Math.hypot(x-f.x,y-f.y);if(d<bestD){best=f;bestD=d;}} return best; }
   function handlePointer(event){
     event.preventDefault(); const rect=canvas.getBoundingClientRect(); const sx=(event.clientX-rect.left)*canvas.width/rect.width, sy=(event.clientY-rect.top)*canvas.height/rect.height; const p=screenToWorld(sx,sy);
     const town=townAt(p.x,p.y), tree=treeAt(p.x,p.y), rock=rockAt(p.x,p.y), fishingSpot=fishingSpotAt(p.x,p.y); stopAction(false);
@@ -292,7 +293,7 @@
       queuedTree=tree; queuedFishingSpot=null; const dx=state.player.x-tree.x,dy=state.player.y-tree.y,d=Math.hypot(dx,dy)||1; const stand=58;
       state.player.targetX=tree.x+dx/d*stand;state.player.targetY=tree.y+dy/d*stand;ui.status.textContent=`Walking to ${def.name} tree...`;ui.actionName.textContent='Walking';return;
     }
-    if(!isWalkable(p.x,p.y)){showToast(pointInWater(p.x,p.y)?'You cannot walk into the water':'You cannot leave the continent');return;}
+    if(!isWalkable(p.x,p.y)){showToast('You cannot walk into the ocean');return;}
     queuedTree=null;queuedFishingSpot=null;queuedRock=null;queuedTown=null;state.player.targetX=p.x;state.player.targetY=p.y;ui.status.textContent='Walking...';ui.actionName.textContent='Exploring';
   }
 
@@ -357,7 +358,7 @@
     if(cycle<7){const x=(animationClock*70)% (canvas.width+120)-60,y=70+Math.sin(animationClock*2)*18;ctx.fillStyle='rgba(245,245,235,.75)';ctx.fillRect(x,y,8,3);ctx.fillRect(x+8,y-3,7,3);}
     for(let i=0;i<3;i++){const x=(i*173+animationClock*17)%canvas.width,y=(i*97+animationClock*9)%canvas.height;ctx.fillStyle='rgba(240,210,90,.45)';ctx.fillRect(x,y,3,3);}
   }
-  function draw(){ctx.clearRect(0,0,canvas.width,canvas.height);ctx.fillStyle='#397f9f';ctx.fillRect(0,0,canvas.width,canvas.height);ctx.strokeStyle='rgba(210,240,248,.22)';ctx.lineWidth=3;for(let y=-30+(animationClock*12)%46;y<canvas.height+40;y+=46){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(canvas.width,y+10);ctx.stroke();}fillSmooth(continent,'#72ae61','#d5c68b',8);drawTileTexture(continent);for(const r of regions){fillSmooth(r.points,r.color);drawTileTexture(r.points);}for(const w of waters)drawWater(w);for(const f of fishingSpots)drawFishingSpot(f);for(const t of towns)drawTown(t);for(const t of trees)drawTree(t);for(const r of rocks)drawRock(r);drawAmbient();drawPlayer();for(const f of floaters){const s=worldToScreen(f.x,f.y);ctx.globalAlpha=Math.min(1,f.life*1.4);ctx.fillStyle='#fff4b8';ctx.strokeStyle='rgba(20,20,20,.8)';ctx.lineWidth=4;ctx.font='bold 14px system-ui';ctx.textAlign='center';ctx.strokeText(f.text,s.x,s.y);ctx.fillText(f.text,s.x,s.y);ctx.textAlign='start';ctx.globalAlpha=1;}}
+  function draw(){ctx.clearRect(0,0,canvas.width,canvas.height);ctx.fillStyle='#397f9f';ctx.fillRect(0,0,canvas.width,canvas.height);ctx.strokeStyle='rgba(210,240,248,.22)';ctx.lineWidth=3;for(let y=-30+(animationClock*12)%46;y<canvas.height+40;y+=46){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(canvas.width,y+10);ctx.stroke();}fillSmooth(continent,'#72ae61','#d5c68b',8);drawTileTexture(continent);for(const r of regions){fillSmooth(r.points,r.color);drawTileTexture(r.points);}for(const w of waters)drawWater(w);for(const f of fishingSpots)drawFishingSpot(f);for(const t of towns)drawTown(t);for(const t of trees)drawTree(t);for(const r of rocks)drawRock(r);drawPlayer();for(const f of floaters){const s=worldToScreen(f.x,f.y);ctx.globalAlpha=Math.min(1,f.life*1.4);ctx.fillStyle='#fff4b8';ctx.strokeStyle='rgba(20,20,20,.8)';ctx.lineWidth=4;ctx.font='bold 14px system-ui';ctx.textAlign='center';ctx.strokeText(f.text,s.x,s.y);ctx.fillText(f.text,s.x,s.y);ctx.textAlign='start';ctx.globalAlpha=1;}}
 
   function openPanel(name){document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active',t.dataset.panel===name));document.querySelectorAll('.panel').forEach(p=>p.classList.toggle('active',p.id===name));}
   function renderInventory(){const owned=Object.entries(state.inventory).filter(([k,q])=>q>0&&ITEM_DEFS[k]);ui.inventory.innerHTML=owned.length?`<div class="item-grid">${owned.map(([k,q])=>`<button class="item" data-item="${k}"><strong>${ITEM_DEFS[k].name}</strong><span>×${q}</span><small>${ITEM_DEFS[k].type}</small></button>`).join('')}</div>`:`<div class="empty-state"><strong>Your inventory is empty</strong><span>Gather logs, fish, or ore to fill it.</span></div>`;ui.inventory.querySelectorAll('[data-item]').forEach(b=>b.addEventListener('click',()=>showItem(b.dataset.item)));}
@@ -369,15 +370,22 @@
   function openTown(town){ui.townName.textContent=town.name;ui.townDescription.textContent=town.description;const services=[['NPCs','Talk to residents and receive quests.'],['Crafting Table','Create items from gathered materials.'],['Cooking Fire','Cook fish and meat into food.'],['Player-Owned Home','Enter and improve your family home.'],['Shop','Buy supplies and sell gathered items.'],['Bank','Store items outside your carried inventory.'],['Notice Board','View town work, requests, and local quests.'],['Inn','Rest, meet travellers, and hear local information.']];ui.townServices.innerHTML=services.map(([name,description])=>`<button class="town-service" data-service="${name}"><strong>${name}</strong><span>${description}</span></button>`).join('');ui.townServices.querySelectorAll('[data-service]').forEach(b=>b.addEventListener('click',()=>showToast(`${b.dataset.service} · coming in a future system update`)));ui.townDialog.showModal();ui.status.textContent=`Visiting ${town.name}`;ui.actionName.textContent='In town';}
   function renderEquipment(){const slots=[['head','Head'],['cape','Cape'],['body','Body'],['weapon','Weapon'],['shield','Shield'],['legs','Legs'],['boots','Boots'],['ring','Ring']];ui.equipment.innerHTML=`<div class="equipment-slots">${slots.map(([k,l])=>{const item=state.equipment[k]&&ITEM_DEFS[state.equipment[k]];return `<button class="slot ${item?'filled':''}" data-slot="${k}" ${item?'':'disabled'}><span>${l}</span><strong>${item?item.name:'Empty'}</strong></button>`}).join('')}</div>`;ui.equipment.querySelectorAll('.slot.filled').forEach(b=>b.addEventListener('click',()=>showItem(state.equipment[b.dataset.slot])));}
   function renderMapPanel(){
-    ui.map.innerHTML='<canvas id="miniMapCanvas" width="360" height="360" aria-label="World minimap"></canvas>';
-    drawMiniMap();
+    ui.map.innerHTML='<div class="minimap-wrap"><canvas id="miniMapCanvas" width="720" height="720" aria-label="Draggable world minimap"></canvas><span class="minimap-hint">Drag to explore · tap your marker button to recenter</span><button id="recenterMapButton" class="minimap-recenter">◎</button></div>';
+    const mini=document.getElementById('miniMapCanvas');
+    mini.addEventListener('pointerdown',e=>{miniMapView.dragging=true;miniMapView.lastX=e.clientX;miniMapView.lastY=e.clientY;mini.setPointerCapture(e.pointerId);e.preventDefault();});
+    mini.addEventListener('pointermove',e=>{if(!miniMapView.dragging)return;const rect=mini.getBoundingClientRect(),worldPerPixel=(WORLD.width/mini.width)/miniMapView.zoom;miniMapView.centerX-=((e.clientX-miniMapView.lastX)*mini.width/rect.width)*worldPerPixel;miniMapView.centerY-=((e.clientY-miniMapView.lastY)*mini.height/rect.height)*worldPerPixel;miniMapView.lastX=e.clientX;miniMapView.lastY=e.clientY;clampMiniMap();drawMiniMap();e.preventDefault();});
+    const stopDrag=e=>{miniMapView.dragging=false;if(mini.hasPointerCapture?.(e.pointerId))mini.releasePointerCapture(e.pointerId);};
+    mini.addEventListener('pointerup',stopDrag);mini.addEventListener('pointercancel',stopDrag);
+    document.getElementById('recenterMapButton').addEventListener('click',()=>{miniMapView.centerX=state.player.x;miniMapView.centerY=state.player.y;clampMiniMap();drawMiniMap();});
+    clampMiniMap();drawMiniMap();
   }
-  function drawMiniMap(){const mini=document.getElementById('miniMapCanvas');if(!mini)return;const m=mini.getContext('2d'),sx=mini.width/WORLD.width,sy=mini.height/WORLD.height;m.clearRect(0,0,mini.width,mini.height);m.fillStyle='#397f9f';m.fillRect(0,0,mini.width,mini.height);const poly=(pts,color)=>{m.beginPath();m.moveTo(pts[0][0]*sx,pts[0][1]*sy);for(const [x,y] of pts.slice(1))m.lineTo(x*sx,y*sy);m.closePath();m.fillStyle=color;m.fill();};poly(continent,'#72ae61');for(const r of regions)poly(r.points,r.color);for(const w of waters){m.beginPath();m.ellipse(w.x*sx,w.y*sy,w.rx*sx,w.ry*sy,0,0,Math.PI*2);m.fillStyle=w.color;m.fill();}for(const t of towns){m.fillStyle='#f0e9d2';m.fillRect(t.x*sx-2,t.y*sy-2,5,5);}m.fillStyle='#ffdf65';m.beginPath();m.arc(state.player.x*sx,state.player.y*sy,5,0,Math.PI*2);m.fill();m.strokeStyle='#1d232b';m.lineWidth=2;m.stroke();}
+  function clampMiniMap(){const halfW=WORLD.width/(2*miniMapView.zoom),halfH=WORLD.height/(2*miniMapView.zoom);miniMapView.centerX=clamp(miniMapView.centerX,halfW,WORLD.width-halfW);miniMapView.centerY=clamp(miniMapView.centerY,halfH,WORLD.height-halfH);}
+  function drawMiniMap(){const mini=document.getElementById('miniMapCanvas');if(!mini)return;const m=mini.getContext('2d'),viewW=WORLD.width/miniMapView.zoom,viewH=WORLD.height/miniMapView.zoom,left=miniMapView.centerX-viewW/2,top=miniMapView.centerY-viewH/2,sx=mini.width/viewW,sy=mini.height/viewH,toX=x=>(x-left)*sx,toY=y=>(y-top)*sy;m.clearRect(0,0,mini.width,mini.height);m.fillStyle='#397f9f';m.fillRect(0,0,mini.width,mini.height);const poly=(pts,color)=>{m.beginPath();m.moveTo(toX(pts[0][0]),toY(pts[0][1]));for(const [x,y] of pts.slice(1))m.lineTo(toX(x),toY(y));m.closePath();m.fillStyle=color;m.fill();};poly(continent,'#72ae61');for(const r of regions)poly(r.points,r.color);for(const w of waters){m.beginPath();m.ellipse(toX(w.x),toY(w.y),w.rx*sx,w.ry*sy,0,0,Math.PI*2);m.fillStyle=w.color;m.fill();}for(const t of towns){m.fillStyle='#f0e9d2';m.fillRect(toX(t.x)-5,toY(t.y)-5,10,10);}m.fillStyle='#ffdf65';m.beginPath();m.arc(toX(state.player.x),toY(state.player.y),9,0,Math.PI*2);m.fill();m.strokeStyle='#1d232b';m.lineWidth=4;m.stroke();}
 
   function showItem(key){const item=ITEM_DEFS[key];if(!item)return;selectedItemKey=key;ui.itemType.textContent=item.type;ui.itemName.textContent=item.name;ui.itemDescription.textContent=item.description;const rows=[];if(item.uses)rows.push(['Used for',item.uses]);for(const [k,v] of Object.entries(item.stats||{}))rows.push([k,v]);ui.itemStats.innerHTML=rows.map(([k,v])=>`<div><span>${k}</span><strong>${v}</strong></div>`).join('');const equipped=Object.keys(state.equipment).find(s=>state.equipment[s]===key);if(item.slot&&state.inventory[key]>0){ui.itemAction.hidden=false;ui.itemAction.textContent=equipped?'Unequip':'Equip';}else ui.itemAction.hidden=true;ui.dialog.showModal();}
   function toggleSelectedEquipment(){const key=selectedItemKey,item=ITEM_DEFS[key];if(!item?.slot)return;const existing=Object.keys(state.equipment).find(s=>state.equipment[s]===key);if(existing)state.equipment[existing]=null;else state.equipment[item.slot]=key;ui.dialog.close();renderEquipment();saveGame(false);}
   function renderAll(){renderInventory();renderSkills();renderEquipment();renderMapPanel();}
-  function frame(now){const dt=Math.min((now-lastFrame)/1000,.05);lastFrame=now;update(dt);draw();requestAnimationFrame(frame);}
+  function frame(now){const dt=Math.min((now-lastFrame)/1000,.05);lastFrame=now;update(dt);draw();if(now-miniMapView.lastDraw>180&&document.getElementById('map')?.classList.contains('active')){miniMapView.lastDraw=now;drawMiniMap();}requestAnimationFrame(frame);}
 
   canvas.addEventListener('pointerdown',handlePointer,{passive:false});document.getElementById('saveButton').addEventListener('click',()=>saveGame(true));document.getElementById('stopButton').addEventListener('click',()=>stopAction(true));document.querySelectorAll('.tab').forEach(t=>t.addEventListener('click',()=>openPanel(t.dataset.panel)));document.getElementById('closeItemButton').addEventListener('click',()=>ui.dialog.close());document.getElementById('closeTownButton').addEventListener('click',()=>ui.townDialog.close());ui.itemAction.addEventListener('click',toggleSelectedEquipment);ui.dialog.addEventListener('click',e=>{if(e.target===ui.dialog)ui.dialog.close();});ui.townDialog.addEventListener('click',e=>{if(e.target===ui.townDialog)ui.townDialog.close();});document.getElementById('exportButton').addEventListener('click',()=>{saveGame(false);const blob=new Blob([JSON.stringify(state,null,2)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`idle-wanderer-save-${Date.now()}.json`;a.click();URL.revokeObjectURL(a.href);});document.getElementById('importInput').addEventListener('change',async e=>{const file=e.target.files?.[0];if(!file)return;try{localStorage.setItem(SAVE_KEY,JSON.stringify(JSON.parse(await file.text())));location.reload();}catch{showToast('Invalid save file');}});document.getElementById('resetButton').addEventListener('click',()=>{if(confirm('Reset all progress on this device?')){localStorage.removeItem(SAVE_KEY);location.reload();}});window.addEventListener('pagehide',()=>saveGame(false));setInterval(()=>saveGame(false),15000);if('serviceWorker'in navigator)navigator.serviceWorker.register('./service-worker.js').catch(console.error);
   camera.x=clamp(state.player.x-canvas.width/2,0,WORLD.width-canvas.width);camera.y=clamp(state.player.y-canvas.height/2,0,WORLD.height-canvas.height);renderAll();requestAnimationFrame(frame);

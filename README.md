@@ -1,4 +1,4 @@
-# Idle Wanderer v0.6.0 — Mining & Minimap
+# Idle Wanderer v0.6.1 — Mining & Minimap
 
 Mobile-first GitHub Pages build.
 
@@ -12,3 +12,10 @@ Mobile-first GitHub Pages build.
 - Added a two-frame walking motion and light ambient movement.
 
 Upload every file in this folder to the root of your GitHub Pages repository.
+
+
+## v0.6.1 fixes
+- Fixed movement becoming unresponsive after a rock depleted.
+- Inland ponds can now be crossed; the ocean remains blocked.
+- The minimap is draggable and can be recentered on the player.
+- Removed the ambient overlay suspected of causing random blinking.
