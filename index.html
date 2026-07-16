@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no" />
-  <meta name="theme-color" content="#171b22" />
+  <meta name="theme-color" content="#0f1319" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <title>Idle Wanderer</title>
@@ -13,45 +13,53 @@
 <body>
   <main id="app">
     <header class="topbar">
-      <div>
+      <div class="title-block">
         <h1>Idle Wanderer</h1>
-        <p id="statusText">Tap the ground to move.</p>
+        <p id="statusText">Tap the world to move.</p>
       </div>
-      <button id="saveButton" class="small-button">Save</button>
+      <button id="saveButton" class="icon-button">Save</button>
     </header>
 
     <section class="game-shell">
-      <canvas id="gameCanvas" width="384" height="640" aria-label="2D game world"></canvas>
+      <canvas id="gameCanvas" width="480" height="640" aria-label="2D game world"></canvas>
+      <div class="hud health-hud">
+        <span>HP</span><strong id="hpText">10 / 10</strong>
+        <div class="mini-track"><div id="hpFill" class="hp-fill"></div></div>
+      </div>
       <div id="toast" class="toast" aria-live="polite"></div>
     </section>
 
-    <section class="action-card">
-      <div class="action-row">
-        <div>
-          <span class="label">Current action</span>
-          <strong id="actionName">Exploring</strong>
-        </div>
-        <button id="stopButton" class="danger-button">Stop</button>
+    <section class="action-strip">
+      <div class="action-copy">
+        <span class="label">Current action</span>
+        <strong id="actionName">Exploring</strong>
       </div>
       <div class="progress-track"><div id="actionProgress" class="progress-fill"></div></div>
+      <button id="stopButton" class="stop-button">Stop</button>
     </section>
 
     <nav class="tabs" aria-label="Game panels">
-      <button class="tab active" data-panel="inventory">Inventory</button>
+      <button class="tab active" data-panel="inventory">Inv</button>
       <button class="tab" data-panel="skills">Skills</button>
-      <button class="tab" data-panel="help">Help</button>
+      <button class="tab" data-panel="equipment">Equip</button>
+      <button class="tab" data-panel="crafting">Craft</button>
+      <button class="tab" data-panel="menu">Menu</button>
     </nav>
 
-    <section id="inventory" class="panel active"></section>
-    <section id="skills" class="panel"></section>
-    <section id="help" class="panel">
-      <h2>How to play</h2>
-      <p>Tap anywhere to walk. Tap a tree, rock, or fishing spot to move there and begin gathering automatically.</p>
-      <p>Your progress saves on this device. Add the game to your home screen for an app-like experience.</p>
-      <button id="exportButton" class="wide-button">Export Save</button>
-      <label class="wide-button file-button">Import Save<input id="importInput" type="file" accept="application/json" /></label>
-      <button id="resetButton" class="wide-button muted-button">Reset Game</button>
-      <p class="version">Version 0.1.0</p>
+    <section class="panel-wrap">
+      <section id="inventory" class="panel active"></section>
+      <section id="skills" class="panel"></section>
+      <section id="equipment" class="panel"></section>
+      <section id="crafting" class="panel"></section>
+      <section id="menu" class="panel">
+        <div class="menu-grid">
+          <button id="exportButton" class="wide-button">Export Save</button>
+          <label class="wide-button file-button">Import Save<input id="importInput" type="file" accept="application/json" /></label>
+          <button id="resetButton" class="wide-button muted-button">Reset Game</button>
+        </div>
+        <p class="hint">Tap resources, the rat, or the crafting bench in the world. The camera softly follows your character.</p>
+        <p class="version">Version 0.2.0</p>
+      </section>
     </section>
   </main>
 
