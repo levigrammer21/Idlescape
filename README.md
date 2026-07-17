@@ -27,3 +27,15 @@ Upload every file in this folder to the root of your GitHub Pages repository.
 - Summon damage scales from the creature's base power and the player's Summoning level.
 - Active summons gain Summoning XP equal to roughly one third of XP earned from actions.
 - Every summon has a combat role and a gathering, movement, combat, or XP passive.
+
+
+## v0.11.1 inventory and audio
+
+- Coins now appear in the header between the game title/version and Save button.
+- Added a compact sound-settings button beside the coin display.
+- Inventory coins are no longer shown as a normal item card.
+- Added inventory filters for All, Weapons, Armour, Food, Materials, Tools, Summons, and Other.
+- Added a peaceful synthesized background track with no external audio files.
+- Added separate music and sound-effect toggles and volume controls.
+- Added lightweight effects for gathering, loot, cooking, crafting, summoning, and saving.
+- Audio preferences persist with the save.

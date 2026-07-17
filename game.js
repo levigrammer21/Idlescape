@@ -1,7 +1,7 @@
 (() => {
   'use strict';
 
-  const VERSION = '0.11.0';
+  const VERSION = '0.11.1';
   const SAVE_KEY = 'idle-wanderer-save-v6';
   const LEGACY_KEYS = ['idle-wanderer-save-v5', 'idle-wanderer-save-v4', 'idle-wanderer-save-v3', 'idle-wanderer-save-v2'];
   const TICK_SECONDS = 0.6;
@@ -20,6 +20,7 @@
     townDialog: document.getElementById('townDialog'), townName: document.getElementById('townName'), townDescription: document.getElementById('townDescription'), townServices: document.getElementById('townServices'),
     craftingDialog: document.getElementById('craftingDialog'), craftingTownName: document.getElementById('craftingTownName'), craftingLevel: document.getElementById('craftingLevel'), craftingRecipes: document.getElementById('craftingRecipes'),
     combatHp: document.getElementById('combatHp'), combatHpFill: document.getElementById('combatHpFill'), eatButton: document.getElementById('eatButton'), eatCount: document.getElementById('eatCount'),
+    coinCount: document.getElementById('coinCount'), soundButton: document.getElementById('soundButton'), soundDialog: document.getElementById('soundDialog'), musicToggle: document.getElementById('musicToggle'), sfxToggle: document.getElementById('sfxToggle'), musicVolume: document.getElementById('musicVolume'), sfxVolume: document.getElementById('sfxVolume'),
     serviceDialog: document.getElementById('serviceDialog'), serviceType: document.getElementById('serviceType'), serviceTitle: document.getElementById('serviceTitle'), serviceDescription: document.getElementById('serviceDescription'), serviceContent: document.getElementById('serviceContent')
   };
 
@@ -421,6 +422,7 @@
     skills: Object.fromEntries(Object.keys(SKILL_DEFS).map(k => [k, { xp: 0 }])),
     equipment: { head: null, body: null, legs: null, boots: null, weapon: null, shield: null, cape: null, ring: null, food: null },
     activeSummon: null, summonAttackElapsed: 0,
+    audio: { music: true, sfx: true, musicVolume: 0.28, sfxVolume: 0.55 },
     treeState: {}, fishingState: {}, rockState: {}, enemyState: {}, combat: { hp: 10 }, poh: {}, quests: {}, shopDay: '', lastSavedAt: Date.now()
   });
 
@@ -436,6 +438,68 @@
   let animationClock = 0;
   const floaters = [];
   const miniMapView = { zoom: 1.8, centerX: state.player.x, centerY: state.player.y, dragging: false, lastX: 0, lastY: 0, lastDraw: 0 };
+  const audioEngine = {
+    ctx:null, musicGain:null, sfxGain:null, musicTimer:null, started:false,
+    ensure(){
+      if(!this.ctx){
+        const AC=window.AudioContext||window.webkitAudioContext;
+        if(!AC)return false;
+        this.ctx=new AC();
+        this.musicGain=this.ctx.createGain();this.sfxGain=this.ctx.createGain();
+        this.musicGain.connect(this.ctx.destination);this.sfxGain.connect(this.ctx.destination);
+      }
+      if(this.ctx.state==='suspended')this.ctx.resume();
+      this.musicGain.gain.value=state.audio.music?state.audio.musicVolume:0;
+      this.sfxGain.gain.value=state.audio.sfx?state.audio.sfxVolume:0;
+      if(state.audio.music&&!this.started)this.startMusic();
+      return true;
+    },
+    tone(freq,duration=.12,type='sine',volume=.12,delay=0,target='sfx'){
+      if(!this.ensure())return;
+      const now=this.ctx.currentTime+delay,osc=this.ctx.createOscillator(),gain=this.ctx.createGain();
+      osc.type=type;osc.frequency.setValueAtTime(freq,now);
+      gain.gain.setValueAtTime(0.0001,now);gain.gain.exponentialRampToValueAtTime(Math.max(.0001,volume),now+.015);gain.gain.exponentialRampToValueAtTime(.0001,now+duration);
+      osc.connect(gain);gain.connect(target==='music'?this.musicGain:this.sfxGain);osc.start(now);osc.stop(now+duration+.03);
+    },
+    noise(duration=.08,volume=.06){
+      if(!this.ensure())return;
+      const length=Math.max(1,Math.floor(this.ctx.sampleRate*duration)),buffer=this.ctx.createBuffer(1,length,this.ctx.sampleRate),data=buffer.getChannelData(0);
+      for(let i=0;i<length;i++)data[i]=(Math.random()*2-1)*(1-i/length);
+      const source=this.ctx.createBufferSource(),gain=this.ctx.createGain();source.buffer=buffer;gain.gain.value=volume;source.connect(gain);gain.connect(this.sfxGain);source.start();
+    },
+    sfx(name){
+      if(!state.audio.sfx)return;
+      const map={
+        chop:()=>{this.noise(.07,.055);this.tone(150,.09,'triangle',.08);},
+        mine:()=>{this.tone(520,.06,'square',.06);this.tone(250,.1,'triangle',.07,.045);},
+        fish:()=>{this.tone(430,.1,'sine',.07);this.tone(620,.12,'sine',.05,.08);},
+        combat:()=>{this.noise(.06,.07);this.tone(120,.09,'sawtooth',.05);},
+        loot:()=>{this.tone(660,.08,'sine',.06);this.tone(880,.12,'sine',.06,.08);},
+        cook:()=>{this.noise(.1,.035);this.tone(390,.12,'triangle',.05);},
+        craft:()=>{this.tone(330,.07,'square',.05);this.tone(495,.09,'triangle',.05,.06);},
+        summon:()=>{this.tone(260,.18,'sine',.06);this.tone(390,.22,'sine',.06,.1);this.tone(520,.3,'sine',.05,.2);},
+        save:()=>{this.tone(620,.08,'sine',.05);this.tone(780,.1,'sine',.05,.07);}
+      };(map[name]||map.loot)();
+    },
+    startMusic(){
+      if(!this.ensure()||this.started)return;this.started=true;
+      const phrase=()=>{
+        if(!state.audio.music)return;
+        const root=[196,220,174,196][Math.floor(Date.now()/8000)%4],notes=[root,root*1.25,root*1.5,root*2];
+        notes.forEach((f,i)=>this.tone(f,2.6,'sine',.018,i*.85,'music'));
+        this.tone(root/2,3.8,'triangle',.012,0,'music');
+      };
+      phrase();this.musicTimer=setInterval(phrase,4200);
+    },
+    refresh(){
+      if(!this.ctx)return;
+      this.musicGain.gain.value=state.audio.music?state.audio.musicVolume:0;
+      this.sfxGain.gain.value=state.audio.sfx?state.audio.sfxVolume:0;
+      if(state.audio.music&&!this.started)this.startMusic();
+    }
+  };
+  let inventoryFilter='all';
+
 
   function randomInt(min,max){ return Math.floor(Math.random()*(max-min+1))+min; }
   function clamp(v,min,max){ return Math.max(min,Math.min(max,v)); }
@@ -482,7 +546,7 @@
       }
       for(const key of Object.keys(SKILL_DEFS)) if(old.skills?.[key]) fresh.skills[key]=old.skills[key];
       if(!old.skills?.fortitude || (old.skills.fortitude.xp||0)<xpForLevel(10)) fresh.skills.fortitude={xp:xpForLevel(10)};
-      fresh.equipment={...fresh.equipment,...(old.equipment||{})}; fresh.activeSummon=SUMMON_DEFS[old.activeSummon]?old.activeSummon:null; fresh.summonAttackElapsed=0; fresh.treeState=old.treeState||{}; fresh.fishingState=old.fishingState||{}; fresh.rockState=old.rockState||{}; fresh.enemyState=old.enemyState||{}; fresh.combat={...fresh.combat,...(old.combat||{})}; fresh.poh=old.poh||{}; fresh.quests=old.quests||{};
+      fresh.equipment={...fresh.equipment,...(old.equipment||{})}; fresh.audio={...fresh.audio,...(old.audio||{})}; fresh.activeSummon=SUMMON_DEFS[old.activeSummon]?old.activeSummon:null; fresh.summonAttackElapsed=0; fresh.treeState=old.treeState||{}; fresh.fishingState=old.fishingState||{}; fresh.rockState=old.rockState||{}; fresh.enemyState=old.enemyState||{}; fresh.combat={...fresh.combat,...(old.combat||{})}; fresh.poh=old.poh||{}; fresh.quests=old.quests||{};
       if(old.player && isWalkable(old.player.x,old.player.y)) fresh.player={...fresh.player,x:old.player.x,y:old.player.y,targetX:old.player.x,targetY:old.player.y};
       if(old.version && old.version !== VERSION){
         for(const [id,node] of Object.entries(fresh.treeState||{})){const type=id.replace(/-\d+$/,'');const def=TREE_TYPES[type];if(def&&node.remaining>0){node.remaining=Math.max(node.remaining,def.capacity[0]);node.max=Math.max(node.max||0,def.capacity[1]);}}
@@ -498,7 +562,7 @@
     state.fishingState=Object.fromEntries(fishingSpots.map(f=>[f.id,{remaining:f.remaining,respawnAt:f.respawnAt}]));
     state.rockState=Object.fromEntries(rocks.map(r=>[r.id,{hp:r.hp,respawnAt:r.respawnAt}]));
     state.enemyState=Object.fromEntries(enemies.map(e=>[e.id,{x:e.x,y:e.y,hp:e.hp,respawnAt:e.respawnAt}]));
-    state.lastSavedAt=Date.now(); state.version=VERSION; localStorage.setItem(SAVE_KEY,JSON.stringify(state)); if(show)showToast('Game saved');
+    state.lastSavedAt=Date.now(); state.version=VERSION; localStorage.setItem(SAVE_KEY,JSON.stringify(state)); if(show){showToast('Game saved');audioEngine.sfx('save');}
   }
   function showToast(message){ ui.toast.textContent=message;ui.toast.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>ui.toast.classList.remove('show'),1800); }
   function worldToScreen(x,y){ return {x:x-camera.x,y:y-camera.y}; }
@@ -602,19 +666,19 @@
   function beginMining(rock){ activeRock=rock;queuedRock=null;actionElapsed=0;const def=ROCK_TYPES[rock.type],tool=ITEM_DEFS[bestOwnedTool('pickaxe')];ui.actionName.textContent=`Mining ${def.name}`;ui.status.textContent=`Mining ${def.name} with ${tool?.name || 'a pickaxe'}...`; }
   function beginFishing(spot){ activeFishingSpot=spot;queuedFishingSpot=null;actionElapsed=0;const def=FISH_TYPES[spot.type],tool=ITEM_DEFS[bestOwnedTool('fishingRod')];ui.actionName.textContent=`Fishing ${def.name}`;ui.status.textContent=`Fishing for ${def.name} with ${tool?.name || 'a fishing rod'}...`; }
   function awardFish(spot){
-    const def=FISH_TYPES[spot.type],gainedXp=xpWithSummonBonus('fishing',def.xp);state.inventory[def.item]=(state.inventory[def.item]||0)+1;state.skills.fishing.xp+=gainedXp;awardSummoningXp(gainedXp);spot.remaining--;
+    const def=FISH_TYPES[spot.type],gainedXp=xpWithSummonBonus('fishing',def.xp);state.inventory[def.item]=(state.inventory[def.item]||0)+1;state.skills.fishing.xp+=gainedXp;awardSummoningXp(gainedXp);spot.remaining--;audioEngine.sfx('fish');
     floaters.push({x:spot.standX,y:spot.standY-65,text:`+1 ${ITEM_DEFS[def.item].name}  +${gainedXp} XP`,life:1.4});renderInventory();renderSkills();
     if(spot.remaining<=0){spot.respawnAt=Date.now()+randomInt(20,36)*1000;showToast(`${def.name} fishing spot moved`);stopAction(true);}else actionElapsed=0;
   }
 
   function awardOre(rock){
-    const def=ROCK_TYPES[rock.type],gainedXp=xpWithSummonBonus('mining',def.xp);state.inventory[def.item]=(state.inventory[def.item]||0)+1;state.skills.mining.xp+=gainedXp;awardSummoningXp(gainedXp);rock.hp--;
+    const def=ROCK_TYPES[rock.type],gainedXp=xpWithSummonBonus('mining',def.xp);state.inventory[def.item]=(state.inventory[def.item]||0)+1;state.skills.mining.xp+=gainedXp;awardSummoningXp(gainedXp);rock.hp--;audioEngine.sfx('mine');
     floaters.push({x:rock.x,y:rock.y-48,text:`+1 ${ITEM_DEFS[def.item].name}  +${gainedXp} XP`,life:1.4});renderInventory();renderSkills();
     if(rock.hp<=0){rock.respawnAt=Date.now()+def.respawn*1000;showToast(`${def.name} rock depleted`);stopAction(true);}else actionElapsed=0;
   }
 
   function awardLog(tree){
-    const def=TREE_TYPES[tree.type]; state.inventory[def.log]=(state.inventory[def.log]||0)+1;const gainedXp=xpWithSummonBonus('woodcutting',Math.max(1,Math.round(def.xp*(1+equipmentBonus('woodcuttingXp')))));state.skills.woodcutting.xp+=gainedXp;awardSummoningXp(gainedXp);tree.remaining--;
+    const def=TREE_TYPES[tree.type]; state.inventory[def.log]=(state.inventory[def.log]||0)+1;const gainedXp=xpWithSummonBonus('woodcutting',Math.max(1,Math.round(def.xp*(1+equipmentBonus('woodcuttingXp')))));state.skills.woodcutting.xp+=gainedXp;awardSummoningXp(gainedXp);tree.remaining--;audioEngine.sfx('chop');
     floaters.push({x:tree.x,y:tree.y-55,text:`+1 ${ITEM_DEFS[def.log].name}  +${gainedXp} XP`,life:1.4}); renderInventory();renderSkills();
     if(tree.remaining<=0){tree.respawnAt=Date.now()+def.respawn*1000;showToast(`${def.name} tree depleted`);stopAction(true);} else actionElapsed=0;
   }
@@ -753,7 +817,28 @@
   function draw(){ctx.clearRect(0,0,canvas.width,canvas.height);ctx.fillStyle='#397f9f';ctx.fillRect(0,0,canvas.width,canvas.height);ctx.strokeStyle='rgba(210,240,248,.22)';ctx.lineWidth=3;for(let y=-30+(animationClock*12)%46;y<canvas.height+40;y+=46){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(canvas.width,y+10);ctx.stroke();}fillSmooth(continent,'#72ae61','#d5c68b',8);drawTileTexture(continent);for(const r of regions){fillSmooth(r.points,r.color);drawTileTexture(r.points);}for(const w of waters)drawWater(w);for(const f of fishingSpots)drawFishingSpot(f);for(const t of towns)drawTown(t);for(const t of trees)drawTree(t);for(const r of rocks)drawRock(r);for(const e of enemies)drawEnemy(e);drawSummon();drawPlayer();for(const f of floaters){const s=worldToScreen(f.x,f.y);ctx.globalAlpha=Math.min(1,f.life*1.4);ctx.fillStyle=f.damage?(f.miss?'#d7dbe2':'#ff6b6b'):'#fff4b8';ctx.strokeStyle='rgba(20,20,20,.8)';ctx.lineWidth=4;ctx.font='bold 14px system-ui';ctx.textAlign='center';ctx.strokeText(f.text,s.x,s.y);ctx.fillText(f.text,s.x,s.y);ctx.textAlign='start';ctx.globalAlpha=1;}}
 
   function openPanel(name){document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active',t.dataset.panel===name));document.querySelectorAll('.panel').forEach(p=>p.classList.toggle('active',p.id===name));}
-  function renderInventory(){const owned=Object.entries(state.inventory).filter(([k,q])=>q>0&&ITEM_DEFS[k]);ui.inventory.innerHTML=owned.length?`<div class="item-grid">${owned.map(([k,q])=>`<button class="item" data-item="${k}"><strong>${ITEM_DEFS[k].name}</strong><span>×${q}</span><small>${ITEM_DEFS[k].type}</small></button>`).join('')}</div>`:`<div class="empty-state"><strong>Your inventory is empty</strong><span>Gather logs, fish, or ore to fill it.</span></div>`;ui.inventory.querySelectorAll('[data-item]').forEach(b=>b.addEventListener('click',()=>showItem(b.dataset.item)));}
+  function itemCategory(key,item){
+    if(item.summonType)return 'summons';
+    if(item.slot==='weapon'||/weapon|bow/i.test(item.type))return 'weapons';
+    if(['head','body','legs','boots','shield','cape','ring'].includes(item.slot)||/armour|armor|ring|cape|shield/i.test(item.type))return 'armour';
+    if(item.tool||/tool|axe|pickaxe|fishing rod/i.test(item.type))return 'tools';
+    if(COOKING_DATA[key]||Object.values(COOKING_DATA).some(d=>d.cooked===key)||/food|raw meat|cooked/i.test(item.type))return 'food';
+    if(/log|ore|bar|material|drop|hide|bone|scale|gel|silk|cloth|stone/i.test(item.type+' '+item.name))return 'materials';
+    return 'other';
+  }
+  function renderHeader(){
+    if(ui.coinCount)ui.coinCount.textContent=(state.inventory.coins||0).toLocaleString();
+    if(ui.soundButton)ui.soundButton.textContent=(state.audio.music||state.audio.sfx)?'🔊':'🔇';
+  }
+  function renderInventory(){
+    const categories=[['all','All'],['weapons','Weapons'],['armour','Armour'],['food','Food'],['materials','Materials'],['tools','Tools'],['summons','Summons'],['other','Other']];
+    const owned=Object.entries(state.inventory).filter(([k,q])=>q>0&&k!=='coins'&&ITEM_DEFS[k]);
+    const shown=inventoryFilter==='all'?owned:owned.filter(([k])=>itemCategory(k,ITEM_DEFS[k])===inventoryFilter);
+    ui.inventory.innerHTML=`<div class="inventory-filters">${categories.map(([k,label])=>`<button class="inventory-filter ${inventoryFilter===k?'active':''}" data-filter="${k}">${label}</button>`).join('')}</div>${shown.length?`<div class="item-grid">${shown.map(([k,q])=>`<button class="item" data-item="${k}"><strong>${ITEM_DEFS[k].name}</strong><span>×${q}</span><small>${ITEM_DEFS[k].type}</small></button>`).join('')}</div>`:`<div class="empty-state"><strong>No ${inventoryFilter==='all'?'items':inventoryFilter} owned</strong><span>Items in this category will appear here.</span></div>`}`;
+    ui.inventory.querySelectorAll('[data-filter]').forEach(b=>b.addEventListener('click',()=>{inventoryFilter=b.dataset.filter;renderInventory();}));
+    ui.inventory.querySelectorAll('[data-item]').forEach(b=>b.addEventListener('click',()=>showItem(b.dataset.item)));
+    renderHeader();
+  }
   function renderSkills(){
     ui.skills.innerHTML=`<div class="skill-grid">${Object.entries(SKILL_DEFS).map(([key,def])=>{const xp=state.skills[key]?.xp||0,level=levelFromXp(xp),progress=currentLevelProgress(xp);return `<button class="skill-card ${key==='woodcutting'?'active-skill':''}" data-skill="${key}"><strong>${def.name}</strong><span>Level ${level} · ${xp.toLocaleString()} XP</span><div class="progress-track"><div class="progress-fill" style="width:${progress*100}%"></div></div></button>`}).join('')}</div>`;
     ui.skills.querySelectorAll('[data-skill]').forEach(b=>b.addEventListener('click',()=>showSkill(b.dataset.skill)));
@@ -805,7 +890,7 @@
     state.inventory[raw]-=count;
     state.inventory[d.cooked]=(state.inventory[d.cooked]||0)+count;
     state.skills.cooking.xp=(state.skills.cooking.xp||0)+d.xp*count;
-    showToast(`Cooked ${d.name.replace('Cooked ','')}${count>1?` ×${count}`:''}`);
+    showToast(`Cooked ${d.name.replace('Cooked ','')}${count>1?` ×${count}`:''}`);audioEngine.sfx('cook');
     renderInventory();renderSkills();renderCookingMenu(town);saveGame(false);
   }
   function dayKey(){return new Date().toISOString().slice(0,10);}
@@ -852,7 +937,7 @@
     for(const [key,need] of Object.entries(recipe.materials))state.inventory[key]-=need*count;
     state.inventory[recipe.output]=(state.inventory[recipe.output]||0)+recipe.amount*count;
     const gainedXp=xpWithSummonBonus('crafting',recipe.xp*count);state.skills.crafting.xp=(state.skills.crafting.xp||0)+gainedXp;awardSummoningXp(gainedXp);
-    showToast(`Crafted ${ITEM_DEFS[recipe.output].name}${count>1?` ×${count}`:''}`);renderInventory();renderSkills();renderEquipment();renderCraftingMenu();saveGame(false);
+    showToast(`Crafted ${ITEM_DEFS[recipe.output].name}${count>1?` ×${count}`:''}`);audioEngine.sfx('craft');renderInventory();renderSkills();renderEquipment();renderCraftingMenu();saveGame(false);
   }
 
   function renderEquipment(){const slots=[['head','Head'],['cape','Cape'],['body','Body'],['weapon','Weapon'],['shield','Shield'],['legs','Legs'],['boots','Boots'],['ring','Ring'],['food','Food']],ps=playerCombatStats();ui.equipment.innerHTML=`<div class="map-summary"><strong>${ps.style==='range'?'Ranged':'Melee'} combat stats</strong><span>Level ${ps.level} · Accuracy ${ps.accuracy} · Max hit ${ps.maxHit} · Defence ${ps.defence}</span></div><div class="equipment-slots">${slots.map(([k,l])=>{const item=state.equipment[k]&&ITEM_DEFS[state.equipment[k]];return `<button class="slot ${item?'filled':''}" data-slot="${k}" ${item?'':'disabled'}><span>${l}</span><strong>${item?item.name:'Empty'}</strong></button>`}).join('')}</div>`;ui.equipment.querySelectorAll('.slot.filled').forEach(b=>b.addEventListener('click',()=>showItem(state.equipment[b.dataset.slot])));}
@@ -870,10 +955,21 @@
   function drawMiniMap(){const mini=document.getElementById('miniMapCanvas');if(!mini)return;const m=mini.getContext('2d'),viewW=WORLD.width/miniMapView.zoom,viewH=WORLD.height/miniMapView.zoom,left=miniMapView.centerX-viewW/2,top=miniMapView.centerY-viewH/2,sx=mini.width/viewW,sy=mini.height/viewH,toX=x=>(x-left)*sx,toY=y=>(y-top)*sy;m.clearRect(0,0,mini.width,mini.height);m.fillStyle='#397f9f';m.fillRect(0,0,mini.width,mini.height);const poly=(pts,color)=>{m.beginPath();m.moveTo(toX(pts[0][0]),toY(pts[0][1]));for(const [x,y] of pts.slice(1))m.lineTo(toX(x),toY(y));m.closePath();m.fillStyle=color;m.fill();};poly(continent,'#72ae61');for(const r of regions)poly(r.points,r.color);for(const w of waters){m.beginPath();m.ellipse(toX(w.x),toY(w.y),w.rx*sx,w.ry*sy,0,0,Math.PI*2);m.fillStyle=w.color;m.fill();}for(const t of towns){m.fillStyle='#f0e9d2';m.fillRect(toX(t.x)-5,toY(t.y)-5,10,10);}m.fillStyle='#ffdf65';m.beginPath();m.arc(toX(state.player.x),toY(state.player.y),9,0,Math.PI*2);m.fill();m.strokeStyle='#1d232b';m.lineWidth=4;m.stroke();}
 
   function showItem(key){const item=ITEM_DEFS[key];if(!item)return;selectedItemKey=key;ui.itemType.textContent=item.type;ui.itemName.textContent=item.name;ui.itemDescription.textContent=item.description;const rows=[];if(item.uses)rows.push(['Used for',item.uses]);for(const [k,v] of Object.entries(item.stats||{}))rows.push([k,v]);if(item.summonType)rows.push(['Current status',state.activeSummon===item.summonType?'Active summon':'Available to summon']);ui.itemStats.innerHTML=rows.map(([k,v])=>`<div><span>${k}</span><strong>${v}</strong></div>`).join('');const equipped=Object.keys(state.equipment).find(s=>state.equipment[s]===key);if(item.summonType&&state.inventory[key]>0){ui.itemAction.hidden=false;ui.itemAction.textContent=state.activeSummon===item.summonType?'Already Summoned':'Summon';ui.itemAction.disabled=state.activeSummon===item.summonType;}else if(item.slot&&state.inventory[key]>0){ui.itemAction.hidden=false;ui.itemAction.disabled=false;ui.itemAction.textContent=equipped?'Unequip':'Equip';}else{ui.itemAction.hidden=true;ui.itemAction.disabled=false;}ui.dialog.showModal();}
-  function toggleSelectedEquipment(){const key=selectedItemKey,item=ITEM_DEFS[key];if(item?.summonType){if(state.activeSummon===item.summonType)return;state.activeSummon=item.summonType;state.summonAttackElapsed=0;ui.dialog.close();showToast(`${SUMMON_DEFS[item.summonType].name} answers your call`);renderAll();saveGame(false);return;}if(!item?.slot)return;const existing=Object.keys(state.equipment).find(s=>state.equipment[s]===key);if(existing)state.equipment[existing]=null;else state.equipment[item.slot]=key;ui.dialog.close();renderEquipment();renderCombatHud();saveGame(false);}
-  function renderAll(){renderInventory();renderSkills();renderEquipment();renderMapPanel();renderCombatHud();}
+  function toggleSelectedEquipment(){const key=selectedItemKey,item=ITEM_DEFS[key];if(item?.summonType){if(state.activeSummon===item.summonType)return;state.activeSummon=item.summonType;state.summonAttackElapsed=0;ui.dialog.close();showToast(`${SUMMON_DEFS[item.summonType].name} answers your call`);audioEngine.sfx('summon');renderAll();saveGame(false);return;}if(!item?.slot)return;const existing=Object.keys(state.equipment).find(s=>state.equipment[s]===key);if(existing)state.equipment[existing]=null;else state.equipment[item.slot]=key;ui.dialog.close();renderEquipment();renderCombatHud();saveGame(false);}
+  function renderAll(){renderInventory();renderSkills();renderEquipment();renderMapPanel();renderCombatHud();renderHeader();}
   function frame(now){const dt=Math.min((now-lastFrame)/1000,.05);lastFrame=now;update(dt);draw();if(now-miniMapView.lastDraw>180&&document.getElementById('map')?.classList.contains('active')){miniMapView.lastDraw=now;drawMiniMap();}requestAnimationFrame(frame);}
 
-  canvas.addEventListener('pointerdown',handlePointer,{passive:false});document.getElementById('saveButton').addEventListener('click',()=>saveGame(true));document.getElementById('stopButton').addEventListener('click',()=>stopAction(true));ui.eatButton.addEventListener('click',eatFood);document.querySelectorAll('.tab').forEach(t=>t.addEventListener('click',()=>openPanel(t.dataset.panel)));document.getElementById('closeItemButton').addEventListener('click',()=>ui.dialog.close());document.getElementById('closeTownButton').addEventListener('click',()=>ui.townDialog.close());document.getElementById('closeCraftingButton').addEventListener('click',()=>ui.craftingDialog.close());document.getElementById('closeServiceButton').addEventListener('click',()=>ui.serviceDialog.close());ui.itemAction.addEventListener('click',toggleSelectedEquipment);ui.dialog.addEventListener('click',e=>{if(e.target===ui.dialog)ui.dialog.close();});ui.townDialog.addEventListener('click',e=>{if(e.target===ui.townDialog)ui.townDialog.close();});ui.craftingDialog.addEventListener('click',e=>{if(e.target===ui.craftingDialog)ui.craftingDialog.close();});ui.serviceDialog.addEventListener('click',e=>{if(e.target===ui.serviceDialog)ui.serviceDialog.close();});document.getElementById('exportButton').addEventListener('click',()=>{saveGame(false);const blob=new Blob([JSON.stringify(state,null,2)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`idle-wanderer-save-${Date.now()}.json`;a.click();URL.revokeObjectURL(a.href);});document.getElementById('importInput').addEventListener('change',async e=>{const file=e.target.files?.[0];if(!file)return;try{localStorage.setItem(SAVE_KEY,JSON.stringify(JSON.parse(await file.text())));location.reload();}catch{showToast('Invalid save file');}});document.getElementById('resetButton').addEventListener('click',()=>{if(confirm('Reset all progress on this device?')){localStorage.removeItem(SAVE_KEY);location.reload();}});window.addEventListener('pagehide',()=>saveGame(false));setInterval(()=>saveGame(false),15000);if('serviceWorker'in navigator)navigator.serviceWorker.register('./service-worker.js').catch(console.error);
+  function openSoundSettings(){
+    ui.musicToggle.checked=!!state.audio.music;ui.sfxToggle.checked=!!state.audio.sfx;
+    ui.musicVolume.value=Math.round(state.audio.musicVolume*100);ui.sfxVolume.value=Math.round(state.audio.sfxVolume*100);
+    ui.soundDialog.showModal();
+  }
+  function updateAudioSettings(){
+    state.audio.music=ui.musicToggle.checked;state.audio.sfx=ui.sfxToggle.checked;
+    state.audio.musicVolume=Number(ui.musicVolume.value)/100;state.audio.sfxVolume=Number(ui.sfxVolume.value)/100;
+    audioEngine.ensure();audioEngine.refresh();renderHeader();saveGame(false);
+  }
+
+  canvas.addEventListener('pointerdown',handlePointer,{passive:false});document.getElementById('saveButton').addEventListener('click',()=>saveGame(true));ui.soundButton.addEventListener('click',()=>{audioEngine.ensure();openSoundSettings();});document.getElementById('closeSoundButton').addEventListener('click',()=>ui.soundDialog.close());[ui.musicToggle,ui.sfxToggle,ui.musicVolume,ui.sfxVolume].forEach(el=>el.addEventListener('input',updateAudioSettings));ui.soundDialog.addEventListener('click',e=>{if(e.target===ui.soundDialog)ui.soundDialog.close();});document.addEventListener('pointerdown',()=>audioEngine.ensure(),{once:true});document.getElementById('stopButton').addEventListener('click',()=>stopAction(true));ui.eatButton.addEventListener('click',eatFood);document.querySelectorAll('.tab').forEach(t=>t.addEventListener('click',()=>openPanel(t.dataset.panel)));document.getElementById('closeItemButton').addEventListener('click',()=>ui.dialog.close());document.getElementById('closeTownButton').addEventListener('click',()=>ui.townDialog.close());document.getElementById('closeCraftingButton').addEventListener('click',()=>ui.craftingDialog.close());document.getElementById('closeServiceButton').addEventListener('click',()=>ui.serviceDialog.close());ui.itemAction.addEventListener('click',toggleSelectedEquipment);ui.dialog.addEventListener('click',e=>{if(e.target===ui.dialog)ui.dialog.close();});ui.townDialog.addEventListener('click',e=>{if(e.target===ui.townDialog)ui.townDialog.close();});ui.craftingDialog.addEventListener('click',e=>{if(e.target===ui.craftingDialog)ui.craftingDialog.close();});ui.serviceDialog.addEventListener('click',e=>{if(e.target===ui.serviceDialog)ui.serviceDialog.close();});document.getElementById('exportButton').addEventListener('click',()=>{saveGame(false);const blob=new Blob([JSON.stringify(state,null,2)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`idle-wanderer-save-${Date.now()}.json`;a.click();URL.revokeObjectURL(a.href);});document.getElementById('importInput').addEventListener('change',async e=>{const file=e.target.files?.[0];if(!file)return;try{localStorage.setItem(SAVE_KEY,JSON.stringify(JSON.parse(await file.text())));location.reload();}catch{showToast('Invalid save file');}});document.getElementById('resetButton').addEventListener('click',()=>{if(confirm('Reset all progress on this device?')){localStorage.removeItem(SAVE_KEY);location.reload();}});window.addEventListener('pagehide',()=>saveGame(false));setInterval(()=>saveGame(false),15000);if('serviceWorker'in navigator)navigator.serviceWorker.register('./service-worker.js').catch(console.error);
   camera.x=clamp(state.player.x-canvas.width/2,0,WORLD.width-canvas.width);camera.y=clamp(state.player.y-canvas.height/2,0,WORLD.height-canvas.height);renderAll();requestAnimationFrame(frame);
 })();
