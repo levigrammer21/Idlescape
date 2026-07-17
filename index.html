@@ -11,16 +11,38 @@
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-  <main id="app">
+  <section id="loginScreen" class="login-screen">
+    <div class="login-card">
+      <div class="login-mark" aria-hidden="true">IW</div>
+      <p class="login-kicker">A quiet world is waiting</p>
+      <h1>Idle Wanderer</h1>
+      <p class="login-version">v0.13.0 · Cloud Saves</p>
+      <button id="googleSignInButton" class="google-button" type="button"><span>G</span> Continue with Google</button>
+      <div class="login-divider"><span>or</span></div>
+      <form id="authForm" class="auth-form">
+        <label id="nameRow" hidden><span>Display name</span><input id="authName" autocomplete="name" maxlength="30" /></label>
+        <label><span>Email</span><input id="authEmail" type="email" autocomplete="email" required /></label>
+        <label><span>Password</span><input id="authPassword" type="password" autocomplete="current-password" minlength="6" required /></label>
+        <button id="emailSubmitButton" class="login-primary" type="submit">Sign In</button>
+      </form>
+      <div class="login-links">
+        <button id="createAccountButton" type="button">Create Account</button>
+        <button id="forgotPasswordButton" type="button">Forgot password?</button>
+      </div>
+      <p id="authMessage" class="auth-message" aria-live="polite">Connecting to Firebase…</p>
+    </div>
+  </section>
+
+  <main id="app" hidden>
     <header class="topbar">
       <div class="title-block">
-        <h1>Idle Wanderer <span id="headerVersion" class="header-version">v0.12.0</span></h1>
+        <h1>Idle Wanderer <span id="headerVersion" class="header-version">v0.13.0</span></h1>
         <p id="statusText">Tap the ground, a tree, a rock, a fishing spot, or a town.</p>
       </div>
       <div class="topbar-center" aria-label="Coins">
         <div class="coin-display" title="Coins"><span class="coin-icon">●</span><strong id="coinCount">0</strong></div>
       </div>
-      <button id="saveButton" class="icon-button">Save</button>
+      <div class="account-cloud"><span id="accountName">Player</span><button id="cloudStatus" class="cloud-status" type="button" title="Cloud save status">☁ Saved</button></div>
     </header>
 
     <section class="game-shell">
@@ -57,10 +79,11 @@
         <div class="menu-grid">
           <button id="exportButton" class="wide-button">Export Save</button>
           <label class="wide-button file-button">Import Save<input id="importInput" type="file" accept="application/json" /></label>
+          <button id="logoutButton" class="wide-button">Sign Out</button>
           <button id="resetButton" class="wide-button muted-button">Reset Game</button>
         </div>
         <p class="hint">Town services are opened from the world itself. Skills will be developed one at a time, beginning with Woodcutting.</p>
-        <p class="version">Version 0.12.0 · The Idle Update</p>
+        <p class="version">Version 0.13.0 · Cloud Saves</p>
       </section>
     </section>
   </main>
@@ -99,6 +122,6 @@
     <p class="hint">Offline progress is capped at 8 hours and stays inside your saved biome.</p>
   </dialog>
 
-  <script src="game.js"></script>
+  <script type="module" src="firebase.js?v=0.13.0"></script>
 </body>
 </html>

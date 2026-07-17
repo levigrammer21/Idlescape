@@ -81,3 +81,13 @@ Upload every file in this folder to the root of your GitHub Pages repository.
 - Added offline progression for the saved auto mode, capped at eight hours.
 - Added a Welcome Back summary listing items, XP, and enemies defeated.
 - Auto Combat and Auto Explore switch off after player defeat.
+
+## v0.13.0 — Cloud Saves
+- Added a login screen before the game with the version number.
+- Added Google sign-in and email/password sign-in, account creation, password reset, and sign-out.
+- Added Firebase Authentication using the `idle-wonders` project.
+- Added Cloud Firestore saves split into one document per top-level save section under `users/{uid}/save`.
+- Cloud saves load before the game starts and become authoritative when present.
+- Existing local saves are migrated to the signed-in account when no cloud save exists.
+- Important actions continue to save locally immediately and queue a debounced cloud write.
+- Replaced the manual Save button with a cloud save-status indicator.
