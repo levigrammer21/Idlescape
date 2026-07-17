@@ -1,6 +1,13 @@
-# Idle Wanderer v0.11.5 — Player Camera Hotfix
+# Idle Wanderer v0.11.0 — Larger World
 
-- Camera immediately recenters if migrated player coordinates place the character outside the visible canvas.
-- Invalid camera values recover automatically.
-- Player now has a high-contrast outline for visibility during testing.
-- Existing inventory, skills, equipment, quests, POH, and world progress are preserved.
+Surgical world-size update built from v0.9.3.
+
+## Changes
+- Expanded the existing hand-built map by 50% in width and height (2.25× total playable area).
+- Preserved the current biome shapes, towns, ponds, resources, fishing spots, and creature zones.
+- Increased travel distance and open space without adding or removing gameplay content.
+- Updated camera and minimap bounds for the larger world.
+- Existing saves migrate player and living enemy positions into the expanded coordinate system.
+- Version and offline cache updated to v0.11.0.
+
+Upload every file in this folder to the root of the GitHub Pages repository.

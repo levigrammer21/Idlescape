@@ -1,7 +1,7 @@
 (() => {
   'use strict';
 
-  const VERSION = '0.11.5';
+  const VERSION = '0.11.0';
   const SAVE_KEY = 'idle-wanderer-save-v6';
   const LEGACY_KEYS = ['idle-wanderer-save-v5', 'idle-wanderer-save-v4', 'idle-wanderer-save-v3', 'idle-wanderer-save-v2'];
   const TICK_SECONDS = 0.6;
@@ -264,33 +264,14 @@
     frostDragon:{name:'Frost Dragon',behaviour:'aggressive',shape:'dragon',hp:650,defence:105,accuracy:85,maxHit:42,ticks:5,color:'#8fc5d4',aggro:340,respawn:600,drops:[['dragonMeat',2,4,1],['crystal',1,3,.5],['frostScale',1,1,.025],['frozenHeart',1,1,.01]]}
   };
   const enemySeeds=[
-    // Central grasslands — common beginner creatures
-    ['rabbit',1460,2380],['rabbit',1580,2450],['rabbit',1740,2260],['rabbit',1940,2320],['rabbit',2080,2480],['rabbit',2240,2070],['rabbit',2420,2210],['rabbit',2570,2380],['rabbit',2720,2080],['rabbit',2860,2320],['rabbit',3050,2150],['rabbit',3180,2460],
-    ['giantRat',1260,2460],['giantRat',1360,2380],['giantRat',1510,2630],['giantRat',1880,2580],['giantRat',2190,2460],['giantRat',2520,2280],['giantRat',2810,2540],['giantRat',3060,2620],
-    ['deer',2350,1880],['deer',2650,1920],['deer',2910,2450],['deer',3190,2240],['deer',3000,2780],['deer',2550,2750],
-    ['wildBoar',2180,2670],['wildBoar',2380,2620],['wildBoar',2680,2820],['wildBoar',3000,2920],['wildBoar',3250,2650],
-    ['wolf',2860,2600],['wolf',3150,2350],['wolf',2900,2740],['wolf',3320,2480],['wolf',3200,3000],['wolf',2740,2960],
-    ['bandit',760,2260],['bandit',850,2360],['bandit',950,2510],
-    // Dead grass and undead
-    ['skeleton',980,2860],['skeleton',1200,2920],['skeleton',1450,3090],['skeleton',1740,3000],['skeleton',2020,3150],['skeleton',2280,3250],
-    ['wraith',520,2880],['wraith',620,3000],['wraith',790,3160],
-    // Desert
-    ['scorpion',420,1580],['scorpion',470,1770],['scorpion',610,1960],['scorpion',700,2200],['scorpion',520,2380],['scorpion',820,2500],
-    ['sandSerpent',260,2200],['sandSerpent',330,2450],['sandSerpent',430,2650],['sandSerpent',650,2730],
-    ['sandGolem',300,1420],['sandGolem',330,1520],['sandGolem',520,1320],
-    // Swamp
-    ['bogSlime',980,620],['bogSlime',1250,720],['bogSlime',1510,560],['bogSlime',1770,820],['bogSlime',2050,870],['bogSlime',2330,910],
-    ['crocodile',690,520],['crocodile',770,600],['crocodile',1160,880],['crocodile',1930,640],['crocodile',2370,720],
-    ['marshLurker',2480,480],['marshLurker',2750,510],['marshLurker',2920,700],
-    // Jungle
-    ['jungleSpider',980,3520],['jungleSpider',1180,3650],['jungleSpider',1450,3820],['jungleSpider',1840,3610],['jungleSpider',2270,3540],['jungleSpider',2540,3740],
-    ['venomSnake',850,3790],['venomSnake',950,3910],['venomSnake',1320,4020],['venomSnake',2050,3950],['venomSnake',2480,4050],
-    ['jaguar',2200,3650],['jaguar',2670,3790],['jaguar',2860,3950],
-    ['gorilla',1980,4020],['gorilla',2250,4050],['gorilla',2550,4140],
-    // Northern high-level region
-    ['iceWolf',920,1020],['iceWolf',1120,1040],['iceWolf',1560,950],['iceWolf',2140,1080],['iceWolf',2580,1120],['iceWolf',2910,1000],
-    ['frostTroll',2470,780],['frostTroll',2850,850],['frostTroll',3050,650],
-    ['frostDragon',2750,360]
+    ['rabbit',1580,2450],['rabbit',1940,2320],['rabbit',2240,2070],
+    ['giantRat',1360,2380],['giantRat',2520,2280],['deer',2650,1920],['deer',2910,2450],
+    ['wildBoar',2380,2620],['wolf',3150,2350],['wolf',2900,2740],['bandit',850,2360],
+    ['skeleton',1200,2920],['skeleton',2020,3150],['wraith',620,3000],
+    ['scorpion',470,1770],['scorpion',700,2200],['sandSerpent',330,2450],['sandGolem',330,1520],
+    ['bogSlime',1250,720],['bogSlime',2050,870],['crocodile',2370,720],['crocodile',770,600],['marshLurker',2750,510],
+    ['jungleSpider',1180,3650],['jungleSpider',2270,3540],['venomSnake',950,3910],['jaguar',2670,3790],['gorilla',2250,4050],
+    ['iceWolf',1120,1040],['iceWolf',2580,1120],['frostTroll',2850,850],['frostDragon',2750,360]
   ];
   function makeEnemies(saved={}){
     return enemySeeds.map(([type,x,y],index)=>{const id=`enemy-${type}-${index}`,d=ENEMY_TYPES[type],old=saved[id]||{};return {id,type,x:old.x??x,y:old.y??y,homeX:x,homeY:y,hp:Math.min(old.hp??d.hp,d.hp),maxHp:d.hp,respawnAt:old.respawnAt||0,target:null,returning:false,attackElapsed:0,wanderElapsed:Math.random()*3,wanderX:x,wanderY:y,attackAnim:0,hitFlash:0,deathAnim:0,facing:1};});
@@ -317,38 +298,20 @@
   ];
 
   const fishingSeeds = [
-    // Starter and central freshwater
-    ['minnow', 1450, 1840, 1315, 1800, 'Cedar Pond'],
-    ['minnow', 1600, 1900, 1740, 2015, 'Cedar Pond'],
-    ['minnow', 1515, 1980, 1390, 2070, 'Cedar Pond'],
-    ['minnow', 1680, 1840, 1780, 1740, 'Cedar Pond'],
-    ['crappie', 2780, 2090, 2630, 2035, 'Willow Mere'],
-    ['crappie', 2940, 2170, 3090, 2250, 'Willow Mere'],
-    ['crappie', 2860, 2270, 2730, 2370, 'Willow Mere'],
-    ['crappie', 3020, 2040, 3120, 1940, 'Willow Mere'],
-    // Jungle lagoon
-    ['bass', 1860, 3730, 1710, 3630, 'Jungle Lagoon'],
-    ['bass', 2000, 3800, 2140, 3900, 'Jungle Lagoon'],
-    ['bass', 1740, 3860, 1610, 3950, 'Jungle Lagoon'],
-    ['bass', 2080, 3710, 2210, 3620, 'Jungle Lagoon'],
-    // Swamp pool
-    ['catfish', 2140, 600, 2010, 750, 'Swamp Pool'],
-    ['catfish', 2300, 555, 2420, 705, 'Swamp Pool'],
-    ['catfish', 2210, 700, 2070, 820, 'Swamp Pool'],
-    ['catfish', 2390, 650, 2520, 790, 'Swamp Pool'],
-    // Coastal ocean
-    ['tuna', 3470, 1650, 3295, 1670, 'Eastern Ocean'],
-    ['tuna', 3500, 2020, 3325, 2020, 'Eastern Ocean'],
-    ['tuna', 3020, 3610, 2880, 3500, 'Southern Ocean'],
-    ['tuna', 620, 1190, 760, 1270, 'Western Ocean'],
-    ['grouper', 2380, 4190, 2380, 4005, 'Southern Ocean'],
-    ['grouper', 2740, 4080, 2660, 3920, 'Southern Ocean'],
-    ['grouper', 500, 3340, 680, 3340, 'Western Ocean'],
-    ['grouper', 3300, 2760, 3140, 2710, 'Eastern Ocean'],
-    ['shark', 1660, 4270, 1660, 4085, 'Deep Southern Ocean'],
-    ['shark', 2050, 4250, 2050, 4070, 'Deep Southern Ocean'],
-    ['shark', 3440, 2890, 3260, 2820, 'Deep Eastern Ocean'],
-    ['shark', 360, 2550, 540, 2550, 'Deep Western Ocean']
+    ['minnow', 1470, 1880, 1335, 1830, 'Cedar Pond'],
+    ['minnow', 1660, 1940, 1760, 2070, 'Cedar Pond'],
+    ['crappie', 2850, 2100, 2690, 2050, 'Willow Mere'],
+    ['crappie', 2980, 2210, 3125, 2290, 'Willow Mere'],
+    ['bass', 1960, 3765, 1810, 3650, 'Jungle Lagoon'],
+    ['bass', 1780, 3820, 1660, 3925, 'Jungle Lagoon'],
+    ['catfish', 2180, 620, 2050, 770, 'Swamp Pool'],
+    ['catfish', 2370, 560, 2470, 720, 'Swamp Pool'],
+    ['tuna', 3480, 1750, 3310, 1760, 'Eastern Ocean'],
+    ['tuna', 3060, 3620, 2920, 3520, 'Southern Ocean'],
+    ['grouper', 2450, 4190, 2450, 4010, 'Southern Ocean'],
+    ['grouper', 510, 3370, 690, 3370, 'Western Ocean'],
+    ['shark', 1720, 4260, 1720, 4080, 'Deep Southern Ocean'],
+    ['shark', 3300, 2870, 3150, 2790, 'Deep Eastern Ocean']
   ];
 
   function makeFishingSpots(saved = {}) {
@@ -366,29 +329,14 @@
   ];
 
   const treeSeeds = [
-    // Cedar — dense around the central starter region
-    ['cedar',1360,1640],['cedar',1540,1540],['cedar',1770,1580],['cedar',1980,1740],
-    ['cedar',1280,2040],['cedar',1510,2230],['cedar',1860,2290],['cedar',2190,1990],
-    // Oak — central and eastern woodland
-    ['oak',1080,1740],['oak',1180,1960],['oak',2080,2200],['oak',2350,1840],
-    ['oak',2540,1670],['oak',2720,1900],
-    // Willow — kept close to freshwater
-    ['willow',1390,2000],['willow',1730,2060],['willow',2630,2030],['willow',2780,2380],
-    ['willow',3050,2290],['willow',3150,2070],
-    // Beech — transitional forests farther from the starter town
-    ['beech',860,2380],['beech',1030,2610],['beech',1200,2820],['beech',2240,2730],
-    ['beech',2530,2670],['beech',2860,2490],
-    // Cherry — southern/eastern grass and dead-grass edges
-    ['cherry',700,3010],['cherry',940,3180],['cherry',1410,3290],['cherry',1770,3370],
-    ['cherry',2180,3190],['cherry',2450,3020],
-    // Arctic Pine — far north only
-    ['arcticPine',850,560],['arcticPine',1120,420],['arcticPine',1510,380],['arcticPine',1840,500],
-    ['arcticPine',2320,500],['arcticPine',2730,650],
-    // Mahogany — jungle interior
-    ['mahogany',980,3650],['mahogany',1230,3840],['mahogany',2050,3700],['mahogany',2380,3870],
-    ['mahogany',2650,3470],['mahogany',2780,3770],
-    // Redwood — rare, deepest jungle
-    ['redwood',1460,3970],['redwood',1760,4070],['redwood',2140,4040],['redwood',2440,3950]
+    ['cedar',1450,1690],['cedar',1740,1580],['cedar',2060,1810],['cedar',1320,2240],
+    ['oak',1120,1800],['oak',2150,2280],['oak',2500,1760],
+    ['willow',2670,2040],['willow',3030,2300],['willow',1450,2050],
+    ['beech',920,2450],['beech',2500,2700],['beech',1120,2850],
+    ['cherry',750,3060],['cherry',1480,3330],['cherry',2240,3230],
+    ['arcticPine',980,620],['arcticPine',1590,440],['arcticPine',2700,700],
+    ['mahogany',1120,3710],['mahogany',2450,3890],['mahogany',2720,3450],
+    ['redwood',1620,3950],['redwood',2200,4020]
   ];
 
   function makeTrees(saved = {}) {
@@ -400,23 +348,14 @@
   }
 
   const rockSeeds = [
-    // Stone — widespread beginner deposits
-    ['stone',1440,2380],['stone',1680,2480],['stone',1920,2450],['stone',2160,2330],
-    ['stone',2440,2450],['stone',1120,2250],['stone',2720,2240],
-    // Copper — central/eastern grass foothills
-    ['copper',2260,1510],['copper',2470,1610],['copper',2700,1730],['copper',2890,1850],
-    // Iron — eastern and southern approaches
-    ['iron',2510,2460],['iron',2760,2570],['iron',3020,2410],['iron',3160,2590],
-    // Coal — northern dead-grass hills
-    ['coal',930,1310],['coal',1160,1390],['coal',1410,1260],['coal',1660,1380],
-    // Silver — deep desert
-    ['silver',420,2060],['silver',610,2220],['silver',790,2370],['silver',500,2570],
-    // Pyrite — southern dead grass and rough borderlands
-    ['pyrite',930,3010],['pyrite',1180,3160],['pyrite',1480,3000],['pyrite',1770,3150],
-    // Gold — jungle ridges
-    ['gold',2110,3430],['gold',2350,3550],['gold',2600,3640],['gold',2780,3440],
-    // Crystal — rare remote northern deposits
-    ['crystal',1040,460],['crystal',1420,330],['crystal',1940,390],['crystal',2480,480]
+    ['stone',1650,2440],['stone',1930,2490],['stone',2200,2360],
+    ['copper',2380,1580],['copper',2740,1710],
+    ['iron',2700,2520],['iron',3060,2400],
+    ['coal',1080,1360],['coal',1420,1280],
+    ['silver',760,2350],['silver',520,2200],
+    ['pyrite',1080,3130],['pyrite',1520,3020],
+    ['gold',2320,3440],['gold',2650,3600],
+    ['crystal',1200,520],['crystal',1920,420]
   ];
 
   function makeRocks(saved = {}) {
@@ -503,26 +442,14 @@
       for(const key of Object.keys(SKILL_DEFS)) if(old.skills?.[key]) fresh.skills[key]=old.skills[key];
       if(!old.skills?.fortitude || (old.skills.fortitude.xp||0)<xpForLevel(10)) fresh.skills.fortitude={xp:xpForLevel(10)};
       fresh.equipment={...fresh.equipment,...(old.equipment||{})}; fresh.treeState=old.treeState||{}; fresh.fishingState=old.fishingState||{}; fresh.rockState=old.rockState||{}; fresh.enemyState=old.enemyState||{}; fresh.combat={...fresh.combat,...(old.combat||{})}; fresh.poh=old.poh||{}; fresh.quests=old.quests||{};
-      // The world was enlarged once in v0.11.0. Only saves from before that
-      // release need coordinate scaling. The old `old.version !== VERSION`
-      // check scaled positions again on every later update and could leave the
-      // player/camera in an empty part of the map.
-      const versionParts = String(old.version || '0.0.0').split('.').map(n => Number(n) || 0);
-      const predatesWorldExpansion = versionParts[0] === 0 && versionParts[1] < 11;
-      const brokenPopulationSave = old.version === '0.11.2';
-      if(predatesWorldExpansion){
+      const expandOldWorld = old.version !== VERSION;
+      if(expandOldWorld){
         fresh.enemyState=Object.fromEntries(Object.entries(fresh.enemyState).map(([id,enemy])=>[id,{...enemy,x:typeof enemy.x==='number'?Math.round(enemy.x*MAP_SCALE):enemy.x,y:typeof enemy.y==='number'?Math.round(enemy.y*MAP_SCALE):enemy.y}]));
       }
-      if(brokenPopulationSave){
-        // v0.11.2 may have multiplied already-expanded positions a second time.
-        // Reset only position data; inventory, skills, equipment and resource
-        // progress remain untouched.
-        fresh.enemyState={};
-        fresh.player={...fresh.player};
-      } else if(old.player){
-        const px=predatesWorldExpansion?Math.round(old.player.x*MAP_SCALE):Number(old.player.x);
-        const py=predatesWorldExpansion?Math.round(old.player.y*MAP_SCALE):Number(old.player.y);
-        if(Number.isFinite(px)&&Number.isFinite(py)&&isWalkable(px,py)) fresh.player={...fresh.player,x:px,y:py,targetX:px,targetY:py};
+      if(old.player){
+        const px=expandOldWorld?Math.round(old.player.x*MAP_SCALE):old.player.x;
+        const py=expandOldWorld?Math.round(old.player.y*MAP_SCALE):old.player.y;
+        if(isWalkable(px,py)) fresh.player={...fresh.player,x:px,y:py,targetX:px,targetY:py};
       }
       if(old.version && old.version !== VERSION){
         for(const [id,node] of Object.entries(fresh.treeState||{})){const type=id.replace(/-\d+$/,'');const def=TREE_TYPES[type];if(def&&node.remaining>0){node.remaining=Math.max(node.remaining,def.capacity[0]);node.max=Math.max(node.max||0,def.capacity[1]);}}
@@ -544,7 +471,7 @@
   function worldToScreen(x,y){ return {x:x-camera.x,y:y-camera.y}; }
   function screenToWorld(x,y){ return {x:x+camera.x,y:y+camera.y}; }
 
-  function townAt(x,y){ let best=null,bestD=112; for(const t of towns){const d=Math.hypot(x-t.x,y-t.y);if(d<bestD){best=t;bestD=d;}} return best; }
+  function townAt(x,y){ let best=null,bestD=72; for(const t of towns){const d=Math.hypot(x-t.x,y-t.y);if(d<bestD){best=t;bestD=d;}} return best; }
   function treeAt(x,y){ let best=null,bestD=44; for(const t of trees){if(t.remaining<=0)continue;const d=Math.hypot(x-t.x,y-t.y);if(d<bestD){best=t;bestD=d;}} return best; }
   function rockAt(x,y){ let best=null,bestD=48; for(const r of rocks){if(r.hp<=0)continue;const d=Math.hypot(x-r.x,y-r.y);if(d<bestD){best=r;bestD=d;}} return best; }
   function fishingSpotAt(x,y){ let best=null,bestD=52; for(const f of fishingSpots){if(f.remaining<=0)continue;const d=Math.hypot(x-f.x,y-f.y);if(d<bestD){best=f;bestD=d;}} return best; }
@@ -669,19 +596,7 @@
   }
 
   function update(dt){
-    animationClock+=dt;
-    // Recover safely from malformed or out-of-bounds saved coordinates.
-    const pstate=state.player;
-    if(!Number.isFinite(pstate.x)||!Number.isFinite(pstate.y)||!isWalkable(pstate.x,pstate.y)){
-      pstate.x=Math.round(1770*MAP_SCALE);pstate.y=Math.round(2295*MAP_SCALE);
-      pstate.targetX=pstate.x;pstate.targetY=pstate.y;
-      camera.x=clamp(pstate.x-canvas.width/2,0,WORLD.width-canvas.width);
-      camera.y=clamp(pstate.y-canvas.height/2,0,WORLD.height-canvas.height);
-      stopAction(false);
-    }
-    if(!Number.isFinite(pstate.targetX)||!Number.isFinite(pstate.targetY)){
-      pstate.targetX=pstate.x;pstate.targetY=pstate.y;
-    } playerAttackAnim=Math.max(0,playerAttackAnim-dt);playerHitFlash=Math.max(0,playerHitFlash-dt);defeatFlash=Math.max(0,defeatFlash-dt);respawnLock=Math.max(0,respawnLock-dt); const now=Date.now(); for(const t of trees){if(t.remaining<=0&&t.respawnAt&&now>=t.respawnAt){const def=TREE_TYPES[t.type];t.max=randomInt(def.capacity[0],def.capacity[1]);t.remaining=t.max;t.respawnAt=0;}}
+    animationClock+=dt; playerAttackAnim=Math.max(0,playerAttackAnim-dt);playerHitFlash=Math.max(0,playerHitFlash-dt);defeatFlash=Math.max(0,defeatFlash-dt);respawnLock=Math.max(0,respawnLock-dt); const now=Date.now(); for(const t of trees){if(t.remaining<=0&&t.respawnAt&&now>=t.respawnAt){const def=TREE_TYPES[t.type];t.max=randomInt(def.capacity[0],def.capacity[1]);t.remaining=t.max;t.respawnAt=0;}}
     for(const r of rocks){if(r.hp<=0&&r.respawnAt&&now>=r.respawnAt){r.hp=r.maxHp;r.respawnAt=0;}}
     for(const f of fishingSpots){if(f.remaining<=0&&f.respawnAt&&now>=f.respawnAt){f.remaining=randomInt(12,20);f.respawnAt=0;}}
     for(const e of enemies){const d=ENEMY_TYPES[e.type];e.attackAnim=Math.max(0,(e.attackAnim||0)-dt);e.hitFlash=Math.max(0,(e.hitFlash||0)-dt);e.deathAnim=Math.max(0,(e.deathAnim||0)-dt);if(e.hp<=0){if(e.respawnAt&&now>=e.respawnAt){e.hp=e.maxHp;e.respawnAt=0;e.x=e.homeX;e.y=e.homeY;}continue;}e.wanderElapsed-=dt;if(!e.target&&d.behaviour==='aggressive'&&Math.hypot(e.x-state.player.x,e.y-state.player.y)<d.aggro&&regionAt(e.x,e.y).id===regionAt(state.player.x,state.player.y).id){e.target='player';activeEnemy=e;ui.actionName.textContent=`Attacked by ${d.name}`;}if(e.target==='player'){const dd=Math.hypot(state.player.x-e.x,state.player.y-e.y);if(regionAt(e.x,e.y).id!==regionAt(e.homeX,e.homeY).id||Math.hypot(e.x-e.homeX,e.y-e.homeY)>520){e.target=null;e.returning=true;}else if(dd>52){const step=Math.min(dd-48,135*dt);e.x+=(state.player.x-e.x)/dd*step;e.y+=(state.player.y-e.y)/dd*step;}e.attackElapsed+=dt;if(dd<=62&&e.attackElapsed>=d.ticks*TICK_SECONDS){e.attackElapsed=0;if(enemyAttack(e))break;}}else if(e.returning){const dd=Math.hypot(e.homeX-e.x,e.homeY-e.y);if(dd<5){e.x=e.homeX;e.y=e.homeY;e.returning=false;}else{const step=Math.min(dd,120*dt);e.x+=(e.homeX-e.x)/dd*step;e.y+=(e.homeY-e.y)/dd*step;}}else if(e.wanderElapsed<=0){e.wanderElapsed=randomInt(2,5);const a=Math.random()*Math.PI*2,r=Math.random()*70;e.wanderX=e.homeX+Math.cos(a)*r;e.wanderY=e.homeY+Math.sin(a)*r;}else{const dd=Math.hypot(e.wanderX-e.x,e.wanderY-e.y);if(dd>3){const step=Math.min(dd,45*dt);e.x+=(e.wanderX-e.x)/dd*step;e.y+=(e.wanderY-e.y)/dd*step;}}}
@@ -701,10 +616,7 @@
       else {const def=FISH_TYPES[activeFishingSpot.type],duration=gatheringDuration(def,'fishingRod');actionElapsed+=dt;ui.actionProgress.style.width=`${Math.min(100,actionElapsed/duration*100)}%`;if(actionElapsed>=duration)awardFish(activeFishingSpot);}
     } else ui.actionProgress.style.width='0%';
     const region=regionAt(p.x,p.y);ui.region.textContent=region.name;if(document.getElementById('map')?.classList.contains('active'))drawMiniMap();
-    const tx=clamp(p.x-canvas.width/2,0,WORLD.width-canvas.width),ty=clamp(p.y-canvas.height/2,0,WORLD.height-canvas.height),follow=1-Math.pow(.018,dt);
-    const playerScreenX=p.x-camera.x,playerScreenY=p.y-camera.y;
-    const cameraLostPlayer=!Number.isFinite(camera.x)||!Number.isFinite(camera.y)||playerScreenX<-40||playerScreenX>canvas.width+40||playerScreenY<-60||playerScreenY>canvas.height+70;
-    if(cameraLostPlayer){camera.x=tx;camera.y=ty;}else{camera.x+=(tx-camera.x)*follow;camera.y+=(ty-camera.y)*follow;}
+    const tx=clamp(p.x-canvas.width/2,0,WORLD.width-canvas.width),ty=clamp(p.y-canvas.height/2,0,WORLD.height-canvas.height),follow=1-Math.pow(.018,dt);camera.x+=(tx-camera.x)*follow;camera.y+=(ty-camera.y)*follow;
     for(let i=floaters.length-1;i>=0;i--){floaters[i].life-=dt;floaters[i].y-=24*dt;if(floaters[i].life<=0)floaters.splice(i,1);}
   }
 
@@ -736,28 +648,7 @@
     ctx.restore();
   }
   function drawFishingSpot(f){if(f.remaining<=0)return;const bob=Math.sin(animationClock*3+f.phase)*4,s=worldToScreen(f.x,f.y+bob);if(s.x<-70||s.y<-70||s.x>canvas.width+70||s.y>canvas.height+70)return;const d=FISH_TYPES[f.type];ctx.strokeStyle='rgba(233,249,255,.72)';ctx.lineWidth=3;for(let i=0;i<2;i++){ctx.beginPath();ctx.arc(s.x,s.y,12+i*11+Math.sin(animationClock*2+f.phase)*2,0,Math.PI*2);ctx.stroke();}drawFishShape(f.type,s.x,s.y,d.color);if(activeFishingSpot===f){ctx.strokeStyle='#f0cc64';ctx.lineWidth=3;ctx.beginPath();ctx.arc(s.x,s.y,38,0,Math.PI*2);ctx.stroke();}}
-  function drawTown(t){
-    const s=worldToScreen(t.x,t.y); if(s.x<-150||s.y<-150||s.x>canvas.width+150||s.y>canvas.height+150)return;
-    const pulse=1+Math.sin(animationClock*1.4+t.x*.002)*.015;
-    ctx.save();ctx.translate(s.x,s.y);ctx.scale(pulse,pulse);
-    // town clearing and path
-    ctx.fillStyle='rgba(44,37,29,.18)';ctx.beginPath();ctx.ellipse(0,10,92,64,0,0,Math.PI*2);ctx.fill();
-    ctx.fillStyle='#b9a77f';ctx.fillRect(-10,-74,20,148);ctx.fillRect(-82,-8,164,18);
-    ctx.fillStyle='#8b7655';ctx.fillRect(-7,-74,14,148);ctx.fillRect(-82,-5,164,12);
-    // fence corners
-    ctx.strokeStyle='#7b5636';ctx.lineWidth=4;for(const x of [-78,78]){ctx.beginPath();ctx.moveTo(x,-42);ctx.lineTo(x,46);ctx.stroke();}for(const y of [-43,47]){ctx.beginPath();ctx.moveTo(-78,y);ctx.lineTo(-35,y);ctx.moveTo(35,y);ctx.lineTo(78,y);ctx.stroke();}
-    // three small buildings
-    const houses=[[-48,-31,34,28,'#b8895b'],[25,-29,38,31,'#a87951'],[-18,22,42,30,'#c39a68']];
-    for(const [x,y,w,h,c] of houses){ctx.fillStyle='rgba(0,0,0,.18)';ctx.fillRect(x-3,y+h-1,w+6,7);ctx.fillStyle=c;ctx.fillRect(x,y,w,h);ctx.fillStyle='#6c4730';ctx.beginPath();ctx.moveTo(x-5,y);ctx.lineTo(x+w/2,y-15);ctx.lineTo(x+w+5,y);ctx.closePath();ctx.fill();ctx.fillStyle='#5a3827';ctx.fillRect(x+w/2-4,y+h-12,8,12);ctx.fillStyle='#e9d58f';ctx.fillRect(x+5,y+7,6,6);ctx.fillRect(x+w-11,y+7,6,6);}
-    // well, crates and lamps
-    ctx.fillStyle='#68717a';ctx.beginPath();ctx.arc(46,26,10,0,Math.PI*2);ctx.fill();ctx.fillStyle='#26313b';ctx.beginPath();ctx.arc(46,26,5,0,Math.PI*2);ctx.fill();
-    ctx.fillStyle='#8a5e37';ctx.fillRect(-66,25,12,12);ctx.fillRect(-54,30,10,9);
-    ctx.strokeStyle='#3d352d';ctx.lineWidth=3;for(const lx of [-70,70]){ctx.beginPath();ctx.moveTo(lx,-5);ctx.lineTo(lx,-25);ctx.stroke();ctx.fillStyle='#f4d56b';ctx.fillRect(lx-4,-30,8,8);}
-    // central banner
-    ctx.fillStyle='#e0d0a5';ctx.fillRect(-3,-10,6,28);ctx.fillStyle='#8a3f44';ctx.fillRect(3,-9,18,12);
-    ctx.restore();
-    ctx.fillStyle='#f0e9d2';ctx.font='bold 14px system-ui';ctx.textAlign='center';ctx.strokeStyle='rgba(20,20,20,.8)';ctx.lineWidth=4;ctx.strokeText(t.name,s.x,s.y-92);ctx.fillText(t.name,s.x,s.y-92);ctx.textAlign='start';
-  }
+  function drawTown(t){const s=worldToScreen(t.x,t.y);if(s.x<-100||s.y<-100||s.x>canvas.width+100||s.y>canvas.height+100)return;ctx.fillStyle='rgba(35,31,27,.2)';ctx.fillRect(s.x-54,s.y-38,108,76);ctx.strokeStyle='#e0d0a5';ctx.lineWidth=3;ctx.strokeRect(s.x-50,s.y-34,100,68);ctx.fillStyle='#b8895b';ctx.fillRect(s.x-25,s.y-17,50,34);ctx.fillStyle='#6b4c34';ctx.fillRect(s.x-6,s.y+1,12,16);ctx.fillStyle='#f0e9d2';ctx.font='bold 13px system-ui';ctx.textAlign='center';ctx.fillText(t.name,s.x,s.y-45);ctx.textAlign='start';}
   function drawTree(t){
     const d=TREE_TYPES[t.type],scale=t.type==='redwood'?1.38:t.type==='mahogany'?1.18:t.type==='arcticPine'?1.12:1;
     const sway=t.remaining>0?(Math.sin(animationClock*1.45+t.x*.011)*2.2+(activeTree===t?Math.sin(animationClock*15)*4.2:0)):0;
@@ -807,58 +698,10 @@
     if(activeRock===r){ctx.strokeStyle='#f0cc64';ctx.lineWidth=3;ctx.strokeRect(-38,-40,76,65);ctx.fillStyle='#151b22';ctx.fillRect(-30,-49,60,7);ctx.fillStyle='#68c77e';ctx.fillRect(-30,-49,60*ratio,7);}
     ctx.restore();
   }
-
-  function drawEnemy(e){
-    if(!e || e.hp<=0)return;
-    const d=ENEMY_TYPES[e.type];
-    if(!d)return;
-    const s=worldToScreen(e.x,e.y);
-    if(s.x<-100||s.y<-100||s.x>canvas.width+100||s.y>canvas.height+100)return;
-    const bob=Math.sin(animationClock*3+(e.homeX||0)*.01)*1.5;
-    const lunge=e.attackAnim>0?Math.sin((1-e.attackAnim/.32)*Math.PI)*8:0;
-    const facing=e.facing||1;
-    ctx.save();
-    ctx.translate(s.x+facing*lunge,s.y+bob);
-    if(e.hitFlash>0){ctx.shadowColor='#fff';ctx.shadowBlur=14;}
-    ctx.fillStyle='rgba(0,0,0,.2)';ctx.beginPath();ctx.ellipse(0,20,22,7,0,0,Math.PI*2);ctx.fill();
-    const c=e.hitFlash>0?'#fff':d.color;
-    ctx.fillStyle=c;ctx.strokeStyle='rgba(20,25,30,.75)';ctx.lineWidth=2;
-    const shape=d.shape||e.type;
-    if(['rabbit'].includes(shape)){
-      ctx.beginPath();ctx.ellipse(0,5,15,11,0,0,Math.PI*2);ctx.fill();ctx.stroke();
-      ctx.beginPath();ctx.ellipse(8,-5,9,8,0,0,Math.PI*2);ctx.fill();ctx.stroke();
-      ctx.fillRect(5,-22,5,15);ctx.fillRect(12,-24,5,17);
-    }else if(['deer','boar','wolf','iceWolf','jaguar','crocodile'].includes(shape)){
-      const long=shape==='crocodile';ctx.beginPath();ctx.ellipse(0,5,long?25:19,long?8:12,0,0,Math.PI*2);ctx.fill();ctx.stroke();
-      ctx.beginPath();ctx.ellipse(facing*(long?22:17),0,long?11:9,long?6:8,0,0,Math.PI*2);ctx.fill();ctx.stroke();
-      if(!long){for(const x of [-10,8])ctx.fillRect(x,12,5,12);}else{ctx.beginPath();ctx.moveTo(-22,4);ctx.lineTo(-38,0);ctx.lineTo(-23,10);ctx.fill();}
-      if(shape==='deer'){ctx.strokeStyle=c;ctx.beginPath();ctx.moveTo(facing*17,-7);ctx.lineTo(facing*22,-18);ctx.lineTo(facing*29,-23);ctx.moveTo(facing*22,-18);ctx.lineTo(facing*15,-24);ctx.stroke();}
-    }else if(['spider','jungleSpider'].includes(shape)){
-      ctx.beginPath();ctx.arc(0,4,13,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.beginPath();ctx.arc(11,2,8,0,Math.PI*2);ctx.fill();ctx.stroke();
-      ctx.strokeStyle=c;ctx.lineWidth=3;for(const yy of [-8,-3,4,9]){ctx.beginPath();ctx.moveTo(-8,yy+4);ctx.lineTo(-22,yy);ctx.moveTo(8,yy+4);ctx.lineTo(22,yy);ctx.stroke();}
-    }else if(['snake','venomSnake','sandSerpent'].includes(shape)){
-      ctx.strokeStyle=c;ctx.lineWidth=10;ctx.beginPath();ctx.moveTo(-20,12);ctx.quadraticCurveTo(-5,-6,8,10);ctx.quadraticCurveTo(18,18,24,-3);ctx.stroke();ctx.fillStyle=c;ctx.beginPath();ctx.ellipse(24,-5,9,7,0,0,Math.PI*2);ctx.fill();
-    }else if(['dragon','frostDragon'].includes(shape)){
-      ctx.beginPath();ctx.ellipse(0,5,27,16,0,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.beginPath();ctx.ellipse(facing*25,-5,13,10,0,0,Math.PI*2);ctx.fill();ctx.stroke();
-      ctx.beginPath();ctx.moveTo(-10,-5);ctx.lineTo(-28,-27);ctx.lineTo(2,-15);ctx.closePath();ctx.fill();ctx.beginPath();ctx.moveTo(8,-6);ctx.lineTo(28,-28);ctx.lineTo(25,-8);ctx.closePath();ctx.fill();
-      ctx.beginPath();ctx.moveTo(-25,7);ctx.lineTo(-43,1);ctx.lineTo(-29,15);ctx.closePath();ctx.fill();
-    }else if(['skeleton','wraith','bandit','frostTroll','gorilla','sandGolem','marshLurker'].includes(shape)){
-      ctx.fillRect(-13,-10,26,30);ctx.beginPath();ctx.arc(0,-18,12,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.fillRect(-18,15,8,16);ctx.fillRect(10,15,8,16);
-      if(shape==='skeleton'){ctx.fillStyle='#20242a';ctx.fillRect(-6,-21,4,4);ctx.fillRect(3,-21,4,4);}
-    }else{
-      ctx.beginPath();ctx.ellipse(0,4,18,14,0,0,Math.PI*2);ctx.fill();ctx.stroke();
-    }
-    if(activeEnemy===e||e.target==='player'){
-      const ratio=Math.max(0,e.hp/e.maxHp);ctx.fillStyle='#151b22';ctx.fillRect(-24,-38,48,6);ctx.fillStyle='#d65d64';ctx.fillRect(-24,-38,48*ratio,6);
-    }
-    ctx.restore();
-  }
-
   function drawPlayer(){
     const working=activeTree||activeFishingSpot||activeRock,bounce=working?Math.sin(animationClock*8)*2:0,combatLunge=playerAttackAnim>0?Math.sin((1-playerAttackAnim/.32)*Math.PI)*9:0,combatDir=activeEnemy?(activeEnemy.x>=state.player.x?1:-1):1,s=worldToScreen(state.player.x+combatDir*combatLunge,state.player.y+bounce);
     const eq=state.equipment,bodyColor=equipmentColor(eq.body),headColor=equipmentColor(eq.head),legsColor=equipmentColor(eq.legs),bootsColor=equipmentColor(eq.boots),shieldColor=equipmentColor(eq.shield);
-    ctx.save();ctx.strokeStyle='rgba(255,255,255,.9)';ctx.lineWidth=2;ctx.strokeRect(s.x-15,s.y-28,30,82);ctx.restore();
-    ctx.fillStyle='rgba(0,0,0,.28)';ctx.fillRect(s.x-15,s.y+18,30,8);
+    ctx.fillStyle='rgba(0,0,0,.2)';ctx.fillRect(s.x-13,s.y+18,26,7);
     if(playerHitFlash>0){ctx.save();ctx.shadowColor='#fff';ctx.shadowBlur=15;}ctx.fillStyle=playerHitFlash>0?'#fff':'#d4a16e';ctx.fillRect(s.x-10,s.y-8,20,16);
     ctx.fillStyle=bodyColor||'#537fc4';ctx.fillRect(s.x-13,s.y+8,26,25);
     if(bodyColor){ctx.fillStyle='rgba(255,255,255,.18)';ctx.fillRect(s.x-10,s.y+11,20,4);ctx.fillStyle='rgba(0,0,0,.18)';ctx.fillRect(s.x-2,s.y+8,4,25);}
