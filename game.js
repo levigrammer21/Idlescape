@@ -1,7 +1,7 @@
 (() => {
   'use strict';
 
-  const VERSION = '0.10.4';
+  const VERSION = '0.11.0';
   const SAVE_KEY = 'idle-wanderer-save-v6';
   const LEGACY_KEYS = ['idle-wanderer-save-v5', 'idle-wanderer-save-v4', 'idle-wanderer-save-v3', 'idle-wanderer-save-v2'];
   const TICK_SECONDS = 0.6;
@@ -262,6 +262,32 @@
   };
 
 
+  const SUMMON_DEFS = {
+    rabbit:{name:'Rabbit',baseDamage:1,ticks:5,passive:'woodcuttingXp',passiveValue:.05,passiveText:'+5% Woodcutting XP'},
+    giantRat:{name:'Giant Rat',baseDamage:2,ticks:4,passive:'cookingXp',passiveValue:.05,passiveText:'+5% Cooking XP'},
+    deer:{name:'Deer',baseDamage:3,ticks:5,passive:'moveSpeed',passiveValue:.05,passiveText:'+5% movement speed'},
+    wildBoar:{name:'Wild Boar',baseDamage:4,ticks:4,passive:'fortitudeXp',passiveValue:.05,passiveText:'+5% Fortitude XP'},
+    wolf:{name:'Wolf',baseDamage:6,ticks:3,passive:'meleeDamage',passiveValue:.08,passiveText:'+8% melee damage'},
+    scorpion:{name:'Scorpion',baseDamage:5,ticks:3,passive:'miningXp',passiveValue:.06,passiveText:'+6% Mining XP'},
+    sandSerpent:{name:'Sand Serpent',baseDamage:8,ticks:4,passive:'fishingXp',passiveValue:.06,passiveText:'+6% Fishing XP'},
+    sandGolem:{name:'Sand Golem',baseDamage:12,ticks:6,passive:'miningSpeed',passiveValue:.08,passiveText:'Mining intervals 8% shorter'},
+    bogSlime:{name:'Bog Slime',baseDamage:4,ticks:5,passive:'cookingXp',passiveValue:.08,passiveText:'+8% Cooking XP'},
+    crocodile:{name:'Crocodile',baseDamage:10,ticks:4,passive:'fishingSpeed',passiveValue:.08,passiveText:'Fishing intervals 8% shorter'},
+    marshLurker:{name:'Marsh Lurker',baseDamage:15,ticks:5,passive:'craftingXp',passiveValue:.08,passiveText:'+8% Crafting XP'},
+    jungleSpider:{name:'Jungle Spider',baseDamage:7,ticks:3,passive:'woodcuttingSpeed',passiveValue:.08,passiveText:'Woodcutting intervals 8% shorter'},
+    venomSnake:{name:'Venom Snake',baseDamage:9,ticks:3,passive:'rangeDamage',passiveValue:.08,passiveText:'+8% ranged damage'},
+    jaguar:{name:'Jaguar',baseDamage:14,ticks:3,passive:'moveSpeed',passiveValue:.10,passiveText:'+10% movement speed'},
+    gorilla:{name:'Gorilla',baseDamage:18,ticks:5,passive:'woodcuttingXp',passiveValue:.10,passiveText:'+10% Woodcutting XP'},
+    iceWolf:{name:'Ice Wolf',baseDamage:16,ticks:3,passive:'combatXp',passiveValue:.08,passiveText:'+8% combat XP'},
+    frostTroll:{name:'Frost Troll',baseDamage:23,ticks:6,passive:'fortitudeXp',passiveValue:.10,passiveText:'+10% Fortitude XP'},
+    frostDragon:{name:'Frost Dragon',baseDamage:35,ticks:5,passive:'allXp',passiveValue:.05,passiveText:'+5% XP from all actions'}
+  };
+  for(const [type,d] of Object.entries(SUMMON_DEFS)){
+    const key=`${type}Essence`;
+    defineItem(key,{name:`${d.name} Spirit Essence`,type:'Summoning essence',description:`A permanent bond with the spirit of a ${d.name.toLowerCase()}. Use it from your inventory to summon this companion.`,summonType:type,stats:{'Drop chance':'1 in 50','Combat damage':`${d.baseDamage} base + Summoning level scaling`,'Special ability':d.passiveText}});
+  }
+
+
   const ENEMY_TYPES = {
     rabbit:{name:'Rabbit',behaviour:'passive',shape:'rabbit',hp:8,defence:1,accuracy:3,maxHit:1,ticks:5,color:'#d9cfb8',respawn:20,drops:[['rawRabbit',1,1,1],['rabbitFoot',1,1,.0125]]},
     giantRat:{name:'Giant Rat',behaviour:'passive',shape:'rat',hp:14,defence:3,accuracy:6,maxHit:2,ticks:4,color:'#746d68',respawn:24,drops:[['ratMeat',1,1,1],['ratTail',1,1,.025]]},
@@ -394,6 +420,7 @@
     inventory: { ...defaultInventory(), stoneAxe: 1, stonePickaxe: 1, basicFishingRod: 1, coins: 100 },
     skills: Object.fromEntries(Object.keys(SKILL_DEFS).map(k => [k, { xp: 0 }])),
     equipment: { head: null, body: null, legs: null, boots: null, weapon: null, shield: null, cape: null, ring: null, food: null },
+    activeSummon: null, summonAttackElapsed: 0,
     treeState: {}, fishingState: {}, rockState: {}, enemyState: {}, combat: { hp: 10 }, poh: {}, quests: {}, shopDay: '', lastSavedAt: Date.now()
   });
 
@@ -431,9 +458,17 @@
     const level = levelFromXp(state.skills[skillKey]?.xp || 0);
     return ownedTools(toolType).find(([key]) => (ITEM_DEFS[key].requiredSkillLevel || 1) <= level)?.[0] || null;
   }
+  function activeSummonDef(){return state.activeSummon?SUMMON_DEFS[state.activeSummon]||null:null;}
+  function summonBonus(name){const d=activeSummonDef();return d?.passive===name?d.passiveValue:0;}
+  function xpWithSummonBonus(skill,amount){
+    const d=activeSummonDef(),specific=d?.passive===`${skill}Xp`?d.passiveValue:0,combat=d?.passive==='combatXp'&&['melee','range','fortitude'].includes(skill)?d.passiveValue:0,all=d?.passive==='allXp'?d.passiveValue:0;
+    return Math.max(1,Math.round(amount*(1+specific+combat+all)));
+  }
+  function awardSummoningXp(sourceXp){if(!activeSummonDef()||sourceXp<=0)return;state.skills.summoning.xp=(state.skills.summoning.xp||0)+Math.max(1,Math.floor(sourceXp/3));}
   function gatheringDuration(def, toolType){
     const toolKey=bestOwnedTool(toolType), bonus=toolKey ? (ITEM_DEFS[toolKey].speedBonus || 0) : 0;
-    return def.ticks*TICK_SECONDS*(1-bonus/100);
+    const summonSpeed=toolType==='axe'?summonBonus('woodcuttingSpeed'):toolType==='pickaxe'?summonBonus('miningSpeed'):summonBonus('fishingSpeed');
+    return def.ticks*TICK_SECONDS*(1-bonus/100)*(1-summonSpeed);
   }
 
   function loadState(){
@@ -447,7 +482,7 @@
       }
       for(const key of Object.keys(SKILL_DEFS)) if(old.skills?.[key]) fresh.skills[key]=old.skills[key];
       if(!old.skills?.fortitude || (old.skills.fortitude.xp||0)<xpForLevel(10)) fresh.skills.fortitude={xp:xpForLevel(10)};
-      fresh.equipment={...fresh.equipment,...(old.equipment||{})}; fresh.treeState=old.treeState||{}; fresh.fishingState=old.fishingState||{}; fresh.rockState=old.rockState||{}; fresh.enemyState=old.enemyState||{}; fresh.combat={...fresh.combat,...(old.combat||{})}; fresh.poh=old.poh||{}; fresh.quests=old.quests||{};
+      fresh.equipment={...fresh.equipment,...(old.equipment||{})}; fresh.activeSummon=SUMMON_DEFS[old.activeSummon]?old.activeSummon:null; fresh.summonAttackElapsed=0; fresh.treeState=old.treeState||{}; fresh.fishingState=old.fishingState||{}; fresh.rockState=old.rockState||{}; fresh.enemyState=old.enemyState||{}; fresh.combat={...fresh.combat,...(old.combat||{})}; fresh.poh=old.poh||{}; fresh.quests=old.quests||{};
       if(old.player && isWalkable(old.player.x,old.player.y)) fresh.player={...fresh.player,x:old.player.x,y:old.player.y,targetX:old.player.x,targetY:old.player.y};
       if(old.version && old.version !== VERSION){
         for(const [id,node] of Object.entries(fresh.treeState||{})){const type=id.replace(/-\d+$/,'');const def=TREE_TYPES[type];if(def&&node.remaining>0){node.remaining=Math.max(node.remaining,def.capacity[0]);node.max=Math.max(node.max||0,def.capacity[1]);}}
@@ -489,14 +524,16 @@
   function playerCombatStats(){const w=weaponData(),skill=w.style==='range'?'range':'melee',level=levelFromXp(state.skills[skill]?.xp||0);return {style:w.style,level,ticks:w.ticks,range:w.range,accuracy:level*2+w.accuracy+5,maxHit:Math.max(1,Math.floor(level/8)+w.strength),defence:levelFromXp(state.skills.fortitude?.xp||0)+armourDefence()};}
   function hitChance(attack,defence){return clamp(attack/(attack+defence*1.35+8),.05,.95);}
   function enemyAt(x,y){let best=null,bestD=48;for(const e of enemies){if(e.hp<=0)continue;const d=Math.hypot(x-e.x,y-e.y);if(d<bestD){best=e;bestD=d;}}return best;}
-  function beginCombat(enemy){activeEnemy=enemy;queuedEnemy=null;combatElapsed=0;enemy.target='player';enemy.returning=false;ui.actionName.textContent=`Fighting ${ENEMY_TYPES[enemy.type].name}`;ui.status.textContent=`Fighting ${ENEMY_TYPES[enemy.type].name}...`;}
-  function endCombat(message='Exploring'){if(activeEnemy)activeEnemy.target=null;activeEnemy=null;queuedEnemy=null;combatElapsed=0;ui.actionProgress.style.width='0%';ui.actionName.textContent=message;renderCombatHud();}
+  function beginCombat(enemy){activeEnemy=enemy;queuedEnemy=null;combatElapsed=0;state.summonAttackElapsed=0;enemy.target='player';enemy.returning=false;ui.actionName.textContent=`Fighting ${ENEMY_TYPES[enemy.type].name}`;ui.status.textContent=`Fighting ${ENEMY_TYPES[enemy.type].name}...`;}
+  function endCombat(message='Exploring'){if(activeEnemy)activeEnemy.target=null;activeEnemy=null;queuedEnemy=null;combatElapsed=0;state.summonAttackElapsed=0;ui.actionProgress.style.width='0%';ui.actionName.textContent=message;renderCombatHud();}
   function damageFloater(x,y,amount,hit=true){floaters.push({x,y,text:hit?String(amount):'0',life:1.1,damage:true,miss:!hit});}
   function rollEnemyDrops(enemy){
     const d=ENEMY_TYPES[enemy.type],received=[];
     for(const [key,min,max,chance] of d.drops||[]){
       if(Math.random()>chance)continue;const amount=randomInt(min,max);state.inventory[key]=(state.inventory[key]||0)+amount;received.push(`${ITEM_DEFS[key]?.name||key}${amount>1?` ×${amount}`:''}`);
     }
+    const essenceKey=`${enemy.type}Essence`;
+    if(SUMMON_DEFS[enemy.type] && !(state.inventory[essenceKey]>0) && Math.random()<1/50){state.inventory[essenceKey]=1;received.push(ITEM_DEFS[essenceKey].name);}
     renderInventory();
     if(received.length)floaters.push({x:enemy.x,y:enemy.y-72,text:received.slice(0,2).join(' · '),life:2});
     return received;
@@ -505,8 +542,14 @@
   function playerAttack(enemy){
     const ps=playerCombatStats(),ed=ENEMY_TYPES[enemy.type],hit=Math.random()<hitChance(ps.accuracy,ed.defence);
     if(!hit){damageFloater(enemy.x,enemy.y-55,0,false);return;}
-    const dmg=randomInt(1,ps.maxHit);enemy.hp=Math.max(0,enemy.hp-dmg);damageFloater(enemy.x,enemy.y-55,dmg,true);
-    const skill=ps.style==='range'?'range':'melee';state.skills[skill].xp=(state.skills[skill].xp||0)+dmg*4;state.skills.fortitude.xp=(state.skills.fortitude.xp||0)+dmg*2;renderSkills();
+    const styleBonus=ps.style==='range'?summonBonus('rangeDamage'):summonBonus('meleeDamage'),dmg=randomInt(1,Math.max(1,Math.round(ps.maxHit*(1+styleBonus))));enemy.hp=Math.max(0,enemy.hp-dmg);damageFloater(enemy.x,enemy.y-55,dmg,true);
+    const skill=ps.style==='range'?'range':'melee',combatXp=xpWithSummonBonus(skill,dmg*4),fortXp=xpWithSummonBonus('fortitude',dmg*2);state.skills[skill].xp=(state.skills[skill].xp||0)+combatXp;state.skills.fortitude.xp=(state.skills.fortitude.xp||0)+fortXp;awardSummoningXp(combatXp);renderSkills();
+    if(enemy.hp<=0)killEnemy(enemy);
+  }
+  function summonAttack(enemy){
+    const d=activeSummonDef();if(!d||!enemy||enemy.hp<=0)return;
+    const level=levelFromXp(state.skills.summoning?.xp||0),maxHit=Math.max(1,Math.floor(d.baseDamage*(1+level/100))),dmg=randomInt(1,maxHit);
+    enemy.hp=Math.max(0,enemy.hp-dmg);floaters.push({x:enemy.x+18,y:enemy.y-42,text:`${d.name} ${dmg}`,life:1.1,damage:true,miss:false});
     if(enemy.hp<=0)killEnemy(enemy);
   }
   function enemyAttack(enemy){
@@ -559,19 +602,19 @@
   function beginMining(rock){ activeRock=rock;queuedRock=null;actionElapsed=0;const def=ROCK_TYPES[rock.type],tool=ITEM_DEFS[bestOwnedTool('pickaxe')];ui.actionName.textContent=`Mining ${def.name}`;ui.status.textContent=`Mining ${def.name} with ${tool?.name || 'a pickaxe'}...`; }
   function beginFishing(spot){ activeFishingSpot=spot;queuedFishingSpot=null;actionElapsed=0;const def=FISH_TYPES[spot.type],tool=ITEM_DEFS[bestOwnedTool('fishingRod')];ui.actionName.textContent=`Fishing ${def.name}`;ui.status.textContent=`Fishing for ${def.name} with ${tool?.name || 'a fishing rod'}...`; }
   function awardFish(spot){
-    const def=FISH_TYPES[spot.type];state.inventory[def.item]=(state.inventory[def.item]||0)+1;state.skills.fishing.xp+=def.xp;spot.remaining--;
-    floaters.push({x:spot.standX,y:spot.standY-65,text:`+1 ${ITEM_DEFS[def.item].name}  +${def.xp} XP`,life:1.4});renderInventory();renderSkills();
+    const def=FISH_TYPES[spot.type],gainedXp=xpWithSummonBonus('fishing',def.xp);state.inventory[def.item]=(state.inventory[def.item]||0)+1;state.skills.fishing.xp+=gainedXp;awardSummoningXp(gainedXp);spot.remaining--;
+    floaters.push({x:spot.standX,y:spot.standY-65,text:`+1 ${ITEM_DEFS[def.item].name}  +${gainedXp} XP`,life:1.4});renderInventory();renderSkills();
     if(spot.remaining<=0){spot.respawnAt=Date.now()+randomInt(20,36)*1000;showToast(`${def.name} fishing spot moved`);stopAction(true);}else actionElapsed=0;
   }
 
   function awardOre(rock){
-    const def=ROCK_TYPES[rock.type];state.inventory[def.item]=(state.inventory[def.item]||0)+1;state.skills.mining.xp+=def.xp;rock.hp--;
-    floaters.push({x:rock.x,y:rock.y-48,text:`+1 ${ITEM_DEFS[def.item].name}  +${def.xp} XP`,life:1.4});renderInventory();renderSkills();
+    const def=ROCK_TYPES[rock.type],gainedXp=xpWithSummonBonus('mining',def.xp);state.inventory[def.item]=(state.inventory[def.item]||0)+1;state.skills.mining.xp+=gainedXp;awardSummoningXp(gainedXp);rock.hp--;
+    floaters.push({x:rock.x,y:rock.y-48,text:`+1 ${ITEM_DEFS[def.item].name}  +${gainedXp} XP`,life:1.4});renderInventory();renderSkills();
     if(rock.hp<=0){rock.respawnAt=Date.now()+def.respawn*1000;showToast(`${def.name} rock depleted`);stopAction(true);}else actionElapsed=0;
   }
 
   function awardLog(tree){
-    const def=TREE_TYPES[tree.type]; state.inventory[def.log]=(state.inventory[def.log]||0)+1;const gainedXp=Math.max(1,Math.round(def.xp*(1+equipmentBonus('woodcuttingXp'))));state.skills.woodcutting.xp+=gainedXp;tree.remaining--;
+    const def=TREE_TYPES[tree.type]; state.inventory[def.log]=(state.inventory[def.log]||0)+1;const gainedXp=xpWithSummonBonus('woodcutting',Math.max(1,Math.round(def.xp*(1+equipmentBonus('woodcuttingXp')))));state.skills.woodcutting.xp+=gainedXp;awardSummoningXp(gainedXp);tree.remaining--;
     floaters.push({x:tree.x,y:tree.y-55,text:`+1 ${ITEM_DEFS[def.log].name}  +${gainedXp} XP`,life:1.4}); renderInventory();renderSkills();
     if(tree.remaining<=0){tree.respawnAt=Date.now()+def.respawn*1000;showToast(`${def.name} tree depleted`);stopAction(true);} else actionElapsed=0;
   }
@@ -582,10 +625,10 @@
     for(const f of fishingSpots){if(f.remaining<=0&&f.respawnAt&&now>=f.respawnAt){f.remaining=randomInt(12,20);f.respawnAt=0;}}
     for(const e of enemies){const d=ENEMY_TYPES[e.type];if(e.hp<=0){if(e.respawnAt&&now>=e.respawnAt){e.hp=e.maxHp;e.respawnAt=0;e.x=e.homeX;e.y=e.homeY;}continue;}e.wanderElapsed-=dt;if(!e.target&&d.behaviour==='aggressive'&&Math.hypot(e.x-state.player.x,e.y-state.player.y)<d.aggro&&regionAt(e.x,e.y).id===regionAt(state.player.x,state.player.y).id){e.target='player';activeEnemy=e;ui.actionName.textContent=`Attacked by ${d.name}`;}if(e.target==='player'){const dd=Math.hypot(state.player.x-e.x,state.player.y-e.y);if(regionAt(e.x,e.y).id!==regionAt(e.homeX,e.homeY).id||Math.hypot(e.x-e.homeX,e.y-e.homeY)>520){e.target=null;e.returning=true;}else if(dd>52){const step=Math.min(dd-48,135*dt);e.x+=(state.player.x-e.x)/dd*step;e.y+=(state.player.y-e.y)/dd*step;}e.attackElapsed+=dt;if(dd<=62&&e.attackElapsed>=d.ticks*TICK_SECONDS){e.attackElapsed=0;enemyAttack(e);}}else if(e.returning){const dd=Math.hypot(e.homeX-e.x,e.homeY-e.y);if(dd<5){e.x=e.homeX;e.y=e.homeY;e.returning=false;}else{const step=Math.min(dd,120*dt);e.x+=(e.homeX-e.x)/dd*step;e.y+=(e.homeY-e.y)/dd*step;}}else if(e.wanderElapsed<=0){e.wanderElapsed=randomInt(2,5);const a=Math.random()*Math.PI*2,r=Math.random()*70;e.wanderX=e.homeX+Math.cos(a)*r;e.wanderY=e.homeY+Math.sin(a)*r;}else{const dd=Math.hypot(e.wanderX-e.x,e.wanderY-e.y);if(dd>3){const step=Math.min(dd,45*dt);e.x+=(e.wanderX-e.x)/dd*step;e.y+=(e.wanderY-e.y)/dd*step;}}}
     const p=state.player,dx=p.targetX-p.x,dy=p.targetY-p.y,dist=Math.hypot(dx,dy);
-    if(dist>2){const move=Math.min(dist,190*(1+equipmentBonus('moveSpeed'))*dt),nx=p.x+dx/dist*move,ny=p.y+dy/dist*move;if(isWalkable(nx,ny)){p.x=nx;p.y=ny;}else{p.targetX=p.x;p.targetY=p.y;queuedTree=null;queuedFishingSpot=null;queuedRock=null;queuedTown=null;showToast('That route is blocked');}}
+    if(dist>2){const move=Math.min(dist,190*(1+equipmentBonus('moveSpeed')+summonBonus('moveSpeed'))*dt),nx=p.x+dx/dist*move,ny=p.y+dy/dist*move;if(isWalkable(nx,ny)){p.x=nx;p.y=ny;}else{p.targetX=p.x;p.targetY=p.y;queuedTree=null;queuedFishingSpot=null;queuedRock=null;queuedTown=null;showToast('That route is blocked');}}
     else {p.x=p.targetX;p.y=p.targetY;if(queuedEnemy && queuedEnemy.hp>0 && Math.hypot(p.x-queuedEnemy.x,p.y-queuedEnemy.y)<=playerCombatStats().range+12){beginCombat(queuedEnemy);}else if(queuedTown && Math.hypot(p.x-queuedTown.x,p.y-queuedTown.y)<105){const town=queuedTown;queuedTown=null;openTown(town);}else if(queuedRock && queuedRock.hp>0 && Math.hypot(p.x-queuedRock.x,p.y-queuedRock.y)<90)beginMining(queuedRock);else if(queuedFishingSpot && queuedFishingSpot.remaining>0 && Math.hypot(p.x-queuedFishingSpot.standX,p.y-queuedFishingSpot.standY)<20)beginFishing(queuedFishingSpot);else if(queuedTree && queuedTree.remaining>0 && Math.hypot(p.x-queuedTree.x,p.y-queuedTree.y)<78)beginChopping(queuedTree);else if(!activeTree&&!activeFishingSpot&&!activeRock&&!activeEnemy){ui.status.textContent='Tap the ground, a resource, a creature, or a town.';ui.actionName.textContent='Exploring';}}
     if(activeEnemy){
-      const ps=playerCombatStats(),dist=Math.hypot(p.x-activeEnemy.x,p.y-activeEnemy.y);if(activeEnemy.hp<=0)endCombat('Victory');else if(dist>ps.range+25){queuedEnemy=activeEnemy;activeEnemy=null;}else{combatElapsed+=dt;ui.actionProgress.style.width=`${Math.min(100,combatElapsed/(ps.ticks*TICK_SECONDS)*100)}%`;if(combatElapsed>=ps.ticks*TICK_SECONDS){combatElapsed=0;playerAttack(activeEnemy);}}
+      const ps=playerCombatStats(),summon=activeSummonDef(),dist=Math.hypot(p.x-activeEnemy.x,p.y-activeEnemy.y);if(activeEnemy.hp<=0)endCombat('Victory');else if(dist>ps.range+25){queuedEnemy=activeEnemy;activeEnemy=null;}else{combatElapsed+=dt;if(summon)state.summonAttackElapsed=(state.summonAttackElapsed||0)+dt;ui.actionProgress.style.width=`${Math.min(100,combatElapsed/(ps.ticks*TICK_SECONDS)*100)}%`;if(combatElapsed>=ps.ticks*TICK_SECONDS){combatElapsed=0;playerAttack(activeEnemy);}if(activeEnemy&&summon&&state.summonAttackElapsed>=summon.ticks*TICK_SECONDS){state.summonAttackElapsed=0;summonAttack(activeEnemy);}}
     } else if(activeTree){
       if(activeTree.remaining<=0 || Math.hypot(p.x-activeTree.x,p.y-activeTree.y)>85)stopAction(false);
       else {const def=TREE_TYPES[activeTree.type],duration=gatheringDuration(def,'axe');actionElapsed+=dt;ui.actionProgress.style.width=`${Math.min(100,actionElapsed/duration*100)}%`;if(actionElapsed>=duration)awardLog(activeTree);}
@@ -688,6 +731,10 @@
   }
 
 
+  function drawSummon(){
+    const d=activeSummonDef();if(!d)return;const angle=animationClock*1.2,x=state.player.x-34+Math.cos(angle)*5,y=state.player.y+30+Math.sin(angle)*3,s=worldToScreen(x,y);
+    ctx.save();ctx.fillStyle=ENEMY_TYPES[state.activeSummon]?.color||'#b8d7de';ctx.strokeStyle='#20242a';ctx.lineWidth=2;ctx.beginPath();ctx.ellipse(s.x,s.y,11,8,0,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.beginPath();ctx.arc(s.x+8,s.y-5,6,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.fillStyle='#20242a';ctx.fillRect(s.x+10,s.y-7,2,2);ctx.restore();
+  }
   function drawPlayer(){
     const working=activeTree||activeFishingSpot||activeRock,bounce=working?Math.sin(animationClock*8)*2:0,s=worldToScreen(state.player.x,state.player.y+bounce);
     const eq=state.equipment,bodyColor=equipmentColor(eq.body),headColor=equipmentColor(eq.head),legsColor=equipmentColor(eq.legs),bootsColor=equipmentColor(eq.boots),shieldColor=equipmentColor(eq.shield);
@@ -703,7 +750,7 @@
     if(activeTree||activeRock){const swing=Math.sin(animationClock*8)*.65;ctx.save();ctx.translate(s.x+11,s.y+8);ctx.rotate(-.8+swing);ctx.strokeStyle=activeRock?'#7b8590':'#8a6540';ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(21,-15);ctx.stroke();ctx.restore();}else drawEquippedWeapon(s);
     if(activeFishingSpot){const fs=worldToScreen(activeFishingSpot.x,activeFishingSpot.y);ctx.strokeStyle='#dbc68b';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(s.x+12,s.y+8);ctx.quadraticCurveTo((s.x+fs.x)/2,s.y-28,fs.x,fs.y);ctx.stroke();ctx.fillStyle='#f1d267';ctx.fillRect(fs.x-2,fs.y-2,4,4);}
   }
-  function draw(){ctx.clearRect(0,0,canvas.width,canvas.height);ctx.fillStyle='#397f9f';ctx.fillRect(0,0,canvas.width,canvas.height);ctx.strokeStyle='rgba(210,240,248,.22)';ctx.lineWidth=3;for(let y=-30+(animationClock*12)%46;y<canvas.height+40;y+=46){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(canvas.width,y+10);ctx.stroke();}fillSmooth(continent,'#72ae61','#d5c68b',8);drawTileTexture(continent);for(const r of regions){fillSmooth(r.points,r.color);drawTileTexture(r.points);}for(const w of waters)drawWater(w);for(const f of fishingSpots)drawFishingSpot(f);for(const t of towns)drawTown(t);for(const t of trees)drawTree(t);for(const r of rocks)drawRock(r);for(const e of enemies)drawEnemy(e);drawPlayer();for(const f of floaters){const s=worldToScreen(f.x,f.y);ctx.globalAlpha=Math.min(1,f.life*1.4);ctx.fillStyle=f.damage?(f.miss?'#d7dbe2':'#ff6b6b'):'#fff4b8';ctx.strokeStyle='rgba(20,20,20,.8)';ctx.lineWidth=4;ctx.font='bold 14px system-ui';ctx.textAlign='center';ctx.strokeText(f.text,s.x,s.y);ctx.fillText(f.text,s.x,s.y);ctx.textAlign='start';ctx.globalAlpha=1;}}
+  function draw(){ctx.clearRect(0,0,canvas.width,canvas.height);ctx.fillStyle='#397f9f';ctx.fillRect(0,0,canvas.width,canvas.height);ctx.strokeStyle='rgba(210,240,248,.22)';ctx.lineWidth=3;for(let y=-30+(animationClock*12)%46;y<canvas.height+40;y+=46){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(canvas.width,y+10);ctx.stroke();}fillSmooth(continent,'#72ae61','#d5c68b',8);drawTileTexture(continent);for(const r of regions){fillSmooth(r.points,r.color);drawTileTexture(r.points);}for(const w of waters)drawWater(w);for(const f of fishingSpots)drawFishingSpot(f);for(const t of towns)drawTown(t);for(const t of trees)drawTree(t);for(const r of rocks)drawRock(r);for(const e of enemies)drawEnemy(e);drawSummon();drawPlayer();for(const f of floaters){const s=worldToScreen(f.x,f.y);ctx.globalAlpha=Math.min(1,f.life*1.4);ctx.fillStyle=f.damage?(f.miss?'#d7dbe2':'#ff6b6b'):'#fff4b8';ctx.strokeStyle='rgba(20,20,20,.8)';ctx.lineWidth=4;ctx.font='bold 14px system-ui';ctx.textAlign='center';ctx.strokeText(f.text,s.x,s.y);ctx.fillText(f.text,s.x,s.y);ctx.textAlign='start';ctx.globalAlpha=1;}}
 
   function openPanel(name){document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active',t.dataset.panel===name));document.querySelectorAll('.panel').forEach(p=>p.classList.toggle('active',p.id===name));}
   function renderInventory(){const owned=Object.entries(state.inventory).filter(([k,q])=>q>0&&ITEM_DEFS[k]);ui.inventory.innerHTML=owned.length?`<div class="item-grid">${owned.map(([k,q])=>`<button class="item" data-item="${k}"><strong>${ITEM_DEFS[k].name}</strong><span>×${q}</span><small>${ITEM_DEFS[k].type}</small></button>`).join('')}</div>`:`<div class="empty-state"><strong>Your inventory is empty</strong><span>Gather logs, fish, or ore to fill it.</span></div>`;ui.inventory.querySelectorAll('[data-item]').forEach(b=>b.addEventListener('click',()=>showItem(b.dataset.item)));}
@@ -804,7 +851,7 @@
     if(count<1){showToast('You do not have the required materials');return;}
     for(const [key,need] of Object.entries(recipe.materials))state.inventory[key]-=need*count;
     state.inventory[recipe.output]=(state.inventory[recipe.output]||0)+recipe.amount*count;
-    state.skills.crafting.xp=(state.skills.crafting.xp||0)+recipe.xp*count;
+    const gainedXp=xpWithSummonBonus('crafting',recipe.xp*count);state.skills.crafting.xp=(state.skills.crafting.xp||0)+gainedXp;awardSummoningXp(gainedXp);
     showToast(`Crafted ${ITEM_DEFS[recipe.output].name}${count>1?` ×${count}`:''}`);renderInventory();renderSkills();renderEquipment();renderCraftingMenu();saveGame(false);
   }
 
@@ -822,8 +869,8 @@
   function clampMiniMap(){const halfW=WORLD.width/(2*miniMapView.zoom),halfH=WORLD.height/(2*miniMapView.zoom);miniMapView.centerX=clamp(miniMapView.centerX,halfW,WORLD.width-halfW);miniMapView.centerY=clamp(miniMapView.centerY,halfH,WORLD.height-halfH);}
   function drawMiniMap(){const mini=document.getElementById('miniMapCanvas');if(!mini)return;const m=mini.getContext('2d'),viewW=WORLD.width/miniMapView.zoom,viewH=WORLD.height/miniMapView.zoom,left=miniMapView.centerX-viewW/2,top=miniMapView.centerY-viewH/2,sx=mini.width/viewW,sy=mini.height/viewH,toX=x=>(x-left)*sx,toY=y=>(y-top)*sy;m.clearRect(0,0,mini.width,mini.height);m.fillStyle='#397f9f';m.fillRect(0,0,mini.width,mini.height);const poly=(pts,color)=>{m.beginPath();m.moveTo(toX(pts[0][0]),toY(pts[0][1]));for(const [x,y] of pts.slice(1))m.lineTo(toX(x),toY(y));m.closePath();m.fillStyle=color;m.fill();};poly(continent,'#72ae61');for(const r of regions)poly(r.points,r.color);for(const w of waters){m.beginPath();m.ellipse(toX(w.x),toY(w.y),w.rx*sx,w.ry*sy,0,0,Math.PI*2);m.fillStyle=w.color;m.fill();}for(const t of towns){m.fillStyle='#f0e9d2';m.fillRect(toX(t.x)-5,toY(t.y)-5,10,10);}m.fillStyle='#ffdf65';m.beginPath();m.arc(toX(state.player.x),toY(state.player.y),9,0,Math.PI*2);m.fill();m.strokeStyle='#1d232b';m.lineWidth=4;m.stroke();}
 
-  function showItem(key){const item=ITEM_DEFS[key];if(!item)return;selectedItemKey=key;ui.itemType.textContent=item.type;ui.itemName.textContent=item.name;ui.itemDescription.textContent=item.description;const rows=[];if(item.uses)rows.push(['Used for',item.uses]);for(const [k,v] of Object.entries(item.stats||{}))rows.push([k,v]);ui.itemStats.innerHTML=rows.map(([k,v])=>`<div><span>${k}</span><strong>${v}</strong></div>`).join('');const equipped=Object.keys(state.equipment).find(s=>state.equipment[s]===key);if(item.slot&&state.inventory[key]>0){ui.itemAction.hidden=false;ui.itemAction.textContent=equipped?'Unequip':'Equip';}else ui.itemAction.hidden=true;ui.dialog.showModal();}
-  function toggleSelectedEquipment(){const key=selectedItemKey,item=ITEM_DEFS[key];if(!item?.slot)return;const existing=Object.keys(state.equipment).find(s=>state.equipment[s]===key);if(existing)state.equipment[existing]=null;else state.equipment[item.slot]=key;ui.dialog.close();renderEquipment();renderCombatHud();saveGame(false);}
+  function showItem(key){const item=ITEM_DEFS[key];if(!item)return;selectedItemKey=key;ui.itemType.textContent=item.type;ui.itemName.textContent=item.name;ui.itemDescription.textContent=item.description;const rows=[];if(item.uses)rows.push(['Used for',item.uses]);for(const [k,v] of Object.entries(item.stats||{}))rows.push([k,v]);if(item.summonType)rows.push(['Current status',state.activeSummon===item.summonType?'Active summon':'Available to summon']);ui.itemStats.innerHTML=rows.map(([k,v])=>`<div><span>${k}</span><strong>${v}</strong></div>`).join('');const equipped=Object.keys(state.equipment).find(s=>state.equipment[s]===key);if(item.summonType&&state.inventory[key]>0){ui.itemAction.hidden=false;ui.itemAction.textContent=state.activeSummon===item.summonType?'Already Summoned':'Summon';ui.itemAction.disabled=state.activeSummon===item.summonType;}else if(item.slot&&state.inventory[key]>0){ui.itemAction.hidden=false;ui.itemAction.disabled=false;ui.itemAction.textContent=equipped?'Unequip':'Equip';}else{ui.itemAction.hidden=true;ui.itemAction.disabled=false;}ui.dialog.showModal();}
+  function toggleSelectedEquipment(){const key=selectedItemKey,item=ITEM_DEFS[key];if(item?.summonType){if(state.activeSummon===item.summonType)return;state.activeSummon=item.summonType;state.summonAttackElapsed=0;ui.dialog.close();showToast(`${SUMMON_DEFS[item.summonType].name} answers your call`);renderAll();saveGame(false);return;}if(!item?.slot)return;const existing=Object.keys(state.equipment).find(s=>state.equipment[s]===key);if(existing)state.equipment[existing]=null;else state.equipment[item.slot]=key;ui.dialog.close();renderEquipment();renderCombatHud();saveGame(false);}
   function renderAll(){renderInventory();renderSkills();renderEquipment();renderMapPanel();renderCombatHud();}
   function frame(now){const dt=Math.min((now-lastFrame)/1000,.05);lastFrame=now;update(dt);draw();if(now-miniMapView.lastDraw>180&&document.getElementById('map')?.classList.contains('active')){miniMapView.lastDraw=now;drawMiniMap();}requestAnimationFrame(frame);}
 
