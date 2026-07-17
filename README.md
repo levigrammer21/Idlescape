@@ -1,4 +1,4 @@
-# Idle Wanderer v0.10.3a — Unique Equipment Progression
+# Idle Wanderer v0.10.3b — Unique Equipment Progression
 
 - Rare creature drops remain crafting materials and are never equipped directly.
 - Added a visible Unique Equipment category to town crafting tables.
@@ -15,3 +15,7 @@ Upload every file in this folder to the root of your GitHub Pages repository.
 ## v0.10.3a hotfix
 - Fixed Cook All failing when the cooking service dialog was already open.
 - Cook 1 and Cook All now continue using the same timed cooking sequence without reopening the dialog.
+
+
+## v0.10.3b cooking hotfix
+- Cook All now keeps cooking the selected raw food until its inventory count reaches zero instead of relying on a one-time quantity snapshot.
