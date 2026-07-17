@@ -14,12 +14,11 @@
   <main id="app">
     <header class="topbar">
       <div class="title-block">
-        <h1>Idle Wanderer <span id="headerVersion" class="header-version">v0.11.2</span></h1>
+        <h1>Idle Wanderer <span id="headerVersion" class="header-version">v0.11.3</span></h1>
         <p id="statusText">Tap the ground, a tree, a rock, a fishing spot, or a town.</p>
       </div>
-      <div class="topbar-center" aria-label="Coins and sound">
+      <div class="topbar-center" aria-label="Coins">
         <div class="coin-display" title="Coins"><span class="coin-icon">●</span><strong id="coinCount">0</strong></div>
-        <button id="soundButton" class="sound-button" aria-label="Sound settings">🔊</button>
       </div>
       <button id="saveButton" class="icon-button">Save</button>
     </header>
@@ -58,7 +57,7 @@
           <button id="resetButton" class="wide-button muted-button">Reset Game</button>
         </div>
         <p class="hint">Town services are opened from the world itself. Skills will be developed one at a time, beginning with Woodcutting.</p>
-        <p class="version">Version 0.11.2 · Combat Animation & Loud Audio</p>
+        <p class="version">Version 0.11.3 · Fixed Full-Volume Audio</p>
       </section>
     </section>
   </main>
@@ -90,17 +89,6 @@
   </dialog>
 
 
-
-  <dialog id="soundDialog" class="item-dialog sound-dialog">
-    <div class="dialog-head"><div><span class="label">Audio</span><h2>Sound Settings</h2></div><button id="closeSoundButton" class="close-button" aria-label="Close">×</button></div>
-    <div class="sound-settings">
-      <label class="sound-row"><span>Peaceful background music</span><input id="musicToggle" type="checkbox" /></label>
-      <label class="volume-row"><span>Music volume</span><input id="musicVolume" type="range" min="0" max="100" step="1" /></label>
-      <label class="sound-row"><span>Action sound effects</span><input id="sfxToggle" type="checkbox" /></label>
-      <label class="volume-row"><span>Effects volume</span><input id="sfxVolume" type="range" min="0" max="100" step="1" /></label>
-      <p class="item-description">Music begins after your first tap because mobile browsers require interaction before audio can play.</p>
-    </div>
-  </dialog>
 
   <script src="game.js"></script>
 </body>

@@ -47,3 +47,12 @@ Upload every file in this folder to the root of your GitHub Pages repository.
 - Greatly increased background music and action sound output.
 - Added master compression so loud effects remain clear rather than clipping harshly.
 - Increased default music and SFX levels while preserving the sound settings controls.
+
+
+## v0.11.3 fixed full-volume audio
+
+- Removed the audio settings button and dialog.
+- Music and action sounds now always run at full in-game output; device volume controls the final loudness.
+- Fixed a recursive audio-startup bug that prevented the Web Audio engine from starting.
+- Added repeated mobile gesture unlocking for iOS and Android browsers.
+- Increased synthesized music and action-effect output to strong, clearly audible levels.

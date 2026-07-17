@@ -1,7 +1,7 @@
 (() => {
   'use strict';
 
-  const VERSION = '0.11.2';
+  const VERSION = '0.11.3';
   const SAVE_KEY = 'idle-wanderer-save-v6';
   const LEGACY_KEYS = ['idle-wanderer-save-v5', 'idle-wanderer-save-v4', 'idle-wanderer-save-v3', 'idle-wanderer-save-v2'];
   const TICK_SECONDS = 0.6;
@@ -20,7 +20,7 @@
     townDialog: document.getElementById('townDialog'), townName: document.getElementById('townName'), townDescription: document.getElementById('townDescription'), townServices: document.getElementById('townServices'),
     craftingDialog: document.getElementById('craftingDialog'), craftingTownName: document.getElementById('craftingTownName'), craftingLevel: document.getElementById('craftingLevel'), craftingRecipes: document.getElementById('craftingRecipes'),
     combatHp: document.getElementById('combatHp'), combatHpFill: document.getElementById('combatHpFill'), eatButton: document.getElementById('eatButton'), eatCount: document.getElementById('eatCount'),
-    coinCount: document.getElementById('coinCount'), soundButton: document.getElementById('soundButton'), soundDialog: document.getElementById('soundDialog'), musicToggle: document.getElementById('musicToggle'), sfxToggle: document.getElementById('sfxToggle'), musicVolume: document.getElementById('musicVolume'), sfxVolume: document.getElementById('sfxVolume'),
+    coinCount: document.getElementById('coinCount'),
     serviceDialog: document.getElementById('serviceDialog'), serviceType: document.getElementById('serviceType'), serviceTitle: document.getElementById('serviceTitle'), serviceDescription: document.getElementById('serviceDescription'), serviceContent: document.getElementById('serviceContent')
   };
 
@@ -439,72 +439,81 @@
   const floaters = [];
   const miniMapView = { zoom: 1.8, centerX: state.player.x, centerY: state.player.y, dragging: false, lastX: 0, lastY: 0, lastDraw: 0 };
   const audioEngine = {
-    ctx:null, masterGain:null, compressor:null, musicGain:null, sfxGain:null, musicTimer:null, started:false,
+    ctx:null, masterGain:null, compressor:null, musicGain:null, sfxGain:null, musicTimer:null, started:false, unlocked:false,
     ensure(){
+      const AC=window.AudioContext||window.webkitAudioContext;
+      if(!AC)return false;
       if(!this.ctx){
-        const AC=window.AudioContext||window.webkitAudioContext;
-        if(!AC)return false;
         this.ctx=new AC();
         this.masterGain=this.ctx.createGain();
         this.compressor=this.ctx.createDynamicsCompressor();
-        this.musicGain=this.ctx.createGain();this.sfxGain=this.ctx.createGain();
-        this.compressor.threshold.value=-16;
-        this.compressor.knee.value=10;
-        this.compressor.ratio.value=8;
+        this.musicGain=this.ctx.createGain();
+        this.sfxGain=this.ctx.createGain();
+        this.compressor.threshold.value=-12;
+        this.compressor.knee.value=8;
+        this.compressor.ratio.value=5;
         this.compressor.attack.value=.002;
-        this.compressor.release.value=.16;
-        this.masterGain.gain.value=1.35;
-        this.musicGain.connect(this.compressor);this.sfxGain.connect(this.compressor);
-        this.compressor.connect(this.masterGain);this.masterGain.connect(this.ctx.destination);
+        this.compressor.release.value=.12;
+        this.masterGain.gain.value=1;
+        this.musicGain.gain.value=1;
+        this.sfxGain.gain.value=1;
+        this.musicGain.connect(this.compressor);
+        this.sfxGain.connect(this.compressor);
+        this.compressor.connect(this.masterGain);
+        this.masterGain.connect(this.ctx.destination);
       }
-      if(this.ctx.state==='suspended')this.ctx.resume();
-      this.musicGain.gain.value=state.audio.music?state.audio.musicVolume*1.45:0;
-      this.sfxGain.gain.value=state.audio.sfx?state.audio.sfxVolume*1.9:0;
-      if(state.audio.music&&!this.started)this.startMusic();
+      if(this.ctx.state==='suspended')this.ctx.resume().catch(()=>{});
       return true;
     },
-    tone(freq,duration=.12,type='sine',volume=.28,delay=0,target='sfx'){
+    unlock(){
+      if(!this.ensure())return;
+      if(this.ctx.state==='suspended')this.ctx.resume().catch(()=>{});
+      if(!this.unlocked){
+        const buffer=this.ctx.createBuffer(1,1,this.ctx.sampleRate);
+        const source=this.ctx.createBufferSource();
+        source.buffer=buffer;source.connect(this.masterGain);source.start(0);
+        this.unlocked=true;
+      }
+      if(!this.started)this.startMusic();
+    },
+    tone(freq,duration=.12,type='sine',volume=.8,delay=0,target='sfx'){
       if(!this.ensure())return;
       const now=this.ctx.currentTime+delay,osc=this.ctx.createOscillator(),gain=this.ctx.createGain();
       osc.type=type;osc.frequency.setValueAtTime(freq,now);
-      gain.gain.setValueAtTime(0.0001,now);gain.gain.exponentialRampToValueAtTime(Math.max(.0001,volume),now+.015);gain.gain.exponentialRampToValueAtTime(.0001,now+duration);
+      gain.gain.setValueAtTime(0.0001,now);
+      gain.gain.exponentialRampToValueAtTime(Math.max(.0001,volume),now+.008);
+      gain.gain.exponentialRampToValueAtTime(.0001,now+duration);
       osc.connect(gain);gain.connect(target==='music'?this.musicGain:this.sfxGain);osc.start(now);osc.stop(now+duration+.03);
     },
-    noise(duration=.08,volume=.22){
+    noise(duration=.08,volume=.75){
       if(!this.ensure())return;
       const length=Math.max(1,Math.floor(this.ctx.sampleRate*duration)),buffer=this.ctx.createBuffer(1,length,this.ctx.sampleRate),data=buffer.getChannelData(0);
       for(let i=0;i<length;i++)data[i]=(Math.random()*2-1)*(1-i/length);
       const source=this.ctx.createBufferSource(),gain=this.ctx.createGain();source.buffer=buffer;gain.gain.value=volume;source.connect(gain);gain.connect(this.sfxGain);source.start();
     },
     sfx(name){
-      if(!state.audio.sfx)return;
+      this.unlock();
       const map={
-        chop:()=>{this.noise(.09,.34);this.tone(145,.11,'triangle',.42);},
-        mine:()=>{this.tone(620,.075,'square',.34);this.tone(245,.14,'triangle',.42,.045);},
-        fish:()=>{this.tone(430,.13,'sine',.38);this.tone(680,.16,'sine',.34,.08);},
-        combat:()=>{this.noise(.075,.42);this.tone(105,.11,'sawtooth',.38);this.tone(220,.06,'square',.25,.025);},
-        loot:()=>{this.tone(660,.1,'sine',.38);this.tone(920,.16,'sine',.42,.08);},
-        cook:()=>{this.noise(.12,.25);this.tone(390,.15,'triangle',.34);},
-        craft:()=>{this.tone(330,.09,'square',.33);this.tone(495,.12,'triangle',.38,.06);},
-        summon:()=>{this.tone(260,.2,'sine',.38);this.tone(390,.25,'sine',.4,.1);this.tone(540,.34,'sine',.38,.2);},
-        save:()=>{this.tone(620,.1,'sine',.34);this.tone(820,.13,'sine',.38,.07);}
+        chop:()=>{this.noise(.11,.95);this.tone(135,.14,'triangle',1);},
+        mine:()=>{this.tone(760,.08,'square',.9);this.tone(230,.18,'triangle',1,.035);},
+        fish:()=>{this.tone(410,.14,'sine',.9);this.tone(760,.2,'sine',1,.07);},
+        combat:()=>{this.noise(.08,1);this.tone(95,.14,'sawtooth',1);this.tone(260,.075,'square',.8,.02);},
+        loot:()=>{this.tone(700,.11,'sine',.9);this.tone(1050,.18,'sine',1,.07);},
+        cook:()=>{this.noise(.14,.8);this.tone(390,.18,'triangle',.9);},
+        craft:()=>{this.tone(330,.1,'square',.9);this.tone(520,.16,'triangle',1,.05);},
+        summon:()=>{this.tone(250,.22,'sine',.9);this.tone(400,.28,'sine',1,.09);this.tone(620,.38,'sine',1,.18);},
+        save:()=>{this.tone(650,.11,'sine',.9);this.tone(900,.16,'sine',1,.06);}
       };(map[name]||map.loot)();
     },
     startMusic(){
-      if(!this.ensure()||this.started)return;this.started=true;
+      if(this.started||!this.ensure())return;
+      this.started=true;
       const phrase=()=>{
-        if(!state.audio.music)return;
         const root=[196,220,174,196][Math.floor(Date.now()/8000)%4],notes=[root,root*1.25,root*1.5,root*2];
-        notes.forEach((f,i)=>this.tone(f,2.6,'sine',.105,i*.85,'music'));
-        this.tone(root/2,3.8,'triangle',.075,0,'music');
+        notes.forEach((f,i)=>this.tone(f,2.7,'sine',.32,i*.85,'music'));
+        this.tone(root/2,3.9,'triangle',.24,0,'music');
       };
       phrase();this.musicTimer=setInterval(phrase,4200);
-    },
-    refresh(){
-      if(!this.ctx)return;
-      this.musicGain.gain.value=state.audio.music?state.audio.musicVolume*1.45:0;
-      this.sfxGain.gain.value=state.audio.sfx?state.audio.sfxVolume*1.9:0;
-      if(state.audio.music&&!this.started)this.startMusic();
     }
   };
   let inventoryFilter='all';
@@ -843,7 +852,6 @@
   }
   function renderHeader(){
     if(ui.coinCount)ui.coinCount.textContent=(state.inventory.coins||0).toLocaleString();
-    if(ui.soundButton)ui.soundButton.textContent=(state.audio.music||state.audio.sfx)?'🔊':'🔇';
   }
   function renderInventory(){
     const categories=[['all','All'],['weapons','Weapons'],['armour','Armour'],['food','Food'],['materials','Materials'],['tools','Tools'],['summons','Summons'],['other','Other']];
@@ -974,17 +982,6 @@
   function renderAll(){renderInventory();renderSkills();renderEquipment();renderMapPanel();renderCombatHud();renderHeader();}
   function frame(now){const dt=Math.min((now-lastFrame)/1000,.05);lastFrame=now;update(dt);draw();if(now-miniMapView.lastDraw>180&&document.getElementById('map')?.classList.contains('active')){miniMapView.lastDraw=now;drawMiniMap();}requestAnimationFrame(frame);}
 
-  function openSoundSettings(){
-    ui.musicToggle.checked=!!state.audio.music;ui.sfxToggle.checked=!!state.audio.sfx;
-    ui.musicVolume.value=Math.round(state.audio.musicVolume*100);ui.sfxVolume.value=Math.round(state.audio.sfxVolume*100);
-    ui.soundDialog.showModal();
-  }
-  function updateAudioSettings(){
-    state.audio.music=ui.musicToggle.checked;state.audio.sfx=ui.sfxToggle.checked;
-    state.audio.musicVolume=Number(ui.musicVolume.value)/100;state.audio.sfxVolume=Number(ui.sfxVolume.value)/100;
-    audioEngine.ensure();audioEngine.refresh();renderHeader();saveGame(false);
-  }
-
-  canvas.addEventListener('pointerdown',handlePointer,{passive:false});document.getElementById('saveButton').addEventListener('click',()=>saveGame(true));ui.soundButton.addEventListener('click',()=>{audioEngine.ensure();openSoundSettings();});document.getElementById('closeSoundButton').addEventListener('click',()=>ui.soundDialog.close());[ui.musicToggle,ui.sfxToggle,ui.musicVolume,ui.sfxVolume].forEach(el=>el.addEventListener('input',updateAudioSettings));ui.soundDialog.addEventListener('click',e=>{if(e.target===ui.soundDialog)ui.soundDialog.close();});document.addEventListener('pointerdown',()=>audioEngine.ensure(),{once:true});document.getElementById('stopButton').addEventListener('click',()=>stopAction(true));ui.eatButton.addEventListener('click',eatFood);document.querySelectorAll('.tab').forEach(t=>t.addEventListener('click',()=>openPanel(t.dataset.panel)));document.getElementById('closeItemButton').addEventListener('click',()=>ui.dialog.close());document.getElementById('closeTownButton').addEventListener('click',()=>ui.townDialog.close());document.getElementById('closeCraftingButton').addEventListener('click',()=>ui.craftingDialog.close());document.getElementById('closeServiceButton').addEventListener('click',()=>ui.serviceDialog.close());ui.itemAction.addEventListener('click',toggleSelectedEquipment);ui.dialog.addEventListener('click',e=>{if(e.target===ui.dialog)ui.dialog.close();});ui.townDialog.addEventListener('click',e=>{if(e.target===ui.townDialog)ui.townDialog.close();});ui.craftingDialog.addEventListener('click',e=>{if(e.target===ui.craftingDialog)ui.craftingDialog.close();});ui.serviceDialog.addEventListener('click',e=>{if(e.target===ui.serviceDialog)ui.serviceDialog.close();});document.getElementById('exportButton').addEventListener('click',()=>{saveGame(false);const blob=new Blob([JSON.stringify(state,null,2)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`idle-wanderer-save-${Date.now()}.json`;a.click();URL.revokeObjectURL(a.href);});document.getElementById('importInput').addEventListener('change',async e=>{const file=e.target.files?.[0];if(!file)return;try{localStorage.setItem(SAVE_KEY,JSON.stringify(JSON.parse(await file.text())));location.reload();}catch{showToast('Invalid save file');}});document.getElementById('resetButton').addEventListener('click',()=>{if(confirm('Reset all progress on this device?')){localStorage.removeItem(SAVE_KEY);location.reload();}});window.addEventListener('pagehide',()=>saveGame(false));setInterval(()=>saveGame(false),15000);if('serviceWorker'in navigator)navigator.serviceWorker.register('./service-worker.js').catch(console.error);
+  canvas.addEventListener('pointerdown',handlePointer,{passive:false});document.getElementById('saveButton').addEventListener('click',()=>saveGame(true));document.addEventListener('pointerdown',()=>audioEngine.unlock(),{passive:true});document.addEventListener('touchstart',()=>audioEngine.unlock(),{passive:true});document.addEventListener('click',()=>audioEngine.unlock(),{passive:true});document.getElementById('stopButton').addEventListener('click',()=>stopAction(true));ui.eatButton.addEventListener('click',eatFood);document.querySelectorAll('.tab').forEach(t=>t.addEventListener('click',()=>openPanel(t.dataset.panel)));document.getElementById('closeItemButton').addEventListener('click',()=>ui.dialog.close());document.getElementById('closeTownButton').addEventListener('click',()=>ui.townDialog.close());document.getElementById('closeCraftingButton').addEventListener('click',()=>ui.craftingDialog.close());document.getElementById('closeServiceButton').addEventListener('click',()=>ui.serviceDialog.close());ui.itemAction.addEventListener('click',toggleSelectedEquipment);ui.dialog.addEventListener('click',e=>{if(e.target===ui.dialog)ui.dialog.close();});ui.townDialog.addEventListener('click',e=>{if(e.target===ui.townDialog)ui.townDialog.close();});ui.craftingDialog.addEventListener('click',e=>{if(e.target===ui.craftingDialog)ui.craftingDialog.close();});ui.serviceDialog.addEventListener('click',e=>{if(e.target===ui.serviceDialog)ui.serviceDialog.close();});document.getElementById('exportButton').addEventListener('click',()=>{saveGame(false);const blob=new Blob([JSON.stringify(state,null,2)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`idle-wanderer-save-${Date.now()}.json`;a.click();URL.revokeObjectURL(a.href);});document.getElementById('importInput').addEventListener('change',async e=>{const file=e.target.files?.[0];if(!file)return;try{localStorage.setItem(SAVE_KEY,JSON.stringify(JSON.parse(await file.text())));location.reload();}catch{showToast('Invalid save file');}});document.getElementById('resetButton').addEventListener('click',()=>{if(confirm('Reset all progress on this device?')){localStorage.removeItem(SAVE_KEY);location.reload();}});window.addEventListener('pagehide',()=>saveGame(false));setInterval(()=>saveGame(false),15000);if('serviceWorker'in navigator)navigator.serviceWorker.register('./service-worker.js').catch(console.error);
   camera.x=clamp(state.player.x-canvas.width/2,0,WORLD.width-canvas.width);camera.y=clamp(state.player.y-canvas.height/2,0,WORLD.height-canvas.height);renderAll();requestAnimationFrame(frame);
 })();
