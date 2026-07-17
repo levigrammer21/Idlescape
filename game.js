@@ -1,7 +1,7 @@
 (() => {
   'use strict';
 
-  const VERSION = '0.10.3b';
+  const VERSION = '0.10.3';
   const SAVE_KEY = 'idle-wanderer-save-v6';
   const LEGACY_KEYS = ['idle-wanderer-save-v5', 'idle-wanderer-save-v4', 'idle-wanderer-save-v3', 'idle-wanderer-save-v2'];
   const TICK_SECONDS = 0.6;
@@ -731,14 +731,14 @@
     }));
     ui.townDialog.showModal();ui.status.textContent=`Visiting ${town.name}`;ui.actionName.textContent='In town';
   }
-  function openService(type,title,description,html){ui.serviceType.textContent=type;ui.serviceTitle.textContent=title;ui.serviceDescription.textContent=description||'';ui.serviceContent.innerHTML=html;if(!ui.serviceDialog.open)ui.serviceDialog.showModal();}
+  function openService(type,title,description,html){ui.serviceType.textContent=type;ui.serviceTitle.textContent=title;ui.serviceDescription.textContent=description||'';ui.serviceContent.innerHTML=html;ui.serviceDialog.showModal();}
   function cookingEntries(){return Object.entries(COOKING_DATA).filter(([raw])=>(state.inventory[raw]||0)>0);}
   function openCooking(town){
     const level=levelFromXp(state.skills.cooking?.xp||0),entries=cookingEntries();
     const cookingBanner=activeCooking?`<div class="cooking-status"><strong>Cooking ${ITEM_DEFS[activeCooking.raw].name.replace('Raw ','')}</strong><span><b data-cooking-left>${activeCooking.left}</b> remaining · <b data-cooking-done>${activeCooking.done}</b> cooked</span><div class="cook-progress active"><i data-cooking-progress></i></div></div>`:'';
     openService('Cooking Fire',`${town.name} Cooking Fire`,`Cooking level ${level} · Food cooks one item at a time.`,cookingBanner+(entries.length?entries.map(([raw,d])=>{const ok=level>=d.level,busy=!!activeCooking;return `<article class="service-card ${ok?'':'locked'}" data-cooking-card="${raw}"><div><strong>${d.name}</strong><span>Level ${d.level} · ${d.ticks} ticks · +${d.xp} XP</span><small>${ITEM_DEFS[raw].name} ×<b data-raw-count="${raw}">${state.inventory[raw]||0}</b></small></div><div class="service-actions"><button data-cook="${raw}" ${ok&&!busy?'':'disabled'}>Cook 1</button><button data-cookall="${raw}" ${ok&&!busy?'':'disabled'}>Cook All (${state.inventory[raw]||0})</button></div><div class="cook-progress"><i></i></div></article>`}).join(''):'<div class="empty-state"><strong>No raw food</strong><span>Catch fish or defeat creatures before using the fire.</span></div>'));
     ui.serviceContent.querySelectorAll('[data-cook]').forEach(b=>b.addEventListener('click',()=>startCooking(b.dataset.cook,1,town)));
-    ui.serviceContent.querySelectorAll('[data-cookall]').forEach(b=>b.addEventListener('click',()=>startCooking(b.dataset.cook,0,town,true)));
+    ui.serviceContent.querySelectorAll('[data-cookall]').forEach(b=>b.addEventListener('click',()=>startCooking(b.dataset.cook,state.inventory[b.dataset.cook]||0,town)));
     refreshCookingDisplay();
   }
   function refreshCookingDisplay(){
@@ -751,18 +751,16 @@
   function finishCooking(town){
     if(cookingTimer){clearInterval(cookingTimer);cookingTimer=null;}activeCooking=null;ui.actionProgress.style.width='0%';ui.actionName.textContent='In town';ui.status.textContent=`Visiting ${town.name}`;openCooking(town);renderAll();saveGame(false);
   }
-  function startCooking(raw,count,town,cookUntilEmpty=false){
-    if(cookingTimer||activeCooking)return showToast('Already cooking');const d=COOKING_DATA[raw],level=levelFromXp(state.skills.cooking?.xp||0);if(!d||level<d.level)return;
-    const available=state.inventory[raw]||0,amount=cookUntilEmpty?available:Math.min(count,available);if(amount<1)return;
-    activeCooking={raw,left:amount,done:0,progress:0,cookUntilEmpty};const duration=d.ticks*TICK_SECONDS*1000;ui.actionName.textContent=`Cooking ${d.name.replace('Cooked ','')}`;ui.status.textContent=`Cooking ${cookUntilEmpty?'all':amount} ${ITEM_DEFS[raw].name.replace('Raw ','')} at ${town.name}...`;openCooking(town);
+  function startCooking(raw,count,town){
+    if(cookingTimer||activeCooking)return showToast('Already cooking');const d=COOKING_DATA[raw],level=levelFromXp(state.skills.cooking?.xp||0);if(!d||level<d.level||count<1)return;
+    const amount=Math.min(count,state.inventory[raw]||0);if(amount<1)return;
+    activeCooking={raw,left:amount,done:0,progress:0};const duration=d.ticks*TICK_SECONDS*1000;ui.actionName.textContent=`Cooking ${d.name.replace('Cooked ','')}`;ui.status.textContent=`Cooking ${amount} ${ITEM_DEFS[raw].name.replace('Raw ','')} at ${town.name}...`;openCooking(town);
     const cookOne=()=>{
-      const availableNow=state.inventory[raw]||0;
-      if(!activeCooking||availableNow<=0||(!activeCooking.cookUntilEmpty&&activeCooking.left<=0)){finishCooking(town);return;}
-      if(activeCooking.cookUntilEmpty)activeCooking.left=availableNow;
+      if(!activeCooking||activeCooking.left<=0||(state.inventory[raw]||0)<=0){finishCooking(town);return;}
       const start=performance.now();activeCooking.progress=0;refreshCookingDisplay();
       cookingTimer=setInterval(()=>{
         const elapsed=performance.now()-start;activeCooking.progress=Math.min(100,elapsed/duration*100);ui.actionProgress.style.width=`${activeCooking.progress}%`;refreshCookingDisplay();
-        if(elapsed>=duration){clearInterval(cookingTimer);cookingTimer=null;state.inventory[raw]--;state.inventory[d.cooked]=(state.inventory[d.cooked]||0)+1;state.skills.cooking.xp=(state.skills.cooking.xp||0)+d.xp;activeCooking.left=activeCooking.cookUntilEmpty?(state.inventory[raw]||0):activeCooking.left-1;activeCooking.done++;activeCooking.progress=0;showToast(`Cooked ${d.name.replace('Cooked ','')}`);renderInventory();renderSkills();refreshCookingDisplay();setTimeout(cookOne,120);}
+        if(elapsed>=duration){clearInterval(cookingTimer);cookingTimer=null;state.inventory[raw]--;state.inventory[d.cooked]=(state.inventory[d.cooked]||0)+1;state.skills.cooking.xp=(state.skills.cooking.xp||0)+d.xp;activeCooking.left--;activeCooking.done++;activeCooking.progress=0;showToast(`Cooked ${d.name.replace('Cooked ','')}`);renderInventory();renderSkills();refreshCookingDisplay();setTimeout(cookOne,120);}
       },80);
     };
     cookOne();
