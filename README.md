@@ -63,3 +63,21 @@ Upload every file in this folder to the root of your GitHub Pages repository.
 - Increased XP earned across gathering, combat, crafting, cooking, and Merching to 1.5× the previous rate.
 - Summon XP continues to earn one-third of the final XP awarded, so it scales consistently with the new rate.
 - Summon XP passives still stack normally with the global progression increase.
+
+
+## v0.12.0 XP feedback
+
+- Added compact XP blips at the top of the play area for every skill XP gain.
+- Added a full level-up celebration with a skill banner, level display, golden burst particles, screen pulse, vibration where supported, and a distinct level-up sound.
+- Multiple simultaneous level-ups are queued so none are skipped.
+
+
+## v0.12.0 — The Idle Update
+
+- Added saved Auto Combat, Woodcutting, Mining, Fishing, and Explore modes.
+- Automation remains inside the player’s current biome and chooses the strongest usable local resource by default.
+- Tapping a resource while its matching auto mode is active pins that specific target type/node until it is unavailable.
+- Auto Explore rotates between valid combat and gathering activities in the current biome.
+- Added offline progression for the saved auto mode, capped at eight hours.
+- Added a Welcome Back summary listing items, XP, and enemies defeated.
+- Auto Combat and Auto Explore switch off after player defeat.

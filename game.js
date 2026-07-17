@@ -1,7 +1,7 @@
 (() => {
   'use strict';
 
-  const VERSION = '0.11.4';
+  const VERSION = '0.12.0';
   const XP_RATE = 1.5;
   const SAVE_KEY = 'idle-wanderer-save-v6';
   const LEGACY_KEYS = ['idle-wanderer-save-v5', 'idle-wanderer-save-v4', 'idle-wanderer-save-v3', 'idle-wanderer-save-v2'];
@@ -21,7 +21,8 @@
     townDialog: document.getElementById('townDialog'), townName: document.getElementById('townName'), townDescription: document.getElementById('townDescription'), townServices: document.getElementById('townServices'),
     craftingDialog: document.getElementById('craftingDialog'), craftingTownName: document.getElementById('craftingTownName'), craftingLevel: document.getElementById('craftingLevel'), craftingRecipes: document.getElementById('craftingRecipes'),
     combatHp: document.getElementById('combatHp'), combatHpFill: document.getElementById('combatHpFill'), eatButton: document.getElementById('eatButton'), eatCount: document.getElementById('eatCount'),
-    coinCount: document.getElementById('coinCount'),
+    coinCount: document.getElementById('coinCount'), autoMode: document.getElementById('autoMode'), autoBadge: document.getElementById('autoBadge'),
+    offlineDialog: document.getElementById('offlineDialog'), offlineTime: document.getElementById('offlineTime'), offlineResults: document.getElementById('offlineResults'),
     serviceDialog: document.getElementById('serviceDialog'), serviceType: document.getElementById('serviceType'), serviceTitle: document.getElementById('serviceTitle'), serviceDescription: document.getElementById('serviceDescription'), serviceContent: document.getElementById('serviceContent')
   };
 
@@ -424,6 +425,7 @@
     equipment: { head: null, body: null, legs: null, boots: null, weapon: null, shield: null, cape: null, ring: null, food: null },
     activeSummon: null, summonAttackElapsed: 0,
     audio: { music: true, sfx: true, musicVolume: 0.72, sfxVolume: 0.9 },
+    autoMode: 'off', autoTargetId: null, autoBiomeId: 'central',
     treeState: {}, fishingState: {}, rockState: {}, enemyState: {}, combat: { hp: 10 }, poh: {}, quests: {}, shopDay: '', lastSavedAt: Date.now()
   });
 
@@ -436,7 +438,7 @@
   let enemies = makeEnemies(state.enemyState);
   let lastFrame = performance.now(), toastTimer = null, selectedItemKey = null;
   let activeTree = null, queuedTree = null, activeFishingSpot = null, queuedFishingSpot = null, activeRock = null, queuedRock = null, queuedTown = null, activeEnemy = null, queuedEnemy = null, combatElapsed = 0, actionElapsed = 0;
-  let animationClock = 0;
+  let animationClock = 0, autoThinkElapsed = 0;
   const floaters = [];
   const miniMapView = { zoom: 1.8, centerX: state.player.x, centerY: state.player.y, dragging: false, lastX: 0, lastY: 0, lastDraw: 0 };
   const audioEngine = {
@@ -503,7 +505,8 @@
         cook:()=>{this.noise(.14,.8);this.tone(390,.18,'triangle',.9);},
         craft:()=>{this.tone(330,.1,'square',.9);this.tone(520,.16,'triangle',1,.05);},
         summon:()=>{this.tone(250,.22,'sine',.9);this.tone(400,.28,'sine',1,.09);this.tone(620,.38,'sine',1,.18);},
-        save:()=>{this.tone(650,.11,'sine',.9);this.tone(900,.16,'sine',1,.06);}
+        save:()=>{this.tone(650,.11,'sine',.9);this.tone(900,.16,'sine',1,.06);},
+        level:()=>{this.tone(392,.16,'triangle',1);this.tone(523,.2,'triangle',1,.1);this.tone(659,.24,'triangle',1,.22);this.tone(784,.42,'sine',1,.36);}
       };(map[name]||map.loot)();
     },
     startMusic(){
@@ -526,6 +529,52 @@
   function levelFromXp(xp){ let level=1; while(level<100 && xp>=xpForLevel(level+1)) level++; return level; }
   function currentLevelProgress(xp){ const level=levelFromXp(xp); if(level>=100)return 1; return (xp-xpForLevel(level))/(xpForLevel(level+1)-xpForLevel(level)); }
 
+  function showXpBlip(skillKey,amount){
+    if(!amount)return;
+    const stack=document.getElementById('xpBlips');
+    if(!stack)return;
+    const blip=document.createElement('div');
+    blip.className='xp-blip';
+    blip.innerHTML=`<strong>+${Math.round(amount).toLocaleString()} XP</strong><span>${SKILL_DEFS[skillKey]?.name||skillKey}</span>`;
+    stack.appendChild(blip);
+    while(stack.children.length>4)stack.firstElementChild.remove();
+    setTimeout(()=>blip.classList.add('leaving'),1350);
+    setTimeout(()=>blip.remove(),1750);
+  }
+
+  let levelUpQueue=[];
+  let levelUpPlaying=false;
+  function queueLevelUp(skillKey,level){
+    levelUpQueue.push({skillKey,level});
+    if(!levelUpPlaying)playNextLevelUp();
+  }
+  function playNextLevelUp(){
+    const next=levelUpQueue.shift();
+    if(!next){levelUpPlaying=false;return;}
+    levelUpPlaying=true;
+    const overlay=document.getElementById('levelUpOverlay');
+    if(!overlay){levelUpPlaying=false;return;}
+    overlay.querySelector('.level-up-skill').textContent=SKILL_DEFS[next.skillKey]?.name||next.skillKey;
+    overlay.querySelector('.level-up-level').textContent=`Level ${next.level}`;
+    overlay.querySelector('.level-up-particles').innerHTML=Array.from({length:18},(_,i)=>`<i style="--i:${i};--x:${(i%6)-2.5};--y:${Math.floor(i/6)-1}"></i>`).join('');
+    overlay.classList.remove('show'); void overlay.offsetWidth; overlay.classList.add('show');
+    audioEngine.sfx('level');
+    if(navigator.vibrate)navigator.vibrate([40,35,80]);
+    setTimeout(()=>overlay.classList.remove('show'),2100);
+    setTimeout(()=>{levelUpPlaying=false;playNextLevelUp();},2350);
+  }
+
+  function awardSkillXp(skillKey,amount,{blip=true}={}){
+    const gained=Math.max(0,Math.round(amount||0));
+    if(!gained||!state.skills[skillKey])return 0;
+    const before=levelFromXp(state.skills[skillKey].xp||0);
+    state.skills[skillKey].xp=(state.skills[skillKey].xp||0)+gained;
+    const after=levelFromXp(state.skills[skillKey].xp||0);
+    if(blip)showXpBlip(skillKey,gained);
+    for(let level=before+1;level<=after;level++)queueLevelUp(skillKey,level);
+    return gained;
+  }
+
   function pointInPolygon(x,y,points){ let inside=false; for(let i=0,j=points.length-1;i<points.length;j=i++) { const [xi,yi]=points[i],[xj,yj]=points[j]; const hit=((yi>y)!==(yj>y)) && x<(xj-xi)*(y-yi)/((yj-yi)||.00001)+xi; if(hit)inside=!inside; } return inside; }
   function pointInWater(x,y){ return waters.some(w => ((x-w.x)/w.rx)**2 + ((y-w.y)/w.ry)**2 <= 1); }
   // Inland ponds are walkable for now. The ocean remains blocked because it lies outside the continent.
@@ -547,7 +596,7 @@
     const d=activeSummonDef(),specific=d?.passive===`${skill}Xp`?d.passiveValue:0,combat=d?.passive==='combatXp'&&['melee','range','fortitude'].includes(skill)?d.passiveValue:0,all=d?.passive==='allXp'?d.passiveValue:0;
     return Math.max(1,Math.round(amount*XP_RATE*(1+specific+combat+all)));
   }
-  function awardSummoningXp(sourceXp){if(!activeSummonDef()||sourceXp<=0)return;state.skills.summoning.xp=(state.skills.summoning.xp||0)+Math.max(1,Math.floor(sourceXp/3));}
+  function awardSummoningXp(sourceXp){if(!activeSummonDef()||sourceXp<=0)return;awardSkillXp('summoning',Math.max(1,Math.floor(sourceXp/3)));}
   function gatheringDuration(def, toolType){
     const toolKey=bestOwnedTool(toolType), bonus=toolKey ? (ITEM_DEFS[toolKey].speedBonus || 0) : 0;
     const summonSpeed=toolType==='axe'?summonBonus('woodcuttingSpeed'):toolType==='pickaxe'?summonBonus('miningSpeed'):summonBonus('fishingSpeed');
@@ -565,7 +614,7 @@
       }
       for(const key of Object.keys(SKILL_DEFS)) if(old.skills?.[key]) fresh.skills[key]=old.skills[key];
       if(!old.skills?.fortitude || (old.skills.fortitude.xp||0)<xpForLevel(10)) fresh.skills.fortitude={xp:xpForLevel(10)};
-      fresh.equipment={...fresh.equipment,...(old.equipment||{})}; fresh.audio={...fresh.audio,...(old.audio||{})}; fresh.activeSummon=SUMMON_DEFS[old.activeSummon]?old.activeSummon:null; fresh.summonAttackElapsed=0; fresh.treeState=old.treeState||{}; fresh.fishingState=old.fishingState||{}; fresh.rockState=old.rockState||{}; fresh.enemyState=old.enemyState||{}; fresh.combat={...fresh.combat,...(old.combat||{})}; fresh.poh=old.poh||{}; fresh.quests=old.quests||{};
+      fresh.equipment={...fresh.equipment,...(old.equipment||{})}; fresh.audio={...fresh.audio,...(old.audio||{})}; fresh.autoMode=['off','combat','woodcutting','mining','fishing','explore'].includes(old.autoMode)?old.autoMode:'off'; fresh.autoTargetId=old.autoTargetId||null; fresh.autoBiomeId=old.autoBiomeId||regionAt(fresh.player.x,fresh.player.y).id; fresh.activeSummon=SUMMON_DEFS[old.activeSummon]?old.activeSummon:null; fresh.summonAttackElapsed=0; fresh.treeState=old.treeState||{}; fresh.fishingState=old.fishingState||{}; fresh.rockState=old.rockState||{}; fresh.enemyState=old.enemyState||{}; fresh.combat={...fresh.combat,...(old.combat||{})}; fresh.poh=old.poh||{}; fresh.quests=old.quests||{};
       if(old.player && isWalkable(old.player.x,old.player.y)) fresh.player={...fresh.player,x:old.player.x,y:old.player.y,targetX:old.player.x,targetY:old.player.y};
       if(old.version && old.version !== VERSION){
         for(const [id,node] of Object.entries(fresh.treeState||{})){const type=id.replace(/-\d+$/,'');const def=TREE_TYPES[type];if(def&&node.remaining>0){node.remaining=Math.max(node.remaining,def.capacity[0]);node.max=Math.max(node.max||0,def.capacity[1]);}}
@@ -626,7 +675,7 @@
     const ps=playerCombatStats(),ed=ENEMY_TYPES[enemy.type],hit=Math.random()<hitChance(ps.accuracy,ed.defence);
     if(!hit){damageFloater(enemy.x,enemy.y-55,0,false);return;}
     const styleBonus=ps.style==='range'?summonBonus('rangeDamage'):summonBonus('meleeDamage'),dmg=randomInt(1,Math.max(1,Math.round(ps.maxHit*(1+styleBonus))));enemy.hp=Math.max(0,enemy.hp-dmg);damageFloater(enemy.x,enemy.y-55,dmg,true);
-    const skill=ps.style==='range'?'range':'melee',combatXp=xpWithSummonBonus(skill,dmg*4),fortXp=xpWithSummonBonus('fortitude',dmg*2);state.skills[skill].xp=(state.skills[skill].xp||0)+combatXp;state.skills.fortitude.xp=(state.skills.fortitude.xp||0)+fortXp;awardSummoningXp(combatXp);renderSkills();
+    const skill=ps.style==='range'?'range':'melee',combatXp=xpWithSummonBonus(skill,dmg*4),fortXp=xpWithSummonBonus('fortitude',dmg*2);awardSkillXp(skill,combatXp);awardSkillXp('fortitude',fortXp);awardSummoningXp(combatXp);renderSkills();
     if(enemy.hp<=0)killEnemy(enemy);
   }
   function summonAttack(enemy){
@@ -639,20 +688,88 @@
     const d=ENEMY_TYPES[enemy.type],ps=playerCombatStats(),hit=Math.random()<hitChance(d.accuracy,ps.defence);
     if(!hit){damageFloater(state.player.x,state.player.y-58,0,false);return;}
     const dmg=randomInt(1,d.maxHit);state.combat.hp=Math.max(0,state.combat.hp-dmg);damageFloater(state.player.x,state.player.y-58,dmg,true);renderCombatHud();
-    if(state.combat.hp<=0){state.combat.hp=maxPlayerHp();state.player.x=1780;state.player.y=2340;state.player.targetX=1780;state.player.targetY=2340;showToast('You were defeated and returned home');endCombat('Recovering');}
+    if(state.combat.hp<=0){state.combat.hp=maxPlayerHp();state.player.x=1780;state.player.y=2340;state.player.targetX=1780;state.player.targetY=2340;showToast('You were defeated and returned home');if(state.autoMode==='combat'||state.autoMode==='explore')setAutoMode('off',false);endCombat('Recovering');}
   }
   function eatFood(){const key=state.equipment.food,item=ITEM_DEFS[key];if(!key||!item?.heal||(state.inventory[key]||0)<1)return;const max=maxPlayerHp();if(state.combat.hp>=max)return showToast('Already at full health');state.inventory[key]--;state.combat.hp=Math.min(max,state.combat.hp+item.heal);if(state.inventory[key]<=0)state.equipment.food=null;showToast(`Ate ${item.name} · +${item.heal} HP`);renderInventory();renderEquipment();renderCombatHud();saveGame(false);}
   function renderCombatHud(){const max=maxPlayerHp();state.combat.hp=clamp(state.combat.hp||max,0,max);if(ui.combatHp){ui.combatHp.textContent=`${state.combat.hp}/${max}`;ui.combatHpFill.style.width=`${state.combat.hp/max*100}%`;}const key=state.equipment.food,count=key?(state.inventory[key]||0):0;if(ui.eatButton){ui.eatButton.hidden=!key||count<1;ui.eatButton.textContent=key?`Eat ${ITEM_DEFS[key].name.replace('Cooked ','')}`:'Eat';ui.eatCount.textContent=count;}}
 
+  const AUTO_LABELS={off:'OFF',combat:'COMBAT',woodcutting:'WOODCUTTING',mining:'MINING',fishing:'FISHING',explore:'EXPLORE'};
+  function currentBiomeId(){return regionAt(state.player.x,state.player.y).id||'central';}
+  function sameBiome(x,y){return regionAt(x,y).id===currentBiomeId();}
+  function setAutoMode(mode,announce=true){
+    state.autoMode=AUTO_LABELS[mode]?mode:'off';state.autoTargetId=null;state.autoBiomeId=currentBiomeId();autoThinkElapsed=0;
+    if(ui.autoMode)ui.autoMode.value=state.autoMode;
+    if(ui.autoBadge){ui.autoBadge.hidden=state.autoMode==='off';ui.autoBadge.textContent=`AUTO ${AUTO_LABELS[state.autoMode]}`;}
+    if(announce)showToast(state.autoMode==='off'?'Auto action stopped':`Auto ${AUTO_LABELS[state.autoMode].toLowerCase()} enabled`);
+    saveGame(false);
+  }
+  function availableTrees(){const level=levelFromXp(state.skills.woodcutting.xp);return trees.filter(t=>t.remaining>0&&sameBiome(t.x,t.y)&&TREE_TYPES[t.type].level<=level);}
+  function availableRocks(){const level=levelFromXp(state.skills.mining.xp);return rocks.filter(r=>r.hp>0&&sameBiome(r.x,r.y)&&ROCK_TYPES[r.type].level<=level);}
+  function availableFishing(){const level=levelFromXp(state.skills.fishing.xp);return fishingSpots.filter(f=>f.remaining>0&&sameBiome(f.standX,f.standY)&&FISH_TYPES[f.type].level<=level);}
+  function availableEnemies(){return enemies.filter(e=>e.hp>0&&sameBiome(e.homeX,e.homeY));}
+  function bestTarget(list,defs){
+    const pinned=list.find(x=>x.id===state.autoTargetId);if(pinned)return pinned;
+    return list.sort((a,b)=>(defs[b.type]?.level||defs[b.type]?.hp||0)-(defs[a.type]?.level||defs[a.type]?.hp||0)||Math.hypot(state.player.x-a.x,state.player.y-a.y)-Math.hypot(state.player.x-b.x,state.player.y-b.y))[0]||null;
+  }
+  function queueAutoTarget(mode){
+    if(state.autoMode==='off'||activeEnemy||activeTree||activeRock||activeFishingSpot||queuedEnemy||queuedTree||queuedRock||queuedFishingSpot||queuedTown)return;
+    if(currentBiomeId()!==state.autoBiomeId){state.autoBiomeId=currentBiomeId();state.autoTargetId=null;}
+    let chosen=mode;
+    if(mode==='explore'){
+      const possible=[];if(availableEnemies().length)possible.push('combat');if(bestOwnedTool('axe')&&availableTrees().length)possible.push('woodcutting');if(bestOwnedTool('pickaxe')&&availableRocks().length)possible.push('mining');if(bestOwnedTool('fishingRod')&&availableFishing().length)possible.push('fishing');
+      if(!possible.length)return;chosen=possible[Math.floor(Math.random()*possible.length)];
+    }
+    if(chosen==='combat'){
+      const e=bestTarget(availableEnemies(),ENEMY_TYPES);if(!e)return;const ps=playerCombatStats(),dx=state.player.x-e.x,dy=state.player.y-e.y,d=Math.hypot(dx,dy)||1;queuedEnemy=e;state.player.targetX=e.x+dx/d*Math.max(22,ps.range-8);state.player.targetY=e.y+dy/d*Math.max(22,ps.range-8);ui.actionName.textContent=`Auto approaching ${ENEMY_TYPES[e.type].name}`;
+    }else if(chosen==='woodcutting'){
+      if(!bestOwnedTool('axe'))return;const t=bestTarget(availableTrees(),TREE_TYPES);if(!t)return;queuedTree=t;const dx=state.player.x-t.x,dy=state.player.y-t.y,d=Math.hypot(dx,dy)||1;state.player.targetX=t.x+dx/d*65;state.player.targetY=t.y+dy/d*65;ui.actionName.textContent=`Auto walking to ${TREE_TYPES[t.type].name}`;
+    }else if(chosen==='mining'){
+      if(!bestOwnedTool('pickaxe'))return;const r=bestTarget(availableRocks(),ROCK_TYPES);if(!r)return;queuedRock=r;const dx=state.player.x-r.x,dy=state.player.y-r.y,d=Math.hypot(dx,dy)||1;state.player.targetX=r.x+dx/d*72;state.player.targetY=r.y+dy/d*72;ui.actionName.textContent=`Auto walking to ${ROCK_TYPES[r.type].name}`;
+    }else if(chosen==='fishing'){
+      if(!bestOwnedTool('fishingRod'))return;const f=bestTarget(availableFishing(),FISH_TYPES);if(!f)return;queuedFishingSpot=f;state.player.targetX=f.standX;state.player.targetY=f.standY;ui.actionName.textContent=`Auto walking to ${FISH_TYPES[f.type].name}`;
+    }
+  }
+
+  function offlineCandidates(mode,biome){
+    const inBiome=(x,y)=>regionAt(x,y).id===biome;
+    if(mode==='woodcutting')return treeSeeds.filter(x=>inBiome(x[1],x[2])&&TREE_TYPES[x[0]].level<=levelFromXp(state.skills.woodcutting.xp)).map(x=>x[0]);
+    if(mode==='mining')return rockSeeds.filter(x=>inBiome(x[1],x[2])&&ROCK_TYPES[x[0]].level<=levelFromXp(state.skills.mining.xp)).map(x=>x[0]);
+    if(mode==='fishing')return fishingSeeds.filter(x=>inBiome(x[3],x[4])&&FISH_TYPES[x[0]].level<=levelFromXp(state.skills.fishing.xp)).map(x=>x[0]);
+    if(mode==='combat')return enemySeeds.filter(x=>inBiome(x[1],x[2])).map(x=>x[0]);
+    return [];
+  }
+  function addOfflineXp(skill,amount,summary){if(amount<=0)return;const before=state.skills[skill].xp||0;state.skills[skill].xp=before+Math.round(amount);summary.xp[skill]=(summary.xp[skill]||0)+Math.round(amount);}
+  function simulateOfflineMode(mode,seconds,biome,summary){
+    const types=offlineCandidates(mode,biome);if(!types.length||seconds<2)return;
+    if(mode==='woodcutting'||mode==='mining'||mode==='fishing'){
+      const defs=mode==='woodcutting'?TREE_TYPES:mode==='mining'?ROCK_TYPES:FISH_TYPES, tool=mode==='woodcutting'?'axe':mode==='mining'?'pickaxe':'fishingRod';if(!bestOwnedTool(tool))return;
+      const type=types.sort((a,b)=>defs[b].level-defs[a].level)[0],def=defs[type],duration=gatheringDuration(def,tool),count=Math.max(0,Math.floor(seconds/duration*.82));if(!count)return;
+      const item=mode==='woodcutting'?def.log:def.item,gained=xpWithSummonBonus(mode,def.xp)*count;state.inventory[item]=(state.inventory[item]||0)+count;summary.items[item]=(summary.items[item]||0)+count;addOfflineXp(mode,gained,summary);addOfflineXp('summoning',Math.max(1,Math.round(gained/3)),summary);
+    }else if(mode==='combat'){
+      const type=types.sort((a,b)=>ENEMY_TYPES[a].hp-ENEMY_TYPES[b].hp)[0],enemy=ENEMY_TYPES[type],ps=playerCombatStats(),hitRate=hitChance(ps.accuracy,enemy.defence),avgHit=Math.max(.5,(1+ps.maxHit)/2*hitRate),killTime=Math.max(4,enemy.hp/avgHit*ps.ticks*TICK_SECONDS),kills=Math.min(5000,Math.floor(seconds/killTime*.62));if(!kills)return;
+      const dmg=Math.round(kills*enemy.hp),skill=ps.style==='range'?'range':'melee',combatXp=xpWithSummonBonus(skill,dmg*4),fortXp=xpWithSummonBonus('fortitude',dmg*2);addOfflineXp(skill,combatXp,summary);addOfflineXp('fortitude',fortXp,summary);addOfflineXp('summoning',Math.max(1,Math.round(combatXp/3)),summary);
+      for(const [key,min,max,chance] of enemy.drops||[]){const qty=Math.floor(kills*((min+max)/2)*chance);if(qty>0){state.inventory[key]=(state.inventory[key]||0)+qty;summary.items[key]=(summary.items[key]||0)+qty;}}
+      summary.kills=(summary.kills||0)+kills;
+    }
+  }
+  function processOfflineProgress(){
+    const elapsed=Math.min(8*3600,Math.max(0,(Date.now()-(state.lastSavedAt||Date.now()))/1000));if(elapsed<60||state.autoMode==='off')return;
+    const summary={seconds:elapsed,items:{},xp:{},kills:0},biome=state.autoBiomeId||currentBiomeId();
+    if(state.autoMode==='explore'){const modes=['combat','woodcutting','mining','fishing'].filter(m=>offlineCandidates(m,biome).length);for(const m of modes)simulateOfflineMode(m,elapsed/Math.max(1,modes.length),biome,summary);}else simulateOfflineMode(state.autoMode,elapsed,biome,summary);
+    const rows=[];for(const [k,q] of Object.entries(summary.items))if(q)rows.push(`<div><span>${ITEM_DEFS[k]?.name||k}</span><strong>+${q.toLocaleString()}</strong></div>`);for(const [k,x] of Object.entries(summary.xp))if(x)rows.push(`<div><span>${SKILL_DEFS[k]?.name||k} XP</span><strong>+${x.toLocaleString()}</strong></div>`);if(summary.kills)rows.unshift(`<div><span>Enemies defeated</span><strong>${summary.kills.toLocaleString()}</strong></div>`);if(!rows.length)return;
+    const h=Math.floor(elapsed/3600),m=Math.floor(elapsed%3600/60);ui.offlineTime.textContent=`Away ${h?`${h}h `:''}${m}m · ${regionAt(state.player.x,state.player.y).name}`;ui.offlineResults.innerHTML=rows.join('');ui.offlineDialog.showModal();state.lastSavedAt=Date.now();saveGame(false);
+  }
+
   function handlePointer(event){
     event.preventDefault(); const rect=canvas.getBoundingClientRect(); const sx=(event.clientX-rect.left)*canvas.width/rect.width, sy=(event.clientY-rect.top)*canvas.height/rect.height; const p=screenToWorld(sx,sy);
     const town=townAt(p.x,p.y), tree=treeAt(p.x,p.y), rock=rockAt(p.x,p.y), fishingSpot=fishingSpotAt(p.x,p.y), enemy=enemyAt(p.x,p.y); stopAction(false);
-    if(enemy){const d=ENEMY_TYPES[enemy.type],ps=playerCombatStats();queuedEnemy=enemy;queuedTree=queuedRock=queuedFishingSpot=queuedTown=null;const dist=Math.hypot(state.player.x-enemy.x,state.player.y-enemy.y);showToast(`${d.name} · ${enemy.hp}/${enemy.maxHp} HP · ${d.behaviour}`);if(dist<=ps.range){beginCombat(enemy);state.player.targetX=state.player.x;state.player.targetY=state.player.y;}else{const dx=state.player.x-enemy.x,dy=state.player.y-enemy.y,len=Math.hypot(dx,dy)||1;state.player.targetX=enemy.x+dx/len*(ps.range-8);state.player.targetY=enemy.y+dy/len*(ps.range-8);ui.actionName.textContent=`Approaching ${d.name}`;}return;}
+    if(enemy){if(state.autoMode==='combat')state.autoTargetId=enemy.id;const d=ENEMY_TYPES[enemy.type],ps=playerCombatStats();queuedEnemy=enemy;queuedTree=queuedRock=queuedFishingSpot=queuedTown=null;const dist=Math.hypot(state.player.x-enemy.x,state.player.y-enemy.y);showToast(`${d.name} · ${enemy.hp}/${enemy.maxHp} HP · ${d.behaviour}`);if(dist<=ps.range){beginCombat(enemy);state.player.targetX=state.player.x;state.player.targetY=state.player.y;}else{const dx=state.player.x-enemy.x,dy=state.player.y-enemy.y,len=Math.hypot(dx,dy)||1;state.player.targetX=enemy.x+dx/len*(ps.range-8);state.player.targetY=enemy.y+dy/len*(ps.range-8);ui.actionName.textContent=`Approaching ${d.name}`;}return;}
     if(town){
       queuedTown=town; queuedTree=null; queuedFishingSpot=null; queuedRock=null; const dx=state.player.x-town.x,dy=state.player.y-town.y,d=Math.hypot(dx,dy)||1;
       state.player.targetX=town.x+dx/d*82;state.player.targetY=town.y+dy/d*82;ui.status.textContent=`Walking to ${town.name}...`;ui.actionName.textContent='Walking';showToast(town.name);return;
     }
     if(fishingSpot){
+      if(state.autoMode==='fishing')state.autoTargetId=fishingSpot.id;
       const def=FISH_TYPES[fishingSpot.type], level=levelFromXp(state.skills.fishing.xp);
       if(level<def.level){showToast(`${def.name} Fishing Spot · Fishing level ${def.level} required`);return;}
       if(!bestOwnedTool('fishingRod')){showToast(`${def.name} Fishing Spot · A fishing rod is required`);return;}
@@ -661,6 +778,7 @@
       ui.status.textContent=`Walking to ${def.name} fishing spot...`;ui.actionName.textContent='Walking';showToast(`${def.name} Fishing Spot`);return;
     }
     if(rock){
+      if(state.autoMode==='mining')state.autoTargetId=rock.id;
       const def=ROCK_TYPES[rock.type], level=levelFromXp(state.skills.mining.xp);
       if(level<def.level){showToast(`${def.name} Rock · Mining level ${def.level} required`);return;}
       if(!bestOwnedTool('pickaxe')){showToast(`${def.name} Rock · A pickaxe is required`);return;}
@@ -670,6 +788,7 @@
       ui.status.textContent=`Walking to ${def.name} rock...`;ui.actionName.textContent='Walking';showToast(`${def.name} Rock`);return;
     }
     if(tree){
+      if(state.autoMode==='woodcutting')state.autoTargetId=tree.id;
       const def=TREE_TYPES[tree.type], level=levelFromXp(state.skills.woodcutting.xp);
       if(level<def.level){showToast(`${def.name} Tree · Woodcutting level ${def.level} required`);return;}
       if(!bestOwnedTool('axe')){showToast(`${def.name} Tree · An axe is required`);return;}
@@ -685,19 +804,19 @@
   function beginMining(rock){ activeRock=rock;queuedRock=null;actionElapsed=0;const def=ROCK_TYPES[rock.type],tool=ITEM_DEFS[bestOwnedTool('pickaxe')];ui.actionName.textContent=`Mining ${def.name}`;ui.status.textContent=`Mining ${def.name} with ${tool?.name || 'a pickaxe'}...`; }
   function beginFishing(spot){ activeFishingSpot=spot;queuedFishingSpot=null;actionElapsed=0;const def=FISH_TYPES[spot.type],tool=ITEM_DEFS[bestOwnedTool('fishingRod')];ui.actionName.textContent=`Fishing ${def.name}`;ui.status.textContent=`Fishing for ${def.name} with ${tool?.name || 'a fishing rod'}...`; }
   function awardFish(spot){
-    const def=FISH_TYPES[spot.type],gainedXp=xpWithSummonBonus('fishing',def.xp);state.inventory[def.item]=(state.inventory[def.item]||0)+1;state.skills.fishing.xp+=gainedXp;awardSummoningXp(gainedXp);spot.remaining--;audioEngine.sfx('fish');
+    const def=FISH_TYPES[spot.type],gainedXp=xpWithSummonBonus('fishing',def.xp);state.inventory[def.item]=(state.inventory[def.item]||0)+1;awardSkillXp('fishing',gainedXp);awardSummoningXp(gainedXp);spot.remaining--;audioEngine.sfx('fish');
     floaters.push({x:spot.standX,y:spot.standY-65,text:`+1 ${ITEM_DEFS[def.item].name}  +${gainedXp} XP`,life:1.4});renderInventory();renderSkills();
     if(spot.remaining<=0){spot.respawnAt=Date.now()+randomInt(20,36)*1000;showToast(`${def.name} fishing spot moved`);stopAction(true);}else actionElapsed=0;
   }
 
   function awardOre(rock){
-    const def=ROCK_TYPES[rock.type],gainedXp=xpWithSummonBonus('mining',def.xp);state.inventory[def.item]=(state.inventory[def.item]||0)+1;state.skills.mining.xp+=gainedXp;awardSummoningXp(gainedXp);rock.hp--;audioEngine.sfx('mine');
+    const def=ROCK_TYPES[rock.type],gainedXp=xpWithSummonBonus('mining',def.xp);state.inventory[def.item]=(state.inventory[def.item]||0)+1;awardSkillXp('mining',gainedXp);awardSummoningXp(gainedXp);rock.hp--;audioEngine.sfx('mine');
     floaters.push({x:rock.x,y:rock.y-48,text:`+1 ${ITEM_DEFS[def.item].name}  +${gainedXp} XP`,life:1.4});renderInventory();renderSkills();
     if(rock.hp<=0){rock.respawnAt=Date.now()+def.respawn*1000;showToast(`${def.name} rock depleted`);stopAction(true);}else actionElapsed=0;
   }
 
   function awardLog(tree){
-    const def=TREE_TYPES[tree.type]; state.inventory[def.log]=(state.inventory[def.log]||0)+1;const gainedXp=xpWithSummonBonus('woodcutting',Math.max(1,Math.round(def.xp*(1+equipmentBonus('woodcuttingXp')))));state.skills.woodcutting.xp+=gainedXp;awardSummoningXp(gainedXp);tree.remaining--;audioEngine.sfx('chop');
+    const def=TREE_TYPES[tree.type]; state.inventory[def.log]=(state.inventory[def.log]||0)+1;const gainedXp=xpWithSummonBonus('woodcutting',Math.max(1,Math.round(def.xp*(1+equipmentBonus('woodcuttingXp')))));awardSkillXp('woodcutting',gainedXp);awardSummoningXp(gainedXp);tree.remaining--;audioEngine.sfx('chop');
     floaters.push({x:tree.x,y:tree.y-55,text:`+1 ${ITEM_DEFS[def.log].name}  +${gainedXp} XP`,life:1.4}); renderInventory();renderSkills();
     if(tree.remaining<=0){tree.respawnAt=Date.now()+def.respawn*1000;showToast(`${def.name} tree depleted`);stopAction(true);} else actionElapsed=0;
   }
@@ -722,6 +841,7 @@
       if(activeFishingSpot.remaining<=0 || Math.hypot(p.x-activeFishingSpot.standX,p.y-activeFishingSpot.standY)>30)stopAction(false);
       else {const def=FISH_TYPES[activeFishingSpot.type],duration=gatheringDuration(def,'fishingRod');actionElapsed+=dt;ui.actionProgress.style.width=`${Math.min(100,actionElapsed/duration*100)}%`;if(actionElapsed>=duration)awardFish(activeFishingSpot);}
     } else ui.actionProgress.style.width='0%';
+    autoThinkElapsed+=dt;if(autoThinkElapsed>=.65){autoThinkElapsed=0;queueAutoTarget(state.autoMode);}
     const region=regionAt(p.x,p.y);ui.region.textContent=region.name;if(document.getElementById('map')?.classList.contains('active'))drawMiniMap();
     const tx=clamp(p.x-canvas.width/2,0,WORLD.width-canvas.width),ty=clamp(p.y-canvas.height/2,0,WORLD.height-canvas.height),follow=1-Math.pow(.018,dt);camera.x+=(tx-camera.x)*follow;camera.y+=(ty-camera.y)*follow;
     for(let i=floaters.length-1;i>=0;i--){floaters[i].life-=dt;floaters[i].y-=24*dt;if(floaters[i].life<=0)floaters.splice(i,1);}
@@ -914,7 +1034,7 @@
     state.inventory[raw]-=count;
     state.inventory[d.cooked]=(state.inventory[d.cooked]||0)+count;
     const gainedXp=Math.max(1,Math.round(d.xp*count*XP_RATE));
-    state.skills.cooking.xp=(state.skills.cooking.xp||0)+gainedXp;
+    awardSkillXp('cooking',gainedXp);
     awardSummoningXp(gainedXp);
     showToast(`Cooked ${d.name.replace('Cooked ','')}${count>1?` ×${count}`:''}`);audioEngine.sfx('cook');
     renderInventory();renderSkills();renderCookingMenu(town);saveGame(false);
@@ -923,12 +1043,12 @@
   function townQuest(town,index=0){const pool=[['Gather cedar logs','cedarLog',8,45],['Catch minnows','rawMinnow',6,50],['Mine stone','stone',8,55],['Bring copper ore','copperOre',4,75],['Bring cooked fish','cookedMinnow',4,80]];let seed=[...town.name+dayKey()].reduce((a,c)=>a+c.charCodeAt(0),index*17);const q=pool[seed%pool.length];return{id:`${town.name}-${dayKey()}-${index}`,title:q[0],item:q[1],amount:q[2],reward:q[3]};}
   function openNPCs(town){const npcs=TOWN_NPCS[town.name]||[];openService('Residents',town.name,'Each town has its own residents. Their daily requests rotate with time.',npcs.map(([name,text],i)=>`<button class="npc-card" data-npc="${i}"><strong>${name}</strong><span>${text}</span></button>`).join(''));ui.serviceContent.querySelectorAll('[data-npc]').forEach(b=>b.addEventListener('click',()=>{const [name,text]=npcs[+b.dataset.npc],q=townQuest(town,+b.dataset.npc);openService('Conversation',name,text,questCard(q,town));bindQuestButtons(town);}));}
   function questCard(q,town){const done=state.quests[q.id]==='done',accepted=state.quests[q.id]==='accepted',owned=state.inventory[q.item]||0;return `<article class="quest-card"><strong>${q.title}</strong><span>Bring ${ITEM_DEFS[q.item]?.name||q.item} ${owned}/${q.amount}</span><small>Reward: ${q.reward} coins · Merching XP</small>${done?'<button disabled>Completed today</button>':accepted?`<button data-claim="${q.id}" ${owned>=q.amount?'':'disabled'}>Turn In</button>`:`<button data-accept="${q.id}">Accept Quest</button>`}</article>`;}
-  function bindQuestButtons(town){ui.serviceContent.querySelectorAll('[data-accept]').forEach(b=>b.addEventListener('click',()=>{state.quests[b.dataset.accept]='accepted';openQuests(town);saveGame(false);}));ui.serviceContent.querySelectorAll('[data-claim]').forEach(b=>b.addEventListener('click',()=>{const quests=[townQuest(town,0),townQuest(town,1)],q=quests.find(x=>x.id===b.dataset.claim);if(!q||(state.inventory[q.item]||0)<q.amount)return;state.inventory[q.item]-=q.amount;state.inventory.coins=(state.inventory.coins||0)+q.reward;state.skills.merching.xp=(state.skills.merching.xp||0)+Math.max(1,Math.round(q.reward*XP_RATE));state.quests[q.id]='done';renderAll();openQuests(town);saveGame(false);}));}
+  function bindQuestButtons(town){ui.serviceContent.querySelectorAll('[data-accept]').forEach(b=>b.addEventListener('click',()=>{state.quests[b.dataset.accept]='accepted';openQuests(town);saveGame(false);}));ui.serviceContent.querySelectorAll('[data-claim]').forEach(b=>b.addEventListener('click',()=>{const quests=[townQuest(town,0),townQuest(town,1)],q=quests.find(x=>x.id===b.dataset.claim);if(!q||(state.inventory[q.item]||0)<q.amount)return;state.inventory[q.item]-=q.amount;state.inventory.coins=(state.inventory.coins||0)+q.reward;awardSkillXp('merching',Math.max(1,Math.round(q.reward*XP_RATE)));state.quests[q.id]='done';renderAll();openQuests(town);saveGame(false);}));}
   function openQuests(town){const quests=[townQuest(town,0),townQuest(town,1)];openService('Notice Board',`${town.name} Requests`,'These requests rotate daily.',quests.map(q=>questCard(q,town)).join(''));bindQuestButtons(town);}
   function openPOH(town){const total=totalLevel();openService('Player-Owned Home','Your Home',`Total level ${total} · Coins ${state.inventory.coins||0}`,POH_UPGRADES.map(u=>{const built=state.poh[u.id],items=Object.entries(u.items).map(([k,n])=>`${ITEM_DEFS[k]?.name||k} ${state.inventory[k]||0}/${n}`).join(' · '),can=total>=u.total&&(state.inventory.coins||0)>=u.coins&&Object.entries(u.items).every(([k,n])=>(state.inventory[k]||0)>=n);return `<article class="service-card ${built?'built':can?'':'locked'}"><div><strong>${u.name}</strong><span>Total level ${u.total} · ${u.coins} coins</span><small>${u.description}<br>${items}</small></div><button data-build="${u.id}" ${built||!can?'disabled':''}>${built?'Built':'Build'}</button></article>`}).join(''));ui.serviceContent.querySelectorAll('[data-build]').forEach(b=>b.addEventListener('click',()=>{const u=POH_UPGRADES.find(x=>x.id===b.dataset.build);if(!u)return;state.inventory.coins-=u.coins;for(const[k,n]of Object.entries(u.items))state.inventory[k]-=n;state.poh[u.id]=true;renderAll();openPOH(town);saveGame(false);}));}
   function itemValue(key){const item=ITEM_DEFS[key];if(!item||key==='coins')return 0;const name=item.name.toLowerCase();let v=2;if(name.includes('crystal'))v=240;else if(name.includes('gold'))v=120;else if(name.includes('pyrite'))v=80;else if(name.includes('silver'))v=55;else if(name.includes('iron'))v=30;else if(name.includes('copper'))v=16;else if(name.includes('redwood'))v=90;else if(name.includes('mahogany'))v=65;else if(name.includes('shark'))v=75;else if(name.includes('grouper'))v=45;else if(name.includes('tuna'))v=30;else if(item.slot)v=20;return v;}
   function merchModifiers(){const level=levelFromXp(state.skills.merching?.xp||0);return{level,buy:Math.max(.75,1-level*.0025),sell:Math.min(1.25,.5+level*.005)};}
-  function openShop(town){const m=merchModifiers(),stock=['stoneAxe','stonePickaxe','basicFishingRod','cedarLog','stone','rawMinnow','copperOre'];const buy=stock.map(k=>{const price=Math.max(1,Math.ceil(itemValue(k)*2*m.buy));return `<article class="shop-row"><div><strong>${ITEM_DEFS[k].name}</strong><span>${price} coins</span></div><button data-buy="${k}" data-price="${price}">Buy</button></article>`}).join('');const sell=Object.entries(state.inventory).filter(([k,q])=>q>0&&k!=='coins'&&ITEM_DEFS[k]).map(([k,q])=>{const price=Math.max(1,Math.floor(itemValue(k)*m.sell));return `<article class="shop-row"><div><strong>${ITEM_DEFS[k].name} ×${q}</strong><span>${price} coins each</span></div><div class="service-actions"><button data-sell="${k}" data-price="${price}">Sell 1</button><button data-sellall="${k}" data-price="${price}">Sell All</button></div></article>`}).join('');openService('Shop',`${town.name} Shop`,`Merching level ${m.level} · ${state.inventory.coins||0} coins`,`<details class="shop-group" open><summary>Buy basic supplies</summary>${buy}</details><details class="shop-group"><summary>Sell owned items</summary>${sell||'<p class="item-description">Nothing to sell.</p>'}</details>`);ui.serviceContent.querySelectorAll('[data-buy]').forEach(b=>b.addEventListener('click',()=>{const p=+b.dataset.price;if((state.inventory.coins||0)<p)return showToast('Not enough coins');state.inventory.coins-=p;state.inventory[b.dataset.buy]=(state.inventory[b.dataset.buy]||0)+1;state.skills.merching.xp=(state.skills.merching.xp||0)+Math.max(1,Math.round(p*XP_RATE));renderAll();openShop(town);saveGame(false);}));const sellFn=(b,all)=>{const k=b.dataset.sell||b.dataset.sellall,q=all?(state.inventory[k]||0):1;if(q<1||!confirm(`Sell ${all?'all ':''}${ITEM_DEFS[k].name}${all?` ×${q}`:''}?`))return;const gain=q*(+b.dataset.price);state.inventory[k]-=q;state.inventory.coins=(state.inventory.coins||0)+gain;state.skills.merching.xp=(state.skills.merching.xp||0)+Math.max(1,Math.round(gain*XP_RATE));renderAll();openShop(town);saveGame(false);};ui.serviceContent.querySelectorAll('[data-sell]').forEach(b=>b.addEventListener('click',()=>sellFn(b,false)));ui.serviceContent.querySelectorAll('[data-sellall]').forEach(b=>b.addEventListener('click',()=>sellFn(b,true)));}
+  function openShop(town){const m=merchModifiers(),stock=['stoneAxe','stonePickaxe','basicFishingRod','cedarLog','stone','rawMinnow','copperOre'];const buy=stock.map(k=>{const price=Math.max(1,Math.ceil(itemValue(k)*2*m.buy));return `<article class="shop-row"><div><strong>${ITEM_DEFS[k].name}</strong><span>${price} coins</span></div><button data-buy="${k}" data-price="${price}">Buy</button></article>`}).join('');const sell=Object.entries(state.inventory).filter(([k,q])=>q>0&&k!=='coins'&&ITEM_DEFS[k]).map(([k,q])=>{const price=Math.max(1,Math.floor(itemValue(k)*m.sell));return `<article class="shop-row"><div><strong>${ITEM_DEFS[k].name} ×${q}</strong><span>${price} coins each</span></div><div class="service-actions"><button data-sell="${k}" data-price="${price}">Sell 1</button><button data-sellall="${k}" data-price="${price}">Sell All</button></div></article>`}).join('');openService('Shop',`${town.name} Shop`,`Merching level ${m.level} · ${state.inventory.coins||0} coins`,`<details class="shop-group" open><summary>Buy basic supplies</summary>${buy}</details><details class="shop-group"><summary>Sell owned items</summary>${sell||'<p class="item-description">Nothing to sell.</p>'}</details>`);ui.serviceContent.querySelectorAll('[data-buy]').forEach(b=>b.addEventListener('click',()=>{const p=+b.dataset.price;if((state.inventory.coins||0)<p)return showToast('Not enough coins');state.inventory.coins-=p;state.inventory[b.dataset.buy]=(state.inventory[b.dataset.buy]||0)+1;awardSkillXp('merching',Math.max(1,Math.round(p*XP_RATE)));renderAll();openShop(town);saveGame(false);}));const sellFn=(b,all)=>{const k=b.dataset.sell||b.dataset.sellall,q=all?(state.inventory[k]||0):1;if(q<1||!confirm(`Sell ${all?'all ':''}${ITEM_DEFS[k].name}${all?` ×${q}`:''}?`))return;const gain=q*(+b.dataset.price);state.inventory[k]-=q;state.inventory.coins=(state.inventory.coins||0)+gain;awardSkillXp('merching',Math.max(1,Math.round(gain*XP_RATE)));renderAll();openShop(town);saveGame(false);};ui.serviceContent.querySelectorAll('[data-sell]').forEach(b=>b.addEventListener('click',()=>sellFn(b,false)));ui.serviceContent.querySelectorAll('[data-sellall]').forEach(b=>b.addEventListener('click',()=>sellFn(b,true)));}
   function openInn(town){const rumours={"Starting Town":'Mira says the cedar pond is the safest place to begin.',"Swamp Town":'The catfish bite more often when the marsh is quiet.',"North Town":'Crystal deposits glitter beyond the arctic pines.',"Desert Town":'Pyrite is often mistaken for gold by hurried travellers.',"East Town":'Willows favour the wet ground near the eastern water.',"South Town":'The jungle trees provide the most valuable hardwood.',"Jungle Town":'Ancient redwoods grow slowly, but their timber is prized.'};openService('Inn',`${town.name} Inn`,'A quiet place to rest.',`<article class="service-card"><strong>Local rumour</strong><span>${rumours[town.name]||'Travellers speak of resources across the continent.'}</span></article>`);}
   function materialText(materials){
     return Object.entries(materials).map(([key,need])=>`${ITEM_DEFS[key]?.name||key} ${state.inventory[key]||0}/${need}`).join(' · ');
@@ -962,7 +1082,7 @@
     if(count<1){showToast('You do not have the required materials');return;}
     for(const [key,need] of Object.entries(recipe.materials))state.inventory[key]-=need*count;
     state.inventory[recipe.output]=(state.inventory[recipe.output]||0)+recipe.amount*count;
-    const gainedXp=xpWithSummonBonus('crafting',recipe.xp*count);state.skills.crafting.xp=(state.skills.crafting.xp||0)+gainedXp;awardSummoningXp(gainedXp);
+    const gainedXp=xpWithSummonBonus('crafting',recipe.xp*count);awardSkillXp('crafting',gainedXp);awardSummoningXp(gainedXp);
     showToast(`Crafted ${ITEM_DEFS[recipe.output].name}${count>1?` ×${count}`:''}`);audioEngine.sfx('craft');renderInventory();renderSkills();renderEquipment();renderCraftingMenu();saveGame(false);
   }
 
@@ -985,6 +1105,6 @@
   function renderAll(){renderInventory();renderSkills();renderEquipment();renderMapPanel();renderCombatHud();renderHeader();}
   function frame(now){const dt=Math.min((now-lastFrame)/1000,.05);lastFrame=now;update(dt);draw();if(now-miniMapView.lastDraw>180&&document.getElementById('map')?.classList.contains('active')){miniMapView.lastDraw=now;drawMiniMap();}requestAnimationFrame(frame);}
 
-  canvas.addEventListener('pointerdown',handlePointer,{passive:false});document.getElementById('saveButton').addEventListener('click',()=>saveGame(true));document.addEventListener('pointerdown',()=>audioEngine.unlock(),{passive:true});document.addEventListener('touchstart',()=>audioEngine.unlock(),{passive:true});document.addEventListener('click',()=>audioEngine.unlock(),{passive:true});document.getElementById('stopButton').addEventListener('click',()=>stopAction(true));ui.eatButton.addEventListener('click',eatFood);document.querySelectorAll('.tab').forEach(t=>t.addEventListener('click',()=>openPanel(t.dataset.panel)));document.getElementById('closeItemButton').addEventListener('click',()=>ui.dialog.close());document.getElementById('closeTownButton').addEventListener('click',()=>ui.townDialog.close());document.getElementById('closeCraftingButton').addEventListener('click',()=>ui.craftingDialog.close());document.getElementById('closeServiceButton').addEventListener('click',()=>ui.serviceDialog.close());ui.itemAction.addEventListener('click',toggleSelectedEquipment);ui.dialog.addEventListener('click',e=>{if(e.target===ui.dialog)ui.dialog.close();});ui.townDialog.addEventListener('click',e=>{if(e.target===ui.townDialog)ui.townDialog.close();});ui.craftingDialog.addEventListener('click',e=>{if(e.target===ui.craftingDialog)ui.craftingDialog.close();});ui.serviceDialog.addEventListener('click',e=>{if(e.target===ui.serviceDialog)ui.serviceDialog.close();});document.getElementById('exportButton').addEventListener('click',()=>{saveGame(false);const blob=new Blob([JSON.stringify(state,null,2)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`idle-wanderer-save-${Date.now()}.json`;a.click();URL.revokeObjectURL(a.href);});document.getElementById('importInput').addEventListener('change',async e=>{const file=e.target.files?.[0];if(!file)return;try{localStorage.setItem(SAVE_KEY,JSON.stringify(JSON.parse(await file.text())));location.reload();}catch{showToast('Invalid save file');}});document.getElementById('resetButton').addEventListener('click',()=>{if(confirm('Reset all progress on this device?')){localStorage.removeItem(SAVE_KEY);location.reload();}});window.addEventListener('pagehide',()=>saveGame(false));setInterval(()=>saveGame(false),15000);if('serviceWorker'in navigator)navigator.serviceWorker.register('./service-worker.js').catch(console.error);
-  camera.x=clamp(state.player.x-canvas.width/2,0,WORLD.width-canvas.width);camera.y=clamp(state.player.y-canvas.height/2,0,WORLD.height-canvas.height);renderAll();requestAnimationFrame(frame);
+  canvas.addEventListener('pointerdown',handlePointer,{passive:false});document.getElementById('saveButton').addEventListener('click',()=>saveGame(true));document.addEventListener('pointerdown',()=>audioEngine.unlock(),{passive:true});document.addEventListener('touchstart',()=>audioEngine.unlock(),{passive:true});document.addEventListener('click',()=>audioEngine.unlock(),{passive:true});document.getElementById('stopButton').addEventListener('click',()=>{setAutoMode('off');stopAction(true);});ui.autoMode.addEventListener('change',()=>{stopAction(true);setAutoMode(ui.autoMode.value);});ui.eatButton.addEventListener('click',eatFood);document.querySelectorAll('.tab').forEach(t=>t.addEventListener('click',()=>openPanel(t.dataset.panel)));document.getElementById('closeItemButton').addEventListener('click',()=>ui.dialog.close());document.getElementById('closeTownButton').addEventListener('click',()=>ui.townDialog.close());document.getElementById('closeCraftingButton').addEventListener('click',()=>ui.craftingDialog.close());document.getElementById('closeServiceButton').addEventListener('click',()=>ui.serviceDialog.close());document.getElementById('closeOfflineButton').addEventListener('click',()=>ui.offlineDialog.close());ui.itemAction.addEventListener('click',toggleSelectedEquipment);ui.dialog.addEventListener('click',e=>{if(e.target===ui.dialog)ui.dialog.close();});ui.townDialog.addEventListener('click',e=>{if(e.target===ui.townDialog)ui.townDialog.close();});ui.craftingDialog.addEventListener('click',e=>{if(e.target===ui.craftingDialog)ui.craftingDialog.close();});ui.serviceDialog.addEventListener('click',e=>{if(e.target===ui.serviceDialog)ui.serviceDialog.close();});document.getElementById('exportButton').addEventListener('click',()=>{saveGame(false);const blob=new Blob([JSON.stringify(state,null,2)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`idle-wanderer-save-${Date.now()}.json`;a.click();URL.revokeObjectURL(a.href);});document.getElementById('importInput').addEventListener('change',async e=>{const file=e.target.files?.[0];if(!file)return;try{localStorage.setItem(SAVE_KEY,JSON.stringify(JSON.parse(await file.text())));location.reload();}catch{showToast('Invalid save file');}});document.getElementById('resetButton').addEventListener('click',()=>{if(confirm('Reset all progress on this device?')){localStorage.removeItem(SAVE_KEY);location.reload();}});window.addEventListener('pagehide',()=>saveGame(false));setInterval(()=>saveGame(false),15000);if('serviceWorker'in navigator)navigator.serviceWorker.register('./service-worker.js').catch(console.error);
+  camera.x=clamp(state.player.x-canvas.width/2,0,WORLD.width-canvas.width);camera.y=clamp(state.player.y-canvas.height/2,0,WORLD.height-canvas.height);renderAll();setAutoMode(state.autoMode,false);processOfflineProgress();requestAnimationFrame(frame);
 })();

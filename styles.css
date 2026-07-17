@@ -66,3 +66,37 @@
   .coin-display{font-size:.65rem;padding:3px 5px}
   .sound-button{width:32px;height:32px}
 }
+
+
+/* v0.11.5 XP blips and level-up celebration */
+.xp-blips{position:absolute;z-index:5;top:48px;left:50%;transform:translateX(-50%);display:grid;gap:5px;pointer-events:none;width:max-content;max-width:70%}
+.xp-blip{display:flex;align-items:baseline;justify-content:center;gap:6px;padding:5px 10px;border:1px solid rgba(233,198,91,.7);border-radius:999px;background:rgba(15,19,25,.9);box-shadow:0 3px 12px rgba(0,0,0,.4);animation:xpBlipIn .2s ease-out both;color:#ffe487;white-space:nowrap}
+.xp-blip strong{font-size:.72rem}.xp-blip span{font-size:.6rem;color:#d6dde7}.xp-blip.leaving{animation:xpBlipOut .4s ease-in both}
+@keyframes xpBlipIn{from{opacity:0;transform:translateY(-10px) scale(.85)}to{opacity:1;transform:translateY(0) scale(1)}}
+@keyframes xpBlipOut{to{opacity:0;transform:translateY(-14px) scale(.92)}}
+.level-up-overlay{position:absolute;z-index:8;inset:0;display:grid;place-content:center;justify-items:center;pointer-events:none;opacity:0;overflow:hidden;background:radial-gradient(circle,rgba(235,198,80,.18),transparent 48%)}
+.level-up-overlay.show{animation:levelOverlay 2.1s ease both}
+.level-up-overlay span{font-size:.72rem;font-weight:950;letter-spacing:.24em;color:#fff0a4;text-shadow:0 2px 9px #000;transform:translateY(10px)}
+.level-up-overlay strong{margin-top:5px;font-size:1.55rem;color:#fff7d0;text-shadow:0 3px 0 #6c4f13,0 5px 18px #000;transform:scale(.7)}
+.level-up-overlay b{margin-top:4px;padding:4px 12px;border:1px solid #f4d36d;border-radius:999px;background:rgba(31,25,12,.88);color:#ffe27a;font-size:.82rem}
+.level-up-overlay.show strong{animation:levelTitle .55s cubic-bezier(.2,1.55,.35,1) .12s both}
+.level-up-rays{position:absolute;width:260px;height:260px;border-radius:50%;background:repeating-conic-gradient(from 0deg,rgba(255,224,115,.26) 0 8deg,transparent 8deg 18deg);filter:blur(.2px);opacity:0}
+.level-up-overlay.show .level-up-rays{animation:levelRays 2s ease-out both}
+.level-up-particles{position:absolute;left:50%;top:50%}
+.level-up-particles i{position:absolute;width:6px;height:6px;border-radius:2px;background:#ffe16a;box-shadow:0 0 8px #ffe16a;opacity:0}
+.level-up-overlay.show .level-up-particles i{animation:levelParticle 1.25s ease-out calc(var(--i)*.018s) both}
+@keyframes levelOverlay{0%{opacity:0}10%,72%{opacity:1}100%{opacity:0}}
+@keyframes levelTitle{from{opacity:0;transform:scale(.55) translateY(18px)}to{opacity:1;transform:scale(1) translateY(0)}}
+@keyframes levelRays{0%{opacity:0;transform:scale(.25) rotate(0)}30%{opacity:1}100%{opacity:0;transform:scale(1.45) rotate(45deg)}}
+@keyframes levelParticle{0%{opacity:0;transform:translate(-3px,-3px) scale(.3)}18%{opacity:1}100%{opacity:0;transform:translate(calc(var(--x)*34px),calc(var(--y)*52px - 25px)) rotate(180deg) scale(1)}}
+
+/* v0.12.0 The Idle Update */
+.auto-control{display:grid;gap:2px;min-width:112px;color:var(--muted);font-size:.55rem;text-transform:uppercase;letter-spacing:.08em}
+.auto-control select{width:100%;border:1px solid #4a5a70;border-radius:8px;background:#18202a;color:#f2df91;padding:7px 8px;font:700 .68rem system-ui}
+.auto-badge{display:block;margin-top:4px;color:#ffe36f;font-size:.56rem;letter-spacing:.12em;text-shadow:0 1px 5px #000;animation:autoPulse 1.4s ease-in-out infinite}
+@keyframes autoPulse{50%{opacity:.55}}
+.offline-dialog{width:min(calc(100% - 28px),430px)}
+.offline-results{display:grid;gap:7px;max-height:48vh;overflow:auto;margin:12px 0}
+.offline-results>div{display:flex;justify-content:space-between;gap:15px;padding:9px 10px;border:1px solid #354154;border-radius:9px;background:var(--panel-2);font-size:.72rem}
+.offline-results strong{color:#ffe27a}
+@media(max-width:520px){.action-strip{grid-template-columns:minmax(90px,1fr) minmax(70px,1fr) auto auto}.auto-control{min-width:88px}.auto-control select{font-size:.6rem;padding:6px 4px}}

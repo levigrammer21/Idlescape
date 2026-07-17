@@ -14,7 +14,7 @@
   <main id="app">
     <header class="topbar">
       <div class="title-block">
-        <h1>Idle Wanderer <span id="headerVersion" class="header-version">v0.11.4</span></h1>
+        <h1>Idle Wanderer <span id="headerVersion" class="header-version">v0.12.0</span></h1>
         <p id="statusText">Tap the ground, a tree, a rock, a fishing spot, or a town.</p>
       </div>
       <div class="topbar-center" aria-label="Coins">
@@ -25,14 +25,17 @@
 
     <section class="game-shell">
       <canvas id="gameCanvas" width="480" height="640" aria-label="Idle Wanderer world map"></canvas>
-      <div class="hud location-hud"><span>Region</span><strong id="regionText">Central Grass</strong></div>
+      <div class="hud location-hud"><span>Region</span><strong id="regionText">Central Grass</strong><b id="autoBadge" class="auto-badge" hidden>AUTO</b></div>
       <div class="hud combat-hud"><span>HP</span><div class="hp-track"><i id="combatHpFill"></i></div><strong id="combatHp">10/10</strong></div>
+      <div id="xpBlips" class="xp-blips" aria-live="polite"></div>
+      <div id="levelUpOverlay" class="level-up-overlay" aria-live="assertive"><div class="level-up-rays"></div><div class="level-up-particles"></div><span>LEVEL UP!</span><strong class="level-up-skill">Woodcutting</strong><b class="level-up-level">Level 2</b></div>
       <div id="toast" class="toast" aria-live="polite"></div>
     </section>
 
     <section class="action-strip">
       <div class="action-copy"><span class="label">Current action</span><strong id="actionName">Exploring</strong></div>
       <div class="progress-track"><div id="actionProgress" class="progress-fill"></div></div>
+      <label class="auto-control"><span>Auto</span><select id="autoMode"><option value="off">Off</option><option value="combat">Combat</option><option value="woodcutting">Woodcutting</option><option value="mining">Mining</option><option value="fishing">Fishing</option><option value="explore">Explore</option></select></label>
       <button id="eatButton" class="eat-button" hidden>Eat <b id="eatCount">0</b></button>
       <button id="stopButton" class="stop-button">Stop</button>
     </section>
@@ -57,7 +60,7 @@
           <button id="resetButton" class="wide-button muted-button">Reset Game</button>
         </div>
         <p class="hint">Town services are opened from the world itself. Skills will be developed one at a time, beginning with Woodcutting.</p>
-        <p class="version">Version 0.11.4 · Faster Progression</p>
+        <p class="version">Version 0.12.0 · The Idle Update</p>
       </section>
     </section>
   </main>
@@ -89,6 +92,12 @@
   </dialog>
 
 
+  <dialog id="offlineDialog" class="item-dialog offline-dialog">
+    <div class="dialog-head"><div><span class="label">Welcome Back</span><h2>Idle Results</h2></div><button id="closeOfflineButton" class="close-button" aria-label="Close">×</button></div>
+    <p id="offlineTime" class="item-description"></p>
+    <div id="offlineResults" class="offline-results"></div>
+    <p class="hint">Offline progress is capped at 8 hours and stays inside your saved biome.</p>
+  </dialog>
 
   <script src="game.js"></script>
 </body>
