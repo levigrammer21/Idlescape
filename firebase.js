@@ -8,8 +8,8 @@ import {
   getFirestore, doc, collection, getDocs, writeBatch, serverTimestamp
 } from 'https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js';
 
-const VERSION = '0.13.0';
-const SAVE_KEY = 'idle-wanderer-save-v6';
+const VERSION = '0.13.1';
+const SAVE_KEY_PREFIX = 'idle-wanderer-save-v6:';
 const firebaseConfig = {
   apiKey: 'AIzaSyDPS8qby2nMPc0beclK7igZcD-PvVOjviw',
   authDomain: 'idle-wonders.firebaseapp.com',
@@ -87,9 +87,13 @@ async function loadCloudState(user) {
   return Object.keys(restored).length ? restored : null;
 }
 
-function localState() {
+function saveKeyFor(user) {
+  return `${SAVE_KEY_PREFIX}${user.uid}`;
+}
+
+function localState(user) {
   try {
-    const raw = localStorage.getItem(SAVE_KEY);
+    const raw = localStorage.getItem(saveKeyFor(user));
     return raw ? JSON.parse(raw) : null;
   } catch {
     return null;
@@ -174,11 +178,16 @@ async function enterGame(user) {
       await clearCloudSave(user);
     }
     const cloud = resetRequested ? null : await loadCloudState(user);
-    const local = localState();
+    const accountSaveKey = saveKeyFor(user);
+    const local = localState(user);
     if (cloud) {
-      localStorage.setItem(SAVE_KEY, JSON.stringify(cloud));
+      localStorage.setItem(accountSaveKey, JSON.stringify(cloud));
     } else if (local) {
+      // Only recover a cache that belongs to this exact Firebase UID.
       queueCloudSave(local, true);
+    } else {
+      // A new account must start clean. Never adopt the old shared browser save.
+      localStorage.removeItem(accountSaveKey);
     }
     loginScreen.hidden = true;
     appShell.hidden = false;
@@ -212,7 +221,8 @@ window.IdleCloud = {
     await signOut(auth);
     location.reload();
   },
-  get user() { return activeUser; }
+  get user() { return activeUser; },
+  get localSaveKey() { return activeUser ? saveKeyFor(activeUser) : null; }
 };
 
 setCreateMode(false);

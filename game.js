@@ -1,10 +1,10 @@
 (() => {
   'use strict';
 
-  const VERSION = '0.13.0';
+  const VERSION = '0.13.1';
   const XP_RATE = 1.5;
-  const SAVE_KEY = 'idle-wanderer-save-v6';
-  const LEGACY_KEYS = ['idle-wanderer-save-v5', 'idle-wanderer-save-v4', 'idle-wanderer-save-v3', 'idle-wanderer-save-v2'];
+  const SAVE_KEY = window.IdleCloud?.localSaveKey;
+  if (!SAVE_KEY) throw new Error('No authenticated account save key is available.');
   const TICK_SECONDS = 0.6;
   const WORLD = { width: 3800, height: 4300 };
   const canvas = document.getElementById('gameCanvas');
@@ -605,7 +605,7 @@
 
   function loadState(){
     try {
-      let raw=localStorage.getItem(SAVE_KEY); if(!raw) for(const key of LEGACY_KEYS){raw=localStorage.getItem(key);if(raw)break;}
+      const raw=localStorage.getItem(SAVE_KEY);
       if(!raw)return defaultState(); const old=JSON.parse(raw), fresh=defaultState();
       fresh.inventory={...fresh.inventory,...(old.inventory||{})};
       // Tool ownership, not equipment, controls gathering access. Existing saves receive the starter set once.

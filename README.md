@@ -82,6 +82,13 @@ Upload every file in this folder to the root of your GitHub Pages repository.
 - Added a Welcome Back summary listing items, XP, and enemies defeated.
 - Auto Combat and Auto Explore switch off after player defeat.
 
+## v0.13.1 — Account-Isolated Cloud Saves
+
+- Local recovery caches are now namespaced by Firebase UID.
+- A new Firebase account never inherits another account’s browser save.
+- Accounts without a Firestore save start with a clean new character.
+- Existing Firestore saves continue loading normally.
+
 ## v0.13.0 — Cloud Saves
 - Added a login screen before the game with the version number.
 - Added Google sign-in and email/password sign-in, account creation, password reset, and sign-out.
