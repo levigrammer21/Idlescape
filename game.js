@@ -1,7 +1,7 @@
 (() => {
   'use strict';
 
-  const VERSION = '0.11.1';
+  const VERSION = '0.11.2';
   const SAVE_KEY = 'idle-wanderer-save-v6';
   const LEGACY_KEYS = ['idle-wanderer-save-v5', 'idle-wanderer-save-v4', 'idle-wanderer-save-v3', 'idle-wanderer-save-v2'];
   const TICK_SECONDS = 0.6;
@@ -422,7 +422,7 @@
     skills: Object.fromEntries(Object.keys(SKILL_DEFS).map(k => [k, { xp: 0 }])),
     equipment: { head: null, body: null, legs: null, boots: null, weapon: null, shield: null, cape: null, ring: null, food: null },
     activeSummon: null, summonAttackElapsed: 0,
-    audio: { music: true, sfx: true, musicVolume: 0.28, sfxVolume: 0.55 },
+    audio: { music: true, sfx: true, musicVolume: 0.72, sfxVolume: 0.9 },
     treeState: {}, fishingState: {}, rockState: {}, enemyState: {}, combat: { hp: 10 }, poh: {}, quests: {}, shopDay: '', lastSavedAt: Date.now()
   });
 
@@ -439,29 +439,38 @@
   const floaters = [];
   const miniMapView = { zoom: 1.8, centerX: state.player.x, centerY: state.player.y, dragging: false, lastX: 0, lastY: 0, lastDraw: 0 };
   const audioEngine = {
-    ctx:null, musicGain:null, sfxGain:null, musicTimer:null, started:false,
+    ctx:null, masterGain:null, compressor:null, musicGain:null, sfxGain:null, musicTimer:null, started:false,
     ensure(){
       if(!this.ctx){
         const AC=window.AudioContext||window.webkitAudioContext;
         if(!AC)return false;
         this.ctx=new AC();
+        this.masterGain=this.ctx.createGain();
+        this.compressor=this.ctx.createDynamicsCompressor();
         this.musicGain=this.ctx.createGain();this.sfxGain=this.ctx.createGain();
-        this.musicGain.connect(this.ctx.destination);this.sfxGain.connect(this.ctx.destination);
+        this.compressor.threshold.value=-16;
+        this.compressor.knee.value=10;
+        this.compressor.ratio.value=8;
+        this.compressor.attack.value=.002;
+        this.compressor.release.value=.16;
+        this.masterGain.gain.value=1.35;
+        this.musicGain.connect(this.compressor);this.sfxGain.connect(this.compressor);
+        this.compressor.connect(this.masterGain);this.masterGain.connect(this.ctx.destination);
       }
       if(this.ctx.state==='suspended')this.ctx.resume();
-      this.musicGain.gain.value=state.audio.music?state.audio.musicVolume:0;
-      this.sfxGain.gain.value=state.audio.sfx?state.audio.sfxVolume:0;
+      this.musicGain.gain.value=state.audio.music?state.audio.musicVolume*1.45:0;
+      this.sfxGain.gain.value=state.audio.sfx?state.audio.sfxVolume*1.9:0;
       if(state.audio.music&&!this.started)this.startMusic();
       return true;
     },
-    tone(freq,duration=.12,type='sine',volume=.12,delay=0,target='sfx'){
+    tone(freq,duration=.12,type='sine',volume=.28,delay=0,target='sfx'){
       if(!this.ensure())return;
       const now=this.ctx.currentTime+delay,osc=this.ctx.createOscillator(),gain=this.ctx.createGain();
       osc.type=type;osc.frequency.setValueAtTime(freq,now);
       gain.gain.setValueAtTime(0.0001,now);gain.gain.exponentialRampToValueAtTime(Math.max(.0001,volume),now+.015);gain.gain.exponentialRampToValueAtTime(.0001,now+duration);
       osc.connect(gain);gain.connect(target==='music'?this.musicGain:this.sfxGain);osc.start(now);osc.stop(now+duration+.03);
     },
-    noise(duration=.08,volume=.06){
+    noise(duration=.08,volume=.22){
       if(!this.ensure())return;
       const length=Math.max(1,Math.floor(this.ctx.sampleRate*duration)),buffer=this.ctx.createBuffer(1,length,this.ctx.sampleRate),data=buffer.getChannelData(0);
       for(let i=0;i<length;i++)data[i]=(Math.random()*2-1)*(1-i/length);
@@ -470,15 +479,15 @@
     sfx(name){
       if(!state.audio.sfx)return;
       const map={
-        chop:()=>{this.noise(.07,.055);this.tone(150,.09,'triangle',.08);},
-        mine:()=>{this.tone(520,.06,'square',.06);this.tone(250,.1,'triangle',.07,.045);},
-        fish:()=>{this.tone(430,.1,'sine',.07);this.tone(620,.12,'sine',.05,.08);},
-        combat:()=>{this.noise(.06,.07);this.tone(120,.09,'sawtooth',.05);},
-        loot:()=>{this.tone(660,.08,'sine',.06);this.tone(880,.12,'sine',.06,.08);},
-        cook:()=>{this.noise(.1,.035);this.tone(390,.12,'triangle',.05);},
-        craft:()=>{this.tone(330,.07,'square',.05);this.tone(495,.09,'triangle',.05,.06);},
-        summon:()=>{this.tone(260,.18,'sine',.06);this.tone(390,.22,'sine',.06,.1);this.tone(520,.3,'sine',.05,.2);},
-        save:()=>{this.tone(620,.08,'sine',.05);this.tone(780,.1,'sine',.05,.07);}
+        chop:()=>{this.noise(.09,.34);this.tone(145,.11,'triangle',.42);},
+        mine:()=>{this.tone(620,.075,'square',.34);this.tone(245,.14,'triangle',.42,.045);},
+        fish:()=>{this.tone(430,.13,'sine',.38);this.tone(680,.16,'sine',.34,.08);},
+        combat:()=>{this.noise(.075,.42);this.tone(105,.11,'sawtooth',.38);this.tone(220,.06,'square',.25,.025);},
+        loot:()=>{this.tone(660,.1,'sine',.38);this.tone(920,.16,'sine',.42,.08);},
+        cook:()=>{this.noise(.12,.25);this.tone(390,.15,'triangle',.34);},
+        craft:()=>{this.tone(330,.09,'square',.33);this.tone(495,.12,'triangle',.38,.06);},
+        summon:()=>{this.tone(260,.2,'sine',.38);this.tone(390,.25,'sine',.4,.1);this.tone(540,.34,'sine',.38,.2);},
+        save:()=>{this.tone(620,.1,'sine',.34);this.tone(820,.13,'sine',.38,.07);}
       };(map[name]||map.loot)();
     },
     startMusic(){
@@ -486,15 +495,15 @@
       const phrase=()=>{
         if(!state.audio.music)return;
         const root=[196,220,174,196][Math.floor(Date.now()/8000)%4],notes=[root,root*1.25,root*1.5,root*2];
-        notes.forEach((f,i)=>this.tone(f,2.6,'sine',.018,i*.85,'music'));
-        this.tone(root/2,3.8,'triangle',.012,0,'music');
+        notes.forEach((f,i)=>this.tone(f,2.6,'sine',.105,i*.85,'music'));
+        this.tone(root/2,3.8,'triangle',.075,0,'music');
       };
       phrase();this.musicTimer=setInterval(phrase,4200);
     },
     refresh(){
       if(!this.ctx)return;
-      this.musicGain.gain.value=state.audio.music?state.audio.musicVolume:0;
-      this.sfxGain.gain.value=state.audio.sfx?state.audio.sfxVolume:0;
+      this.musicGain.gain.value=state.audio.music?state.audio.musicVolume*1.45:0;
+      this.sfxGain.gain.value=state.audio.sfx?state.audio.sfxVolume*1.9:0;
       if(state.audio.music&&!this.started)this.startMusic();
     }
   };
@@ -749,8 +758,14 @@
     const ps=playerCombatStats();
     const attackDuration=Math.max(.3,ps.ticks*TICK_SECONDS);
     const attackPhase=activeEnemy?Math.min(1,combatElapsed/attackDuration):0;
-    const combatSwing=activeEnemy?Math.sin(attackPhase*Math.PI)*1.35:0;
-    ctx.save();ctx.translate(s.x+13,s.y+10);ctx.rotate(working?(-.8+Math.sin(animationClock*8)*.65):(-.35-combatSwing));ctx.lineCap='round';
+    let combatAngle=-Math.PI/4;
+    if(activeEnemy){
+      // Hold the weapon upright, snap it downward, then return cleanly.
+      if(attackPhase<.58)combatAngle=-Math.PI/4;
+      else if(attackPhase<.72){const t=(attackPhase-.58)/.14;combatAngle=-Math.PI/4+(Math.PI*1.02)*(t*t*(3-2*t));}
+      else{const t=(attackPhase-.72)/.28;combatAngle=(-Math.PI/4+Math.PI*1.02)+(Math.PI/4-(-Math.PI/4+Math.PI*1.02))*(t*t*(3-2*t));}
+    }
+    ctx.save();ctx.translate(s.x+13,s.y+10);ctx.rotate(working?(-.8+Math.sin(animationClock*8)*.65):(activeEnemy?combatAngle:-.35));ctx.lineCap='round';
     if(key.endsWith('Bow')){ctx.strokeStyle=color;ctx.lineWidth=3;ctx.beginPath();ctx.arc(9,-4,15,-1.25,1.25);ctx.stroke();ctx.strokeStyle='#e5d9af';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(13,-18);ctx.lineTo(13,10);ctx.stroke();}
     else if(key.endsWith('Sword')||key.endsWith('Blade')||key.endsWith('Spear')){ctx.strokeStyle='#76543b';ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(0,2);ctx.lineTo(7,-5);ctx.stroke();ctx.strokeStyle=color;ctx.lineWidth=6;ctx.beginPath();ctx.moveTo(7,-5);ctx.lineTo(29,-27);ctx.stroke();ctx.strokeStyle='#e7eef2';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(9,-7);ctx.lineTo(29,-27);ctx.stroke();}
     else if(key.endsWith('Dagger')){ctx.strokeStyle='#76543b';ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(0,2);ctx.lineTo(6,-4);ctx.stroke();ctx.strokeStyle=color;ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(6,-4);ctx.lineTo(18,-16);ctx.stroke();}

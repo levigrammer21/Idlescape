@@ -39,3 +39,11 @@ Upload every file in this folder to the root of your GitHub Pages repository.
 - Added separate music and sound-effect toggles and volume controls.
 - Added lightweight effects for gathering, loot, cooking, crafting, summoning, and saving.
 - Audio preferences persist with the save.
+
+
+## v0.11.2 combat animation and audio boost
+
+- Replaced the side-to-side combat weapon wave with an upright ready stance, a fast downward strike, and a clean return.
+- Greatly increased background music and action sound output.
+- Added master compression so loud effects remain clear rather than clipping harshly.
+- Increased default music and SFX levels while preserving the sound settings controls.
