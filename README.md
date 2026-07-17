@@ -1,11 +1,12 @@
-# Idle Wanderer v0.10.1 — Crafted Unique Equipment
+# Idle Wanderer v0.10.3 — Unique Equipment Progression
 
-Built directly from the confirmed-working v0.9.1 combat foundation.
+- Rare creature drops remain crafting materials and are never equipped directly.
+- Added a visible Unique Equipment category to town crafting tables.
+- Added unique recipes for rabbit, deer, wolf, skeleton, scorpion, wraith, crocodile, sand golem, jaguar, ice wolf, and frost dragon drops.
+- Lucky Foot Ring grants a real 5% Woodcutting XP bonus.
+- Jaguar Boots grant a real 8% movement-speed bonus.
+- The Equipment panel now displays current combat level, accuracy, maximum hit, and defence.
+- Melee levels increase base accuracy by 2 per level and maximum hit by 1 every 8 levels; weapon stats are added on top.
+- Built on the confirmed-working v0.9.1 movement and combat foundation.
 
-- Rare creature drops remain crafting materials and cannot be equipped directly.
-- Added unique-equipment recipes that consume rare drops at town crafting tables.
-- Added Lucky Foot Ring, Ancient Bone Blade, Wraithweave Cape, Golem Core Shield, Jaguar Claw Dagger, Ice Fang Sword, Frostscale Shield, and Frozen Heart Ring.
-- Preserves the working v0.9.1 movement, camera, gathering, cooking, crafting, and combat systems.
-- Does not include the later player-death respawn overhaul or enlarged-world branch.
-
-Upload every file in this folder to the root of the GitHub Pages repository.
+Upload every file in this folder to the root of your GitHub Pages repository.

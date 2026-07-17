@@ -1,7 +1,7 @@
 (() => {
   'use strict';
 
-  const VERSION = '0.10.1';
+  const VERSION = '0.10.3';
   const SAVE_KEY = 'idle-wanderer-save-v6';
   const LEGACY_KEYS = ['idle-wanderer-save-v5', 'idle-wanderer-save-v4', 'idle-wanderer-save-v3', 'idle-wanderer-save-v2'];
   const TICK_SECONDS = 0.6;
@@ -209,14 +209,20 @@
 
   // Rare creature drops are crafting materials, not equipment by themselves.
   const UNIQUE_EQUIPMENT_RECIPES = [
-    {id:'luckyFootRing',level:5,xp:25,materials:{rabbitFoot:1,copperBar:1},definition:{name:'Lucky Foot Ring',type:'Unique ring',description:'A small copper ring set with a lucky rabbit foot charm.',slot:'ring',stats:{Defence:'+1',Rarity:'Unique'}}},
-    {id:'ancientBoneBlade',level:25,xp:80,materials:{ancientBone:1,ironBar:1,willowLog:1},definition:{name:'Ancient Bone Blade',type:'Unique weapon',description:'A darkened ancient bone shaped into a heavy ritual blade.',slot:'weapon',stats:{'Attack speed':'5 ticks · 3.0 seconds','Accuracy':'+12','Strength':'+10',Rarity:'Unique'}}},
-    {id:'wraithweaveCape',level:35,xp:115,materials:{wraithCloth:1,clothScrap:3,silverBar:1},definition:{name:'Wraithweave Cape',type:'Unique cape',description:'A nearly weightless cape woven from spectral cloth.',slot:'cape',stats:{Defence:'+5',Weight:'Weightless',Rarity:'Unique'}}},
-    {id:'golemCoreShield',level:40,xp:145,materials:{golemCore:1,stoneBlock:4,goldBar:1},definition:{name:'Golem Core Shield',type:'Unique shield',description:'A reinforced shield powered by the core of a sand golem.',slot:'shield',stats:{Defence:'+9',Weight:'Heavy',Rarity:'Unique'}}},
-    {id:'jaguarClawDagger',level:45,xp:175,materials:{jaguarClaw:1,pyriteBar:1,mahoganyLog:1},definition:{name:'Jaguar Claw Dagger',type:'Unique weapon',description:'A swift dagger built around a razor-sharp jaguar claw.',slot:'weapon',stats:{'Attack speed':'3 ticks · 1.8 seconds','Accuracy':'+20','Strength':'+12',Rarity:'Unique'}}},
-    {id:'iceFangSword',level:55,xp:230,materials:{iceFang:1,goldBar:2,arcticPineLog:1},definition:{name:'Ice Fang Sword',type:'Unique weapon',description:'A cold-edged sword built around a fang that never thaws.',slot:'weapon',stats:{'Attack speed':'4 ticks · 2.4 seconds','Accuracy':'+24','Strength':'+18',Rarity:'Unique'}}},
-    {id:'frostscaleShield',level:70,xp:340,materials:{frostScale:1,crystalBar:2,redwoodLog:1},definition:{name:'Frostscale Shield',type:'Unique shield',description:'A crystal-backed shield faced with a deep-frozen dragon scale.',slot:'shield',stats:{Defence:'+18',Weight:'Medium',Rarity:'Unique'}}},
-    {id:'frozenHeartRing',level:75,xp:420,materials:{frozenHeart:1,crystalBar:2,goldBar:2},definition:{name:'Frozen Heart Ring',type:'Unique ring',description:'A masterwork ring containing a fragment of an impossibly cold heart.',slot:'ring',stats:{Defence:'+12',Rarity:'Unique'}}}
+    {id:'luckyFootRing',level:5,xp:25,materials:{rabbitFoot:1,copperBar:1},definition:{name:'Lucky Foot Ring',type:'Unique ring',description:'A copper ring carrying a lucky rabbit-foot charm. While equipped it grants 5% bonus Woodcutting XP.',slot:'ring',bonuses:{woodcuttingXp:0.05},stats:{Defence:'+1','Woodcutting XP':'+5%',Rarity:'Unique'}}},
+    {id:'antlerSpear',level:15,xp:55,materials:{antler:1,copperBar:2,oakLog:1},definition:{name:'Antler Spear',type:'Unique weapon',description:'A quick hunting spear tipped and reinforced with a deer antler.',slot:'weapon',stats:{'Attack speed':'3 ticks · 1.8 seconds','Accuracy':'+9','Strength':'+6',Rarity:'Unique'}}},
+    {id:'wolfFangDagger',level:22,xp:75,materials:{wolfFang:1,ironBar:1,willowLog:1},definition:{name:'Wolf Fang Dagger',type:'Unique weapon',description:'A precise dagger built around a sharpened wolf fang.',slot:'weapon',stats:{'Attack speed':'3 ticks · 1.8 seconds','Accuracy':'+15','Strength':'+8',Rarity:'Unique'}}},
+    {id:'ancientBoneBlade',level:25,xp:85,materials:{ancientBone:1,ironBar:1,willowLog:1},definition:{name:'Ancient Bone Blade',type:'Unique weapon',description:'A darkened ancient bone shaped into a heavy ritual blade.',slot:'weapon',stats:{'Attack speed':'5 ticks · 3.0 seconds','Accuracy':'+12','Strength':'+12',Rarity:'Unique'}}},
+    {id:'venomDagger',level:30,xp:100,materials:{venomGland:1,silverBar:1,beechLog:1},definition:{name:'Venom Dagger',type:'Unique weapon',description:'A fast dagger fitted with a sealed venom gland. Its poison effect will activate when status effects are introduced.',slot:'weapon',stats:{'Attack speed':'3 ticks · 1.8 seconds','Accuracy':'+17','Strength':'+10',Rarity:'Unique'}}},
+    {id:'wraithCloak',level:35,xp:120,materials:{wraithCloth:1,clothScrap:3,silverBar:1},definition:{name:'Wraith Cloak',type:'Unique cape',description:'A nearly weightless cloak woven from spectral cloth.',slot:'cape',stats:{Defence:'+7',Weight:'Weightless',Rarity:'Unique'}}},
+    {id:'crocodileShield',level:38,xp:135,materials:{crocodileTooth:1,crocodileHide:2,silverBar:2},definition:{name:'Crocodile Shield',type:'Unique shield',description:'A broad shield faced with dense crocodile hide and a reinforced tooth boss.',slot:'shield',stats:{Defence:'+10',Weight:'Heavy',Rarity:'Unique'}}},
+    {id:'golemCoreShield',level:42,xp:155,materials:{golemCore:1,stoneBlock:4,goldBar:1},definition:{name:'Golem Core Shield',type:'Unique shield',description:'A reinforced shield powered by the core of a sand golem.',slot:'shield',stats:{Defence:'+12',Weight:'Heavy',Rarity:'Unique'}}},
+    {id:'jaguarBoots',level:45,xp:180,materials:{jaguarClaw:1,jaguarHide:2,pyriteBar:1},definition:{name:'Jaguar Boots',type:'Unique boots',description:'Light boots made from jaguar hide. While equipped they increase movement speed by 8%.',slot:'boots',bonuses:{moveSpeed:0.08},stats:{Defence:'+6','Movement speed':'+8%',Weight:'Light',Rarity:'Unique'}}},
+    {id:'jaguarClawDagger',level:48,xp:195,materials:{jaguarClaw:1,pyriteBar:1,mahoganyLog:1},definition:{name:'Jaguar Claw Dagger',type:'Unique weapon',description:'A swift dagger built around a razor-sharp jaguar claw.',slot:'weapon',stats:{'Attack speed':'3 ticks · 1.8 seconds','Accuracy':'+22','Strength':'+14',Rarity:'Unique'}}},
+    {id:'iceFangSword',level:55,xp:240,materials:{iceFang:1,goldBar:2,arcticPineLog:1},definition:{name:'Ice Fang Sword',type:'Unique weapon',description:'A cold-edged sword built around a fang that never thaws.',slot:'weapon',stats:{'Attack speed':'4 ticks · 2.4 seconds','Accuracy':'+25','Strength':'+20',Rarity:'Unique'}}},
+    {id:'frostscaleBody',level:70,xp:360,materials:{frostScale:2,crystalBar:4,redwoodLog:2},definition:{name:'Frostscale Body',type:'Unique body armour',description:'Masterwork armour plated with frost-dragon scales.',slot:'body',stats:{Defence:'+24',Weight:'Medium',Rarity:'Unique'}}},
+    {id:'frostscaleShield',level:70,xp:350,materials:{frostScale:1,crystalBar:2,redwoodLog:1},definition:{name:'Frostscale Shield',type:'Unique shield',description:'A crystal-backed shield faced with a deep-frozen dragon scale.',slot:'shield',stats:{Defence:'+19',Weight:'Medium',Rarity:'Unique'}}},
+    {id:'frozenHeartRing',level:75,xp:430,materials:{frozenHeart:1,crystalBar:2,goldBar:2},definition:{name:'Frozen Heart Ring',type:'Unique ring',description:'A masterwork ring containing a fragment of an impossibly cold heart.',slot:'ring',stats:{Defence:'+13',Rarity:'Unique'}}}
   ];
   for(const recipe of UNIQUE_EQUIPMENT_RECIPES){
     defineItem(recipe.id,recipe.definition);
@@ -479,6 +485,7 @@
     return {key,style:ranged?'range':'melee',ticks:speed,accuracy,strength,range:ranged?260:58};
   }
   function armourDefence(){return Object.values(state.equipment).reduce((sum,key)=>sum+(parseInt(String(ITEM_DEFS[key]?.stats?.Defence||'0').replace(/[^-\d]/g,''))||0),0);}
+  function equipmentBonus(name){return Object.values(state.equipment).reduce((sum,key)=>sum+(Number(ITEM_DEFS[key]?.bonuses?.[name])||0),0);}
   function playerCombatStats(){const w=weaponData(),skill=w.style==='range'?'range':'melee',level=levelFromXp(state.skills[skill]?.xp||0);return {style:w.style,level,ticks:w.ticks,range:w.range,accuracy:level*2+w.accuracy+5,maxHit:Math.max(1,Math.floor(level/8)+w.strength),defence:levelFromXp(state.skills.fortitude?.xp||0)+armourDefence()};}
   function hitChance(attack,defence){return clamp(attack/(attack+defence*1.35+8),.05,.95);}
   function enemyAt(x,y){let best=null,bestD=48;for(const e of enemies){if(e.hp<=0)continue;const d=Math.hypot(x-e.x,y-e.y);if(d<bestD){best=e;bestD=d;}}return best;}
@@ -564,8 +571,8 @@
   }
 
   function awardLog(tree){
-    const def=TREE_TYPES[tree.type]; state.inventory[def.log]=(state.inventory[def.log]||0)+1;state.skills.woodcutting.xp+=def.xp;tree.remaining--;
-    floaters.push({x:tree.x,y:tree.y-55,text:`+1 ${ITEM_DEFS[def.log].name}  +${def.xp} XP`,life:1.4}); renderInventory();renderSkills();
+    const def=TREE_TYPES[tree.type]; state.inventory[def.log]=(state.inventory[def.log]||0)+1;const gainedXp=Math.max(1,Math.round(def.xp*(1+equipmentBonus('woodcuttingXp'))));state.skills.woodcutting.xp+=gainedXp;tree.remaining--;
+    floaters.push({x:tree.x,y:tree.y-55,text:`+1 ${ITEM_DEFS[def.log].name}  +${gainedXp} XP`,life:1.4}); renderInventory();renderSkills();
     if(tree.remaining<=0){tree.respawnAt=Date.now()+def.respawn*1000;showToast(`${def.name} tree depleted`);stopAction(true);} else actionElapsed=0;
   }
 
@@ -575,7 +582,7 @@
     for(const f of fishingSpots){if(f.remaining<=0&&f.respawnAt&&now>=f.respawnAt){f.remaining=randomInt(12,20);f.respawnAt=0;}}
     for(const e of enemies){const d=ENEMY_TYPES[e.type];if(e.hp<=0){if(e.respawnAt&&now>=e.respawnAt){e.hp=e.maxHp;e.respawnAt=0;e.x=e.homeX;e.y=e.homeY;}continue;}e.wanderElapsed-=dt;if(!e.target&&d.behaviour==='aggressive'&&Math.hypot(e.x-state.player.x,e.y-state.player.y)<d.aggro&&regionAt(e.x,e.y).id===regionAt(state.player.x,state.player.y).id){e.target='player';activeEnemy=e;ui.actionName.textContent=`Attacked by ${d.name}`;}if(e.target==='player'){const dd=Math.hypot(state.player.x-e.x,state.player.y-e.y);if(regionAt(e.x,e.y).id!==regionAt(e.homeX,e.homeY).id||Math.hypot(e.x-e.homeX,e.y-e.homeY)>520){e.target=null;e.returning=true;}else if(dd>52){const step=Math.min(dd-48,135*dt);e.x+=(state.player.x-e.x)/dd*step;e.y+=(state.player.y-e.y)/dd*step;}e.attackElapsed+=dt;if(dd<=62&&e.attackElapsed>=d.ticks*TICK_SECONDS){e.attackElapsed=0;enemyAttack(e);}}else if(e.returning){const dd=Math.hypot(e.homeX-e.x,e.homeY-e.y);if(dd<5){e.x=e.homeX;e.y=e.homeY;e.returning=false;}else{const step=Math.min(dd,120*dt);e.x+=(e.homeX-e.x)/dd*step;e.y+=(e.homeY-e.y)/dd*step;}}else if(e.wanderElapsed<=0){e.wanderElapsed=randomInt(2,5);const a=Math.random()*Math.PI*2,r=Math.random()*70;e.wanderX=e.homeX+Math.cos(a)*r;e.wanderY=e.homeY+Math.sin(a)*r;}else{const dd=Math.hypot(e.wanderX-e.x,e.wanderY-e.y);if(dd>3){const step=Math.min(dd,45*dt);e.x+=(e.wanderX-e.x)/dd*step;e.y+=(e.wanderY-e.y)/dd*step;}}}
     const p=state.player,dx=p.targetX-p.x,dy=p.targetY-p.y,dist=Math.hypot(dx,dy);
-    if(dist>2){const move=Math.min(dist,190*dt),nx=p.x+dx/dist*move,ny=p.y+dy/dist*move;if(isWalkable(nx,ny)){p.x=nx;p.y=ny;}else{p.targetX=p.x;p.targetY=p.y;queuedTree=null;queuedFishingSpot=null;queuedRock=null;queuedTown=null;showToast('That route is blocked');}}
+    if(dist>2){const move=Math.min(dist,190*(1+equipmentBonus('moveSpeed'))*dt),nx=p.x+dx/dist*move,ny=p.y+dy/dist*move;if(isWalkable(nx,ny)){p.x=nx;p.y=ny;}else{p.targetX=p.x;p.targetY=p.y;queuedTree=null;queuedFishingSpot=null;queuedRock=null;queuedTown=null;showToast('That route is blocked');}}
     else {p.x=p.targetX;p.y=p.targetY;if(queuedEnemy && queuedEnemy.hp>0 && Math.hypot(p.x-queuedEnemy.x,p.y-queuedEnemy.y)<=playerCombatStats().range+12){beginCombat(queuedEnemy);}else if(queuedTown && Math.hypot(p.x-queuedTown.x,p.y-queuedTown.y)<105){const town=queuedTown;queuedTown=null;openTown(town);}else if(queuedRock && queuedRock.hp>0 && Math.hypot(p.x-queuedRock.x,p.y-queuedRock.y)<90)beginMining(queuedRock);else if(queuedFishingSpot && queuedFishingSpot.remaining>0 && Math.hypot(p.x-queuedFishingSpot.standX,p.y-queuedFishingSpot.standY)<20)beginFishing(queuedFishingSpot);else if(queuedTree && queuedTree.remaining>0 && Math.hypot(p.x-queuedTree.x,p.y-queuedTree.y)<78)beginChopping(queuedTree);else if(!activeTree&&!activeFishingSpot&&!activeRock&&!activeEnemy){ui.status.textContent='Tap the ground, a resource, a creature, or a town.';ui.actionName.textContent='Exploring';}}
     if(activeEnemy){
       const ps=playerCombatStats(),dist=Math.hypot(p.x-activeEnemy.x,p.y-activeEnemy.y);if(activeEnemy.hp<=0)endCombat('Victory');else if(dist>ps.range+25){queuedEnemy=activeEnemy;activeEnemy=null;}else{combatElapsed+=dt;ui.actionProgress.style.width=`${Math.min(100,combatElapsed/(ps.ticks*TICK_SECONDS)*100)}%`;if(combatElapsed>=ps.ticks*TICK_SECONDS){combatElapsed=0;playerAttack(activeEnemy);}}
@@ -632,31 +639,54 @@
   }
   function drawEquippedWeapon(s){
     const key=state.equipment.weapon;if(!key)return;const item=ITEM_DEFS[key],color=equipmentColor(key),working=activeTree||activeRock;
-    ctx.save();ctx.translate(s.x+13,s.y+10);ctx.rotate(working?(-.8+Math.sin(animationClock*8)*.65):-.35);ctx.lineCap='round';
+    const ps=playerCombatStats();
+    const attackDuration=Math.max(.3,ps.ticks*TICK_SECONDS);
+    const attackPhase=activeEnemy?Math.min(1,combatElapsed/attackDuration):0;
+    const combatSwing=activeEnemy?Math.sin(attackPhase*Math.PI)*1.35:0;
+    ctx.save();ctx.translate(s.x+13,s.y+10);ctx.rotate(working?(-.8+Math.sin(animationClock*8)*.65):(-.35-combatSwing));ctx.lineCap='round';
     if(key.endsWith('Bow')){ctx.strokeStyle=color;ctx.lineWidth=3;ctx.beginPath();ctx.arc(9,-4,15,-1.25,1.25);ctx.stroke();ctx.strokeStyle='#e5d9af';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(13,-18);ctx.lineTo(13,10);ctx.stroke();}
-    else if(key.endsWith('Sword')){ctx.strokeStyle='#76543b';ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(0,2);ctx.lineTo(7,-5);ctx.stroke();ctx.strokeStyle=color;ctx.lineWidth=6;ctx.beginPath();ctx.moveTo(7,-5);ctx.lineTo(27,-25);ctx.stroke();ctx.strokeStyle='#e7eef2';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(9,-7);ctx.lineTo(27,-25);ctx.stroke();}
+    else if(key.endsWith('Sword')||key.endsWith('Blade')||key.endsWith('Spear')){ctx.strokeStyle='#76543b';ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(0,2);ctx.lineTo(7,-5);ctx.stroke();ctx.strokeStyle=color;ctx.lineWidth=6;ctx.beginPath();ctx.moveTo(7,-5);ctx.lineTo(29,-27);ctx.stroke();ctx.strokeStyle='#e7eef2';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(9,-7);ctx.lineTo(29,-27);ctx.stroke();}
     else if(key.endsWith('Dagger')){ctx.strokeStyle='#76543b';ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(0,2);ctx.lineTo(6,-4);ctx.stroke();ctx.strokeStyle=color;ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(6,-4);ctx.lineTo(18,-16);ctx.stroke();}
     else {ctx.strokeStyle='#795739';ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(0,2);ctx.lineTo(20,-15);ctx.stroke();ctx.fillStyle=color;ctx.fillRect(15,-21,11,10);}
     ctx.restore();
   }
   function drawEnemy(e){
     if(e.hp<=0)return;const d=ENEMY_TYPES[e.type],s=worldToScreen(e.x,e.y),bob=Math.sin(animationClock*3+e.homeX*.01)*1.5;
-    if(s.x<-90||s.y<-90||s.x>canvas.width+90||s.y>canvas.height+90)return;ctx.save();ctx.translate(s.x,s.y+bob);ctx.fillStyle='rgba(0,0,0,.2)';ctx.fillRect(-22,19,44,7);ctx.fillStyle=d.color;
+    if(s.x<-90||s.y<-90||s.x>canvas.width+90||s.y>canvas.height+90)return;
+    ctx.save();ctx.translate(s.x,s.y+bob);ctx.fillStyle='rgba(0,0,0,.2)';ctx.beginPath();ctx.ellipse(0,24,23,6,0,0,Math.PI*2);ctx.fill();ctx.fillStyle=d.color;ctx.strokeStyle='rgba(35,28,25,.55)';ctx.lineWidth=2;
     const shape=d.shape;
-    if(shape==='rabbit'){ctx.fillRect(-11,-2,22,20);ctx.fillRect(-9,-21,6,20);ctx.fillRect(3,-21,6,20);}
-    else if(shape==='rat'){ctx.beginPath();ctx.ellipse(0,5,20,12,0,0,Math.PI*2);ctx.fill();ctx.strokeStyle='#ba8f92';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(-17,8);ctx.quadraticCurveTo(-31,13,-38,3);ctx.stroke();}
-    else if(shape==='deer'){ctx.fillRect(-14,-5,28,23);ctx.fillRect(-10,17,5,17);ctx.fillRect(6,17,5,17);ctx.fillRect(7,-19,15,17);ctx.strokeStyle='#6b4d32';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(17,-18);ctx.lineTo(22,-30);ctx.moveTo(17,-18);ctx.lineTo(11,-30);ctx.stroke();}
-    else if(shape==='serpent'){ctx.strokeStyle=d.color;ctx.lineWidth=10;ctx.beginPath();ctx.moveTo(-22,14);ctx.quadraticCurveTo(-8,-10,5,10);ctx.quadraticCurveTo(18,25,25,-5);ctx.stroke();ctx.fillStyle=d.color;ctx.fillRect(19,-14,15,13);}
-    else if(shape==='spider'){ctx.beginPath();ctx.arc(0,2,13,0,Math.PI*2);ctx.fill();ctx.lineWidth=4;ctx.strokeStyle=d.color;for(const side of [-1,1])for(let i=0;i<4;i++){ctx.beginPath();ctx.moveTo(side*7,-3+i*5);ctx.lineTo(side*(22+i*2),-12+i*10);ctx.stroke();}}
-    else if(shape==='slime'){ctx.beginPath();ctx.arc(0,8,20,Math.PI,0);ctx.lineTo(20,18);ctx.lineTo(-20,18);ctx.closePath();ctx.fill();}
-    else if(shape==='crocodile'){ctx.fillRect(-29,-4,48,18);ctx.fillRect(12,-9,25,14);ctx.beginPath();ctx.moveTo(-27,0);ctx.lineTo(-43,-10);ctx.lineTo(-32,11);ctx.fill();}
-    else if(shape==='humanoid'||shape==='skeleton'||shape==='wraith'||shape==='troll'){const big=shape==='troll'?1.35:1;ctx.fillRect(-9*big,-18*big,18*big,20*big);ctx.fillRect(-13*big,2,26*big,24*big);ctx.fillRect(-11*big,24,7*big,16*big);ctx.fillRect(4*big,24,7*big,16*big);if(shape==='wraith'){ctx.globalAlpha=.65;ctx.beginPath();ctx.moveTo(-13,23);ctx.lineTo(-20,42);ctx.lineTo(0,34);ctx.lineTo(20,42);ctx.lineTo(13,23);ctx.fill();ctx.globalAlpha=1;}}
-    else if(shape==='golem'||shape==='gorilla'||shape==='lurker'){const big=shape==='gorilla'?1.25:1.1;ctx.fillRect(-18*big,-18,36*big,34);ctx.fillRect(-29*big,-9,11*big,32);ctx.fillRect(18*big,-9,11*big,32);ctx.fillRect(-14*big,16,10*big,20);ctx.fillRect(4*big,16,10*big,20);}
-    else if(shape==='scorpion'){ctx.beginPath();ctx.ellipse(0,5,18,11,0,0,Math.PI*2);ctx.fill();ctx.strokeStyle=d.color;ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(-15,5);ctx.quadraticCurveTo(-34,-8,-22,-23);ctx.stroke();ctx.fillRect(15,-3,16,6);}
-    else if(shape==='dragon'){ctx.fillRect(-28,-8,48,27);ctx.fillRect(13,-20,28,20);ctx.beginPath();ctx.moveTo(-16,-4);ctx.lineTo(-42,-30);ctx.lineTo(-38,2);ctx.moveTo(2,-4);ctx.lineTo(31,-36);ctx.lineTo(23,4);ctx.fill();ctx.beginPath();ctx.moveTo(-27,0);ctx.lineTo(-48,-15);ctx.lineTo(-39,12);ctx.fill();}
-    else {ctx.fillRect(-18,-5,36,20);ctx.fillRect(8,-16,20,17);ctx.beginPath();ctx.moveTo(-18,-1);ctx.lineTo(-29,-13);ctx.lineTo(-24,5);ctx.closePath();ctx.fill();}
-    ctx.fillStyle='#20242a';ctx.fillRect(8,-5,3,3);ctx.restore();const ratio=e.hp/e.maxHp;ctx.fillStyle='rgba(8,10,13,.8)';ctx.fillRect(s.x-26,s.y-43,52,6);ctx.fillStyle=ratio>.5?'#67c77b':ratio>.25?'#d9b653':'#cc6268';ctx.fillRect(s.x-26,s.y-43,52*ratio,6);if(activeEnemy===e){ctx.strokeStyle='#efcc61';ctx.lineWidth=2;ctx.strokeRect(s.x-32,s.y-50,64,82);}
+    if(shape==='rabbit'){
+      ctx.beginPath();ctx.ellipse(0,8,16,13,0,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.beginPath();ctx.arc(11,-4,10,0,Math.PI*2);ctx.fill();ctx.stroke();
+      for(const x of [6,14]){ctx.beginPath();ctx.ellipse(x,-19,4,15,-.12,0,Math.PI*2);ctx.fill();ctx.stroke();}
+      ctx.fillStyle='#f0b5b5';ctx.fillRect(8,-18,2,10);ctx.fillRect(16,-18,2,10);ctx.fillStyle='#20242a';ctx.fillRect(14,-7,3,3);ctx.fillStyle='#eee';ctx.beginPath();ctx.arc(-15,5,5,0,Math.PI*2);ctx.fill();
+    }else if(shape==='rat'){
+      ctx.beginPath();ctx.ellipse(0,7,21,12,0,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.beginPath();ctx.arc(16,1,9,0,Math.PI*2);ctx.fill();ctx.stroke();
+      ctx.beginPath();ctx.arc(13,-7,5,0,Math.PI*2);ctx.fill();ctx.arc(20,-5,4,0,Math.PI*2);ctx.fill();ctx.strokeStyle='#ba8f92';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(-18,10);ctx.quadraticCurveTo(-34,16,-40,4);ctx.stroke();ctx.fillStyle='#20242a';ctx.fillRect(19,-1,3,3);
+    }else if(shape==='deer'){
+      ctx.beginPath();ctx.ellipse(-4,7,21,13,0,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.fillRect(10,-15,9,23);ctx.beginPath();ctx.ellipse(18,-17,11,8,-.2,0,Math.PI*2);ctx.fill();ctx.stroke();
+      ctx.fillRect(-15,16,5,19);ctx.fillRect(5,16,5,19);ctx.strokeStyle='#6b4d32';ctx.lineWidth=2;for(const side of [-1,1]){ctx.beginPath();ctx.moveTo(18+side*3,-22);ctx.lineTo(18+side*8,-34);ctx.lineTo(18+side*13,-29);ctx.moveTo(18+side*8,-34);ctx.lineTo(18+side*5,-39);ctx.stroke();}ctx.fillStyle='#20242a';ctx.fillRect(22,-19,3,3);
+    }else if(shape==='serpent'){
+      ctx.strokeStyle=d.color;ctx.lineWidth=11;ctx.lineCap='round';ctx.beginPath();ctx.moveTo(-24,15);ctx.quadraticCurveTo(-10,-12,4,10);ctx.quadraticCurveTo(17,27,25,-4);ctx.stroke();ctx.fillStyle=d.color;ctx.beginPath();ctx.ellipse(25,-9,11,8,-.25,0,Math.PI*2);ctx.fill();ctx.fillStyle='#20242a';ctx.fillRect(29,-11,3,3);
+    }else if(shape==='spider'){
+      ctx.lineWidth=4;ctx.strokeStyle=d.color;for(const side of [-1,1])for(let i=0;i<4;i++){ctx.beginPath();ctx.moveTo(side*7,-3+i*5);ctx.lineTo(side*(18+i*2),-11+i*9);ctx.lineTo(side*(25+i*2),-6+i*10);ctx.stroke();}ctx.fillStyle=d.color;ctx.beginPath();ctx.ellipse(-5,5,12,14,0,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.beginPath();ctx.arc(8,1,9,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.fillStyle='#f3d56c';ctx.fillRect(10,-2,2,2);ctx.fillRect(14,0,2,2);
+    }else if(shape==='slime'){
+      ctx.beginPath();ctx.moveTo(-21,18);ctx.quadraticCurveTo(-20,-9,0,-12);ctx.quadraticCurveTo(20,-9,21,18);ctx.quadraticCurveTo(11,23,0,18);ctx.quadraticCurveTo(-11,23,-21,18);ctx.fill();ctx.stroke();ctx.fillStyle='#20242a';ctx.fillRect(-7,2,4,5);ctx.fillRect(6,2,4,5);ctx.strokeStyle='rgba(255,255,255,.35)';ctx.beginPath();ctx.arc(-7,-4,5,3.6,5.5);ctx.stroke();
+    }else if(shape==='crocodile'){
+      ctx.beginPath();ctx.ellipse(-5,7,29,12,0,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.beginPath();ctx.moveTo(15,0);ctx.lineTo(39,1);ctx.lineTo(43,8);ctx.lineTo(17,12);ctx.closePath();ctx.fill();ctx.stroke();ctx.beginPath();ctx.moveTo(-29,6);ctx.lineTo(-47,-5);ctx.lineTo(-36,13);ctx.closePath();ctx.fill();ctx.stroke();for(const x of [-17,-3,10]){ctx.beginPath();ctx.moveTo(x,-3);ctx.lineTo(x+5,-11);ctx.lineTo(x+9,-2);ctx.fill();}ctx.fillStyle='#20242a';ctx.fillRect(32,2,3,3);
+    }else if(shape==='humanoid'||shape==='skeleton'||shape==='wraith'||shape==='troll'){
+      const big=shape==='troll'?1.35:1;ctx.beginPath();ctx.arc(0,-15*big,10*big,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.fillRect(-13*big,-5,26*big,28*big);ctx.fillRect(-11*big,22,7*big,17*big);ctx.fillRect(4*big,22,7*big,17*big);ctx.fillStyle='#20242a';ctx.fillRect(-5,-18,3,3);ctx.fillRect(4,-18,3,3);if(shape==='wraith'){ctx.fillStyle=d.color;ctx.globalAlpha=.68;ctx.beginPath();ctx.moveTo(-14,18);ctx.lineTo(-20,42);ctx.lineTo(-7,35);ctx.lineTo(0,43);ctx.lineTo(8,34);ctx.lineTo(20,42);ctx.lineTo(14,18);ctx.fill();ctx.globalAlpha=1;}
+    }else if(shape==='golem'||shape==='gorilla'||shape==='lurker'){
+      const big=shape==='gorilla'?1.25:1.1;ctx.fillRect(-18*big,-17,36*big,34);ctx.strokeRect(-18*big,-17,36*big,34);ctx.fillRect(-29*big,-9,11*big,32);ctx.fillRect(18*big,-9,11*big,32);ctx.fillRect(-14*big,16,10*big,20);ctx.fillRect(4*big,16,10*big,20);ctx.fillStyle='#20242a';ctx.fillRect(-7,-10,4,4);ctx.fillRect(5,-10,4,4);
+    }else if(shape==='scorpion'){
+      ctx.beginPath();ctx.ellipse(0,7,18,11,0,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.strokeStyle=d.color;ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(-15,5);ctx.quadraticCurveTo(-35,-8,-23,-25);ctx.quadraticCurveTo(-16,-32,-10,-23);ctx.stroke();ctx.fillStyle=d.color;for(const side of [-1,1])for(let i=0;i<3;i++){ctx.fillRect(side*(15+i*3),4+i*3,12*side,3);}ctx.fillRect(14,-2,17,6);ctx.fillStyle='#20242a';ctx.fillRect(11,1,3,3);
+    }else if(shape==='dragon'){
+      ctx.beginPath();ctx.ellipse(-6,6,28,16,0,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.beginPath();ctx.ellipse(24,-9,17,12,-.2,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.beginPath();ctx.moveTo(-17,-2);ctx.lineTo(-43,-31);ctx.lineTo(-36,3);ctx.closePath();ctx.fill();ctx.stroke();ctx.beginPath();ctx.moveTo(2,-4);ctx.lineTo(31,-37);ctx.lineTo(23,5);ctx.closePath();ctx.fill();ctx.stroke();ctx.beginPath();ctx.moveTo(-28,7);ctx.lineTo(-50,-10);ctx.lineTo(-39,15);ctx.closePath();ctx.fill();ctx.fillStyle='#20242a';ctx.fillRect(29,-12,4,4);
+    }else{
+      ctx.beginPath();ctx.ellipse(-4,7,22,13,0,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.beginPath();ctx.ellipse(16,-3,12,10,0,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.fillRect(-15,16,5,16);ctx.fillRect(5,16,5,16);ctx.beginPath();ctx.moveTo(-24,5);ctx.lineTo(-34,-7);ctx.lineTo(-29,10);ctx.closePath();ctx.fill();ctx.fillStyle='#20242a';ctx.fillRect(20,-6,3,3);
+    }
+    ctx.restore();const ratio=e.hp/e.maxHp;ctx.fillStyle='rgba(8,10,13,.8)';ctx.fillRect(s.x-26,s.y-43,52,6);ctx.fillStyle=ratio>.5?'#67c77b':ratio>.25?'#d9b653':'#cc6268';ctx.fillRect(s.x-26,s.y-43,52*ratio,6);if(activeEnemy===e){ctx.strokeStyle='#efcc61';ctx.lineWidth=2;ctx.strokeRect(s.x-32,s.y-50,64,82);}
   }
+
 
   function drawPlayer(){
     const working=activeTree||activeFishingSpot||activeRock,bounce=working?Math.sin(animationClock*8)*2:0,s=worldToScreen(state.player.x,state.player.y+bounce);
@@ -757,7 +787,7 @@
   }
   function renderCraftingMenu(){
     const xp=state.skills.crafting?.xp||0,level=levelFromXp(xp);ui.craftingLevel.textContent=`Crafting level ${level} · ${xp.toLocaleString()} XP`;
-    const groups=['Materials','Tools','Weapons','Armour'];
+    const groups=['Materials','Tools','Weapons','Armour','Unique Equipment'];
     ui.craftingRecipes.innerHTML=groups.map(category=>{
       const recipes=RECIPES.filter(r=>r.category===category);
       const available=recipes.filter(r=>level>=r.level&&maxCraftable(r)>0).length;
@@ -782,7 +812,7 @@
     showToast(`Crafted ${ITEM_DEFS[recipe.output].name}${count>1?` ×${count}`:''}`);renderInventory();renderSkills();renderEquipment();renderCraftingMenu();saveGame(false);
   }
 
-  function renderEquipment(){const slots=[['head','Head'],['cape','Cape'],['body','Body'],['weapon','Weapon'],['shield','Shield'],['legs','Legs'],['boots','Boots'],['ring','Ring'],['food','Food']];ui.equipment.innerHTML=`<div class="equipment-slots">${slots.map(([k,l])=>{const item=state.equipment[k]&&ITEM_DEFS[state.equipment[k]];return `<button class="slot ${item?'filled':''}" data-slot="${k}" ${item?'':'disabled'}><span>${l}</span><strong>${item?item.name:'Empty'}</strong></button>`}).join('')}</div>`;ui.equipment.querySelectorAll('.slot.filled').forEach(b=>b.addEventListener('click',()=>showItem(state.equipment[b.dataset.slot])));}
+  function renderEquipment(){const slots=[['head','Head'],['cape','Cape'],['body','Body'],['weapon','Weapon'],['shield','Shield'],['legs','Legs'],['boots','Boots'],['ring','Ring'],['food','Food']],ps=playerCombatStats();ui.equipment.innerHTML=`<div class="map-summary"><strong>${ps.style==='range'?'Ranged':'Melee'} combat stats</strong><span>Level ${ps.level} · Accuracy ${ps.accuracy} · Max hit ${ps.maxHit} · Defence ${ps.defence}</span></div><div class="equipment-slots">${slots.map(([k,l])=>{const item=state.equipment[k]&&ITEM_DEFS[state.equipment[k]];return `<button class="slot ${item?'filled':''}" data-slot="${k}" ${item?'':'disabled'}><span>${l}</span><strong>${item?item.name:'Empty'}</strong></button>`}).join('')}</div>`;ui.equipment.querySelectorAll('.slot.filled').forEach(b=>b.addEventListener('click',()=>showItem(state.equipment[b.dataset.slot])));}
   function renderMapPanel(){
     ui.map.innerHTML='<div class="minimap-wrap"><canvas id="miniMapCanvas" width="720" height="720" aria-label="Draggable world minimap"></canvas><span class="minimap-hint">Drag to explore · tap your marker button to recenter</span><button id="recenterMapButton" class="minimap-recenter">◎</button></div>';
     const mini=document.getElementById('miniMapCanvas');
