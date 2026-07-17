@@ -1,11 +1,11 @@
-# Idle Wanderer v0.9.1 — Creatures & Drops
+# Idle Wanderer v0.10.1 — Crafted Unique Equipment
 
-- Expanded combat roster to 21 creature types across every biome.
-- Passive and aggressive behaviour with biome leashing.
-- Common, uncommon, and rare drop tables.
-- Rare and boss creatures use longer respawn timers.
-- Added raw creature meats and timed cooking recipes.
-- Added cooked combat foods that can be equipped and eaten.
-- Enemy health remains damaged until death or respawn.
+Built directly from the confirmed-working v0.9.1 combat foundation.
 
-Upload every file in this folder to the root of your GitHub Pages repository.
+- Rare creature drops remain crafting materials and cannot be equipped directly.
+- Added unique-equipment recipes that consume rare drops at town crafting tables.
+- Added Lucky Foot Ring, Ancient Bone Blade, Wraithweave Cape, Golem Core Shield, Jaguar Claw Dagger, Ice Fang Sword, Frostscale Shield, and Frozen Heart Ring.
+- Preserves the working v0.9.1 movement, camera, gathering, cooking, crafting, and combat systems.
+- Does not include the later player-death respawn overhaul or enlarged-world branch.
+
+Upload every file in this folder to the root of the GitHub Pages repository.

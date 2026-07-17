@@ -1,7 +1,7 @@
 (() => {
   'use strict';
 
-  const VERSION = '0.9.1';
+  const VERSION = '0.10.1';
   const SAVE_KEY = 'idle-wanderer-save-v6';
   const LEGACY_KEYS = ['idle-wanderer-save-v5', 'idle-wanderer-save-v4', 'idle-wanderer-save-v3', 'idle-wanderer-save-v2'];
   const TICK_SECONDS = 0.6;
@@ -181,29 +181,46 @@
     dragonMeat:{cooked:'cookedDragonMeat',name:'Cooked Dragon Meat',level:70,xp:260,ticks:12,heal:40}
   };
   const COMBAT_ITEM_DEFS = {
-    rawRabbit:['Raw Rabbit','Raw meat','Fresh rabbit meat. Cook it at a town fire.'], rabbitFoot:['Rabbit Foot','Rare combat drop','A lucky foot dropped very rarely by rabbits.'],
+    rawRabbit:['Raw Rabbit','Raw meat','Fresh rabbit meat. Cook it at a town fire.'], rabbitFoot:['Rabbit Foot','Rare combat drop','A lucky foot dropped very rarely by rabbits. It can be crafted into equipment.'],
     ratMeat:['Rat Meat','Raw meat','Questionable meat from a giant rat. It can still be cooked.'], ratTail:['Rat Tail','Rare combat drop','A long tail prized by unusual collectors.'],
     rawVenison:['Raw Venison','Raw meat','Lean meat from a deer.'], animalHide:['Animal Hide','Combat material','A basic hide useful for future leather crafting.'], antler:['Antler','Rare combat drop','A well-shaped deer antler.'],
     rawPork:['Raw Pork','Raw meat','A thick cut from a wild boar.'], boarTusk:['Boar Tusk','Rare combat drop','A heavy curved tusk.'],
     wolfMeat:['Wolf Meat','Raw meat','Tough meat from a wolf.'], wolfFang:['Wolf Fang','Rare combat drop','A sharp wolf fang.'],
     clothScrap:['Cloth Scrap','Combat material','Rough cloth taken from a bandit.'], banditDagger:['Bandit Dagger','Weapon','A quick dagger taken from a bandit.',{slot:'weapon',stats:{'Attack speed':'3 ticks · 1.8 seconds','Accuracy':'+9','Strength':'+5'}}],
-    bones:['Bones','Combat material','Ordinary bones.'], ancientBone:['Ancient Bone','Rare combat drop','A bone darkened by age and strange energy.'],
-    spiritResidue:['Spirit Residue','Combat material','Cold residue left behind by a wraith.'], wraithCloth:['Wraith Cloth','Rare combat drop','A nearly weightless strip of spectral cloth.'],
+    bones:['Bones','Combat material','Ordinary bones.'], ancientBone:['Ancient Bone','Rare combat drop','A bone darkened by age and strange energy. It can be crafted into equipment.'],
+    spiritResidue:['Spirit Residue','Combat material','Cold residue left behind by a wraith.'], wraithCloth:['Wraith Cloth','Rare combat drop','A nearly weightless strip of spectral cloth. It can be crafted into equipment.'],
     scorpionMeat:['Scorpion Meat','Raw meat','Edible once carefully cooked.'], venomGland:['Venom Gland','Rare combat drop','A gland containing potent venom.'],
     serpentMeat:['Serpent Meat','Raw meat','A long cut of desert serpent meat.'], serpentScale:['Serpent Scale','Combat material','A durable scale from a large serpent.'], sandFang:['Sand Fang','Rare combat drop','A fang polished by desert sand.'],
-    golemCore:['Golem Core','Rare combat drop','The compact core that animated a sand golem.'], slimeGel:['Slime Gel','Combat material','Sticky gel from a bog slime.'], clearGel:['Clear Gel','Rare combat drop','An unusually pure glob of slime gel.'],
+    golemCore:['Golem Core','Rare combat drop','The compact core that animated a sand golem. It can be crafted into equipment.'], slimeGel:['Slime Gel','Combat material','Sticky gel from a bog slime.'], clearGel:['Clear Gel','Rare combat drop','An unusually pure glob of slime gel.'],
     crocodileMeat:['Crocodile Meat','Raw meat','Dense meat from a swamp crocodile.'], crocodileHide:['Crocodile Hide','Combat material','Thick scaled hide.'], crocodileTooth:['Crocodile Tooth','Rare combat drop','A large crocodile tooth.'],
     murkyHide:['Murky Hide','Combat material','Dark hide from a marsh lurker.'], lurkerEye:['Lurker Eye','Rare combat drop','The unsettling eye of a marsh lurker.'],
     spiderSilk:['Spider Silk','Combat material','Strong silk from a jungle spider.'], venomSac:['Venom Sac','Rare combat drop','A full venom sac.'],
     snakeMeat:['Snake Meat','Raw meat','Fresh jungle snake meat.'], venomFang:['Venom Fang','Rare combat drop','A venom-coated jungle fang.'],
-    jaguarMeat:['Jaguar Meat','Raw meat','Rich meat from a jungle jaguar.'], jaguarHide:['Jaguar Hide','Combat material','A patterned hide.'], jaguarClaw:['Jaguar Claw','Rare combat drop','A razor-sharp claw.'],
+    jaguarMeat:['Jaguar Meat','Raw meat','Rich meat from a jungle jaguar.'], jaguarHide:['Jaguar Hide','Combat material','A patterned hide.'], jaguarClaw:['Jaguar Claw','Rare combat drop','A razor-sharp claw. It can be crafted into equipment.'],
     gorillaMeat:['Gorilla Meat','Raw meat','A large heavy cut of meat.'], gorillaKnuckle:['Gorilla Knuckle','Rare combat drop','A massive knuckle bone.'],
-    frozenMeat:['Frozen Meat','Raw meat','Meat preserved by the northern cold.'], frozenHide:['Frozen Hide','Combat material','A hide hardened by ice.'], iceFang:['Ice Fang','Rare combat drop','A fang that remains freezing cold.'],
+    frozenMeat:['Frozen Meat','Raw meat','Meat preserved by the northern cold.'], frozenHide:['Frozen Hide','Combat material','A hide hardened by ice.'], iceFang:['Ice Fang','Rare combat drop','A fang that remains freezing cold. It can be crafted into equipment.'],
     trollClub:['Troll Club','Weapon','A huge crude club dropped by a frost troll.',{slot:'weapon',stats:{'Attack speed':'6 ticks · 3.6 seconds','Accuracy':'+18','Strength':'+20'}}],
-    dragonMeat:['Dragon Meat','Raw meat','Extremely valuable meat from a frost dragon.'], frostScale:['Frost Scale','Rare combat drop','A pale scale carrying deep frost magic.'], frozenHeart:['Frozen Heart','Rare combat drop','The impossibly cold heart of a frost dragon.']
+    dragonMeat:['Dragon Meat','Raw meat','Extremely valuable meat from a frost dragon.'], frostScale:['Frost Scale','Rare combat drop','A pale scale carrying deep frost magic. It can be crafted into equipment.'], frozenHeart:['Frozen Heart','Rare combat drop','The impossibly cold heart of a frost dragon. It can be crafted into equipment.']
   };
   for(const [key,data] of Object.entries(COMBAT_ITEM_DEFS)){
     const [name,type,description,extra={}] = data; defineItem(key,{name,type,description,...extra});
+  }
+
+
+  // Rare creature drops are crafting materials, not equipment by themselves.
+  const UNIQUE_EQUIPMENT_RECIPES = [
+    {id:'luckyFootRing',level:5,xp:25,materials:{rabbitFoot:1,copperBar:1},definition:{name:'Lucky Foot Ring',type:'Unique ring',description:'A small copper ring set with a lucky rabbit foot charm.',slot:'ring',stats:{Defence:'+1',Rarity:'Unique'}}},
+    {id:'ancientBoneBlade',level:25,xp:80,materials:{ancientBone:1,ironBar:1,willowLog:1},definition:{name:'Ancient Bone Blade',type:'Unique weapon',description:'A darkened ancient bone shaped into a heavy ritual blade.',slot:'weapon',stats:{'Attack speed':'5 ticks · 3.0 seconds','Accuracy':'+12','Strength':'+10',Rarity:'Unique'}}},
+    {id:'wraithweaveCape',level:35,xp:115,materials:{wraithCloth:1,clothScrap:3,silverBar:1},definition:{name:'Wraithweave Cape',type:'Unique cape',description:'A nearly weightless cape woven from spectral cloth.',slot:'cape',stats:{Defence:'+5',Weight:'Weightless',Rarity:'Unique'}}},
+    {id:'golemCoreShield',level:40,xp:145,materials:{golemCore:1,stoneBlock:4,goldBar:1},definition:{name:'Golem Core Shield',type:'Unique shield',description:'A reinforced shield powered by the core of a sand golem.',slot:'shield',stats:{Defence:'+9',Weight:'Heavy',Rarity:'Unique'}}},
+    {id:'jaguarClawDagger',level:45,xp:175,materials:{jaguarClaw:1,pyriteBar:1,mahoganyLog:1},definition:{name:'Jaguar Claw Dagger',type:'Unique weapon',description:'A swift dagger built around a razor-sharp jaguar claw.',slot:'weapon',stats:{'Attack speed':'3 ticks · 1.8 seconds','Accuracy':'+20','Strength':'+12',Rarity:'Unique'}}},
+    {id:'iceFangSword',level:55,xp:230,materials:{iceFang:1,goldBar:2,arcticPineLog:1},definition:{name:'Ice Fang Sword',type:'Unique weapon',description:'A cold-edged sword built around a fang that never thaws.',slot:'weapon',stats:{'Attack speed':'4 ticks · 2.4 seconds','Accuracy':'+24','Strength':'+18',Rarity:'Unique'}}},
+    {id:'frostscaleShield',level:70,xp:340,materials:{frostScale:1,crystalBar:2,redwoodLog:1},definition:{name:'Frostscale Shield',type:'Unique shield',description:'A crystal-backed shield faced with a deep-frozen dragon scale.',slot:'shield',stats:{Defence:'+18',Weight:'Medium',Rarity:'Unique'}}},
+    {id:'frozenHeartRing',level:75,xp:420,materials:{frozenHeart:1,crystalBar:2,goldBar:2},definition:{name:'Frozen Heart Ring',type:'Unique ring',description:'A masterwork ring containing a fragment of an impossibly cold heart.',slot:'ring',stats:{Defence:'+12',Rarity:'Unique'}}}
+  ];
+  for(const recipe of UNIQUE_EQUIPMENT_RECIPES){
+    defineItem(recipe.id,recipe.definition);
+    addRecipe({id:recipe.id,category:'Unique Equipment',level:recipe.level,output:recipe.id,amount:1,xp:recipe.xp,materials:recipe.materials});
   }
   for(const [raw,d] of Object.entries(COOKING_DATA)) defineItem(d.cooked,{name:d.name,type:'Cooked food',description:`A properly cooked ${d.name.replace('Cooked ','').toLowerCase()}.`,slot:'food',heal:d.heal,stats:{'Cooking level':String(d.level),'Healing':`${d.heal} HP`}});
 
