@@ -1,4 +1,4 @@
-# Idle Wanderer v0.10.3 — Unique Equipment Progression
+# Idle Wanderer v0.10.4 — Unique Equipment Progression
 
 - Rare creature drops remain crafting materials and are never equipped directly.
 - Added a visible Unique Equipment category to town crafting tables.
@@ -10,3 +10,10 @@
 - Built on the confirmed-working v0.9.1 movement and combat foundation.
 
 Upload every file in this folder to the root of your GitHub Pages repository.
+
+
+## v0.10.4 cooking rework
+- Cooking is now instant, matching crafting.
+- Cook 1 converts one eligible raw item immediately.
+- Cook All converts the full owned stack immediately and awards XP for every item.
+- Removed the timed cooking queue and progress handling.

@@ -1,7 +1,7 @@
 (() => {
   'use strict';
 
-  const VERSION = '0.10.3';
+  const VERSION = '0.10.4';
   const SAVE_KEY = 'idle-wanderer-save-v6';
   const LEGACY_KEYS = ['idle-wanderer-save-v5', 'idle-wanderer-save-v4', 'idle-wanderer-save-v3', 'idle-wanderer-save-v2'];
   const TICK_SECONDS = 0.6;
@@ -713,11 +713,10 @@
   }
   function showSkill(key){const def=SKILL_DEFS[key],xp=state.skills[key]?.xp||0,level=levelFromXp(xp),next=level>=100?xpForLevel(100):xpForLevel(level+1);selectedItemKey=null;ui.itemType.textContent='Skill';ui.itemName.textContent=def.name;ui.itemDescription.textContent=def.description;ui.itemStats.innerHTML=`<div><span>Level</span><strong>${level}${level>=100?' · MAX':''}</strong></div><div><span>Experience</span><strong>${xp.toLocaleString()} XP</strong></div>${level<100?`<div><span>Next level</span><strong>${Math.max(0,next-xp).toLocaleString()} XP</strong></div>`:''}`;ui.itemAction.hidden=true;ui.dialog.showModal();}
   let currentTown = null;
-  let cookingTimer=null, activeCooking=null;
   function totalLevel(){return Object.values(state.skills).reduce((sum,v)=>sum+levelFromXp(v?.xp||0),0);}
   function openTown(town){
     currentTown=town;ui.townName.textContent=town.name;ui.townDescription.textContent=town.description;
-    const services=[['NPCs','Talk to local residents and view rotating requests.'],['Crafting Table','Create tools, weapons, armour, bows, and refined materials.'],['Cooking Fire','Cook fish over time.'],['Player-Owned Home','Build permanent rooms and family features.'],['Shop','Buy supplies or sell any owned item.'],['Notice Board','View this town’s rotating quests.'],['Inn','Hear a short local rumour and rest.']];
+    const services=[['NPCs','Talk to local residents and view rotating requests.'],['Crafting Table','Create tools, weapons, armour, bows, and refined materials.'],['Cooking Fire','Cook raw fish and meat instantly.'],['Player-Owned Home','Build permanent rooms and family features.'],['Shop','Buy supplies or sell any owned item.'],['Notice Board','View this town’s rotating quests.'],['Inn','Hear a short local rumour and rest.']];
     ui.townServices.innerHTML=services.map(([name,description])=>`<button class="town-service" data-service="${name}"><strong>${name}</strong><span>${description}</span></button>`).join('');
     ui.townServices.querySelectorAll('[data-service]').forEach(b=>b.addEventListener('click',()=>{
       const service=b.dataset.service;ui.townDialog.close();
@@ -734,36 +733,33 @@
   function openService(type,title,description,html){ui.serviceType.textContent=type;ui.serviceTitle.textContent=title;ui.serviceDescription.textContent=description||'';ui.serviceContent.innerHTML=html;ui.serviceDialog.showModal();}
   function cookingEntries(){return Object.entries(COOKING_DATA).filter(([raw])=>(state.inventory[raw]||0)>0);}
   function openCooking(town){
+    openService('Cooking Fire',`${town.name} Cooking Fire`,'Cook raw fish and meat instantly. Cooking XP is awarded for every item cooked.','<div data-cooking-menu></div>');
+    renderCookingMenu(town);
+  }
+  function renderCookingMenu(town){
+    const menu=ui.serviceContent.querySelector('[data-cooking-menu]')||ui.serviceContent;
     const level=levelFromXp(state.skills.cooking?.xp||0),entries=cookingEntries();
-    const cookingBanner=activeCooking?`<div class="cooking-status"><strong>Cooking ${ITEM_DEFS[activeCooking.raw].name.replace('Raw ','')}</strong><span><b data-cooking-left>${activeCooking.left}</b> remaining · <b data-cooking-done>${activeCooking.done}</b> cooked</span><div class="cook-progress active"><i data-cooking-progress></i></div></div>`:'';
-    openService('Cooking Fire',`${town.name} Cooking Fire`,`Cooking level ${level} · Food cooks one item at a time.`,cookingBanner+(entries.length?entries.map(([raw,d])=>{const ok=level>=d.level,busy=!!activeCooking;return `<article class="service-card ${ok?'':'locked'}" data-cooking-card="${raw}"><div><strong>${d.name}</strong><span>Level ${d.level} · ${d.ticks} ticks · +${d.xp} XP</span><small>${ITEM_DEFS[raw].name} ×<b data-raw-count="${raw}">${state.inventory[raw]||0}</b></small></div><div class="service-actions"><button data-cook="${raw}" ${ok&&!busy?'':'disabled'}>Cook 1</button><button data-cookall="${raw}" ${ok&&!busy?'':'disabled'}>Cook All (${state.inventory[raw]||0})</button></div><div class="cook-progress"><i></i></div></article>`}).join(''):'<div class="empty-state"><strong>No raw food</strong><span>Catch fish or defeat creatures before using the fire.</span></div>'));
-    ui.serviceContent.querySelectorAll('[data-cook]').forEach(b=>b.addEventListener('click',()=>startCooking(b.dataset.cook,1,town)));
-    ui.serviceContent.querySelectorAll('[data-cookall]').forEach(b=>b.addEventListener('click',()=>startCooking(b.dataset.cook,state.inventory[b.dataset.cook]||0,town)));
-    refreshCookingDisplay();
+    menu.innerHTML=entries.length?entries.map(([raw,d])=>{
+      const owned=state.inventory[raw]||0,ok=level>=d.level;
+      return `<article class="service-card ${ok?'':'locked'}"><div><strong>${d.name}</strong><span>Level ${d.level} · +${d.xp} XP each</span><small>${ITEM_DEFS[raw].name} ×${owned}</small></div><div class="service-actions"><button data-cook="${raw}" data-amount="1" ${ok?'':'disabled'}>Cook 1</button><button data-cook="${raw}" data-amount="all" ${ok?'':'disabled'}>Cook All (${owned})</button></div></article>`;
+    }).join(''):'<div class="empty-state"><strong>No raw food</strong><span>Catch fish or defeat creatures before using the fire.</span></div>';
+    menu.querySelectorAll('[data-cook]').forEach(button=>button.addEventListener('click',()=>{
+      const raw=button.dataset.cook;
+      const amount=button.dataset.amount==='all'?(state.inventory[raw]||0):1;
+      cookFood(raw,amount,town);
+    }));
   }
-  function refreshCookingDisplay(){
-    if(!activeCooking)return;
-    const progress=ui.serviceContent.querySelector('[data-cooking-progress]');if(progress)progress.style.width=`${activeCooking.progress||0}%`;
-    const left=ui.serviceContent.querySelector('[data-cooking-left]');if(left)left.textContent=activeCooking.left;
-    const done=ui.serviceContent.querySelector('[data-cooking-done]');if(done)done.textContent=activeCooking.done;
-    const count=ui.serviceContent.querySelector(`[data-raw-count="${activeCooking.raw}"]`);if(count)count.textContent=state.inventory[activeCooking.raw]||0;
-  }
-  function finishCooking(town){
-    if(cookingTimer){clearInterval(cookingTimer);cookingTimer=null;}activeCooking=null;ui.actionProgress.style.width='0%';ui.actionName.textContent='In town';ui.status.textContent=`Visiting ${town.name}`;openCooking(town);renderAll();saveGame(false);
-  }
-  function startCooking(raw,count,town){
-    if(cookingTimer||activeCooking)return showToast('Already cooking');const d=COOKING_DATA[raw],level=levelFromXp(state.skills.cooking?.xp||0);if(!d||level<d.level||count<1)return;
-    const amount=Math.min(count,state.inventory[raw]||0);if(amount<1)return;
-    activeCooking={raw,left:amount,done:0,progress:0};const duration=d.ticks*TICK_SECONDS*1000;ui.actionName.textContent=`Cooking ${d.name.replace('Cooked ','')}`;ui.status.textContent=`Cooking ${amount} ${ITEM_DEFS[raw].name.replace('Raw ','')} at ${town.name}...`;openCooking(town);
-    const cookOne=()=>{
-      if(!activeCooking||activeCooking.left<=0||(state.inventory[raw]||0)<=0){finishCooking(town);return;}
-      const start=performance.now();activeCooking.progress=0;refreshCookingDisplay();
-      cookingTimer=setInterval(()=>{
-        const elapsed=performance.now()-start;activeCooking.progress=Math.min(100,elapsed/duration*100);ui.actionProgress.style.width=`${activeCooking.progress}%`;refreshCookingDisplay();
-        if(elapsed>=duration){clearInterval(cookingTimer);cookingTimer=null;state.inventory[raw]--;state.inventory[d.cooked]=(state.inventory[d.cooked]||0)+1;state.skills.cooking.xp=(state.skills.cooking.xp||0)+d.xp;activeCooking.left--;activeCooking.done++;activeCooking.progress=0;showToast(`Cooked ${d.name.replace('Cooked ','')}`);renderInventory();renderSkills();refreshCookingDisplay();setTimeout(cookOne,120);}
-      },80);
-    };
-    cookOne();
+  function cookFood(raw,amount,town){
+    const d=COOKING_DATA[raw],level=levelFromXp(state.skills.cooking?.xp||0);
+    if(!d)return;
+    if(level<d.level){showToast(`Cooking level ${d.level} required`);return;}
+    const count=Math.min(Math.max(0,amount),state.inventory[raw]||0);
+    if(count<1){showToast('You do not have any raw food to cook');return;}
+    state.inventory[raw]-=count;
+    state.inventory[d.cooked]=(state.inventory[d.cooked]||0)+count;
+    state.skills.cooking.xp=(state.skills.cooking.xp||0)+d.xp*count;
+    showToast(`Cooked ${d.name.replace('Cooked ','')}${count>1?` ×${count}`:''}`);
+    renderInventory();renderSkills();renderCookingMenu(town);saveGame(false);
   }
   function dayKey(){return new Date().toISOString().slice(0,10);}
   function townQuest(town,index=0){const pool=[['Gather cedar logs','cedarLog',8,45],['Catch minnows','rawMinnow',6,50],['Mine stone','stone',8,55],['Bring copper ore','copperOre',4,75],['Bring cooked fish','cookedMinnow',4,80]];let seed=[...town.name+dayKey()].reduce((a,c)=>a+c.charCodeAt(0),index*17);const q=pool[seed%pool.length];return{id:`${town.name}-${dayKey()}-${index}`,title:q[0],item:q[1],amount:q[2],reward:q[3]};}
