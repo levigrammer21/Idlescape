@@ -1,7 +1,11 @@
-# Idle Wanderer v0.9.2 — Combat Visual Polish
+# Idle Wanderer v0.9.1 — Creatures & Drops
 
-- Player defeat now instantly teleports the player and camera to Starting Town.
-- All enemies disengage and return home after the player is defeated.
-- Added player and enemy attack lunges, hit flashes, impact arcs, and defeat feedback.
-- Upgraded geometric creature designs with more distinct silhouettes and details.
-- Existing saves migrate automatically.
+- Expanded combat roster to 21 creature types across every biome.
+- Passive and aggressive behaviour with biome leashing.
+- Common, uncommon, and rare drop tables.
+- Rare and boss creatures use longer respawn timers.
+- Added raw creature meats and timed cooking recipes.
+- Added cooked combat foods that can be equipped and eaten.
+- Enemy health remains damaged until death or respawn.
+
+Upload every file in this folder to the root of your GitHub Pages repository.
