@@ -56,3 +56,10 @@ Upload every file in this folder to the root of your GitHub Pages repository.
 - Fixed a recursive audio-startup bug that prevented the Web Audio engine from starting.
 - Added repeated mobile gesture unlocking for iOS and Android browsers.
 - Increased synthesized music and action-effect output to strong, clearly audible levels.
+
+
+## v0.11.4 faster progression
+
+- Increased XP earned across gathering, combat, crafting, cooking, and Merching to 1.5× the previous rate.
+- Summon XP continues to earn one-third of the final XP awarded, so it scales consistently with the new rate.
+- Summon XP passives still stack normally with the global progression increase.
