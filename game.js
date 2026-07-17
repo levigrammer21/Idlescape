@@ -1,12 +1,11 @@
 (() => {
   'use strict';
 
-  const VERSION = '0.11.0';
+  const VERSION = '0.9.3';
   const SAVE_KEY = 'idle-wanderer-save-v6';
   const LEGACY_KEYS = ['idle-wanderer-save-v5', 'idle-wanderer-save-v4', 'idle-wanderer-save-v3', 'idle-wanderer-save-v2'];
   const TICK_SECONDS = 0.6;
-  const MAP_SCALE = 1.5;
-  const WORLD = { width: Math.round(3800 * MAP_SCALE), height: Math.round(4300 * MAP_SCALE) };
+  const WORLD = { width: 3800, height: 4300 };
   const canvas = document.getElementById('gameCanvas');
   const ctx = canvas.getContext('2d');
   ctx.imageSmoothingEnabled = false;
@@ -365,25 +364,10 @@
     });
   }
 
-  // v0.11.0 world expansion: preserve the exact hand-built layout while
-  // increasing all distances and biome areas by 50% in each direction.
-  function scaleWorldPoint(point){ point[0] = Math.round(point[0] * MAP_SCALE); point[1] = Math.round(point[1] * MAP_SCALE); }
-  continent.forEach(scaleWorldPoint);
-  regions.forEach(region => region.points.forEach(scaleWorldPoint));
-  waters.forEach(water => {
-    water.x = Math.round(water.x * MAP_SCALE); water.y = Math.round(water.y * MAP_SCALE);
-    water.rx = Math.round(water.rx * MAP_SCALE); water.ry = Math.round(water.ry * MAP_SCALE);
-  });
-  fishingSeeds.forEach(seed => { for(let i=1;i<=4;i++) seed[i] = Math.round(seed[i] * MAP_SCALE); });
-  towns.forEach(town => { town.x = Math.round(town.x * MAP_SCALE); town.y = Math.round(town.y * MAP_SCALE); });
-  treeSeeds.forEach(seed => { seed[1] = Math.round(seed[1] * MAP_SCALE); seed[2] = Math.round(seed[2] * MAP_SCALE); });
-  rockSeeds.forEach(seed => { seed[1] = Math.round(seed[1] * MAP_SCALE); seed[2] = Math.round(seed[2] * MAP_SCALE); });
-  enemySeeds.forEach(seed => { seed[1] = Math.round(seed[1] * MAP_SCALE); seed[2] = Math.round(seed[2] * MAP_SCALE); });
-
   const defaultInventory = () => Object.fromEntries(Object.keys(ITEM_DEFS).map(k => [k, 0]));
   const defaultState = () => ({
     version: VERSION,
-    player: { x: Math.round(1780 * MAP_SCALE), y: Math.round(2340 * MAP_SCALE), targetX: Math.round(1780 * MAP_SCALE), targetY: Math.round(2340 * MAP_SCALE) },
+    player: { x: 1780, y: 2340, targetX: 1780, targetY: 2340 },
     inventory: { ...defaultInventory(), stoneAxe: 1, stonePickaxe: 1, basicFishingRod: 1, coins: 100 },
     skills: Object.fromEntries(Object.keys(SKILL_DEFS).map(k => [k, { xp: 0 }])),
     equipment: { head: null, body: null, legs: null, boots: null, weapon: null, shield: null, cape: null, ring: null, food: null },
@@ -442,15 +426,7 @@
       for(const key of Object.keys(SKILL_DEFS)) if(old.skills?.[key]) fresh.skills[key]=old.skills[key];
       if(!old.skills?.fortitude || (old.skills.fortitude.xp||0)<xpForLevel(10)) fresh.skills.fortitude={xp:xpForLevel(10)};
       fresh.equipment={...fresh.equipment,...(old.equipment||{})}; fresh.treeState=old.treeState||{}; fresh.fishingState=old.fishingState||{}; fresh.rockState=old.rockState||{}; fresh.enemyState=old.enemyState||{}; fresh.combat={...fresh.combat,...(old.combat||{})}; fresh.poh=old.poh||{}; fresh.quests=old.quests||{};
-      const expandOldWorld = old.version !== VERSION;
-      if(expandOldWorld){
-        fresh.enemyState=Object.fromEntries(Object.entries(fresh.enemyState).map(([id,enemy])=>[id,{...enemy,x:typeof enemy.x==='number'?Math.round(enemy.x*MAP_SCALE):enemy.x,y:typeof enemy.y==='number'?Math.round(enemy.y*MAP_SCALE):enemy.y}]));
-      }
-      if(old.player){
-        const px=expandOldWorld?Math.round(old.player.x*MAP_SCALE):old.player.x;
-        const py=expandOldWorld?Math.round(old.player.y*MAP_SCALE):old.player.y;
-        if(isWalkable(px,py)) fresh.player={...fresh.player,x:px,y:py,targetX:px,targetY:py};
-      }
+      if(old.player && isWalkable(old.player.x,old.player.y)) fresh.player={...fresh.player,x:old.player.x,y:old.player.y,targetX:old.player.x,targetY:old.player.y};
       if(old.version && old.version !== VERSION){
         for(const [id,node] of Object.entries(fresh.treeState||{})){const type=id.replace(/-\d+$/,'');const def=TREE_TYPES[type];if(def&&node.remaining>0){node.remaining=Math.max(node.remaining,def.capacity[0]);node.max=Math.max(node.max||0,def.capacity[1]);}}
         for(const node of Object.values(fresh.fishingState||{}))if(node.remaining>0)node.remaining=Math.max(node.remaining,12);
@@ -512,7 +488,7 @@
     if(enemy.hp<=0){enemy.deathAnim=.5;killEnemy(enemy);}
   }
   function respawnAtStartingTown(){
-    const spawn={x:Math.round(1770*MAP_SCALE),y:Math.round(2295*MAP_SCALE)};
+    const spawn={x:1770,y:2295};
     state.combat.hp=maxPlayerHp();
     state.player.x=spawn.x;state.player.y=spawn.y;state.player.targetX=spawn.x;state.player.targetY=spawn.y;
     activeTree=queuedTree=activeRock=queuedRock=activeFishingSpot=queuedFishingSpot=queuedTown=activeEnemy=queuedEnemy=null;
