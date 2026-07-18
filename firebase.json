@@ -1,1 +1,48 @@
-{"functions":{"source":"functions"},"firestore":{"rules":"firestore.rules"},"database":{"rules":"database.rules.json"},"hosting":{"public":".","ignore":["firebase.json","**/.*","**/node_modules/**","functions/**"],"rewrites":[{"source":"/admin","destination":"/admin/index.html"}]}}
+{
+  "functions": {
+    "source": ".",
+    "ignore": [
+      "admin.html",
+      "admin.css",
+      "admin.js",
+      "index.html",
+      "styles.css",
+      "game.js",
+      "firebase.js",
+      "service-worker.js",
+      "manifest.webmanifest",
+      "icon.svg",
+      "*.zip",
+      ".git/**",
+      ".github/**",
+      "node_modules/**"
+    ]
+  },
+  "firestore": {
+    "rules": "firestore.rules"
+  },
+  "database": {
+    "rules": "database.rules.json"
+  },
+  "hosting": {
+    "public": ".",
+    "ignore": [
+      "firebase.json",
+      ".firebaserc",
+      "package.json",
+      "package-lock.json",
+      "server-functions.js",
+      "set-admin.mjs",
+      "firestore.rules",
+      "database.rules.json",
+      "README.md",
+      "**/.*",
+      "**/node_modules/**",
+      "*.zip"
+    ],
+    "rewrites": [
+      { "source": "/admin", "destination": "/admin.html" },
+      { "source": "/admin/", "destination": "/admin.html" }
+    ]
+  }
+}

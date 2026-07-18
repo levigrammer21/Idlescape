@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <title>Idle Wanderer Admin</title>
+  <link rel="stylesheet" href="./admin.css">
+</head>
+<body>
+  <main class="shell">
+    <section id="loginView" class="login-card">
+      <div class="crest">IW</div>
+      <p class="eyebrow">Private control room</p>
+      <h1>Idle Wanderer Admin</h1>
+      <p>Sign in with the Firebase account carrying the <code>admin</code> custom claim.</p>
+      <form id="loginForm">
+        <label>Email<input id="email" type="email" autocomplete="username" required></label>
+        <label>Password<input id="password" type="password" autocomplete="current-password" required></label>
+        <button type="submit">Enter Control Room</button>
+      </form>
+      <button id="googleLogin" class="secondary">Continue with Google</button>
+      <p id="loginMessage" class="message"></p>
+    </section>
+
+    <section id="adminView" hidden>
+      <header class="topbar">
+        <div><p class="eyebrow">Idle Wanderer</p><h1>Admin Control Room</h1></div>
+        <div class="top-actions"><span id="adminIdentity"></span><button id="signOutButton" class="secondary">Sign out</button></div>
+      </header>
+      <nav class="tabs">
+        <button class="active" data-tab="system">System</button>
+        <button data-tab="players">Players</button>
+        <button data-tab="account">Account Editor</button>
+        <button data-tab="map">Map Draft</button>
+        <button data-tab="audit">Audit</button>
+      </nav>
+
+      <section class="panel active" data-panel="system">
+        <div class="panel-head"><div><p class="eyebrow">Live controls</p><h2>Updates & maintenance</h2></div><span id="systemState" class="status">Loading…</span></div>
+        <div class="grid two">
+          <label class="switch-row"><span><strong>Maintenance mode</strong><small>Stops gameplay and disconnects active players.</small></span><input id="maintenanceMode" type="checkbox"></label>
+          <label>Minimum game version<input id="minimumVersion" placeholder="0.19.1"></label>
+          <label class="wide">Player message<textarea id="systemMessage" rows="3" placeholder="A new update is ready. Please reload."></textarea></label>
+          <label>Shutdown time<input id="shutdownAt" type="datetime-local"></label>
+          <label>Revision<input id="systemRevision" type="number" min="1" step="1"></label>
+        </div>
+        <div class="action-row"><button id="saveSystem">Publish System Settings</button><button id="clearShutdown" class="secondary">Clear Shutdown</button></div>
+        <p class="hint">Connected clients listen to one global config document. Maintenance mode safely blocks play; browsers cannot be literally closed remotely.</p>
+      </section>
+
+      <section class="panel" data-panel="players">
+        <div class="panel-head"><div><p class="eyebrow">Family world</p><h2>Online players</h2></div><button id="refreshPlayers" class="secondary">Refresh</button></div>
+        <div id="onlinePlayers" class="cards"></div>
+      </section>
+
+      <section class="panel" data-panel="account">
+        <div class="panel-head"><div><p class="eyebrow">Server validated</p><h2>Account editor</h2></div></div>
+        <div class="search-row"><input id="accountSearch" placeholder="Email, display name, or UID"><button id="searchAccounts">Search</button></div>
+        <div id="accountResults" class="results"></div>
+        <div id="accountEditor" hidden>
+          <div class="editor-title"><div><h3 id="editorName"></h3><code id="editorUid"></code></div><button id="reloadAccount" class="secondary">Reload</button></div>
+          <div class="grid three">
+            <label>Display name<input id="editDisplayName"></label>
+            <label>Coins<input id="editCoins" type="number" min="0"></label>
+            <label>Game version<input id="editGameVersion" disabled></label>
+            <label>Player X<input id="editX" type="number"></label>
+            <label>Player Y<input id="editY" type="number"></label>
+            <label>Item key<input id="editItemKey" placeholder="stoneSword"></label>
+            <label>Item quantity<input id="editItemQuantity" type="number" min="0"></label>
+            <label class="switch-row"><span><strong>Suspended</strong><small>Temporarily blocks play.</small></span><input id="editSuspended" type="checkbox"></label>
+            <label class="switch-row"><span><strong>Banned</strong><small>Blocks play until removed.</small></span><input id="editBanned" type="checkbox"></label>
+          </div>
+          <label>Admin note<textarea id="editReason" rows="2" placeholder="Reason for this change"></textarea></label>
+          <div class="action-row wrap"><button id="saveAccount">Save Account Changes</button><button id="setItem" class="secondary">Set Item Quantity</button><button id="moveStart" class="secondary">Move to Starting Town</button><button id="revokeSessions" class="danger">Revoke Sessions</button><button id="deleteAccount" class="danger">Delete Account</button></div>
+          <details><summary>Raw save sections</summary><pre id="rawSave"></pre></details>
+        </div>
+      </section>
+
+      <section class="panel" data-panel="map">
+        <div class="panel-head"><div><p class="eyebrow">Revisioned drafts</p><h2>Map data workspace</h2></div><span id="mapStatus" class="status">Draft only</span></div>
+        <p class="hint">This safely stores, validates, publishes, and rolls back map JSON. The current hard-coded world will not consume it until a later remote-map integration update.</p>
+        <textarea id="mapJson" class="code-editor" spellcheck="false" rows="22"></textarea>
+        <label>Publish note<input id="mapNote" placeholder="Moved jungle spawns and added fishing spots"></label>
+        <div class="action-row wrap"><button id="loadMap">Load Draft</button><button id="saveMap" class="secondary">Save Draft</button><button id="publishMap">Publish Revision</button><button id="rollbackMap" class="danger">Rollback Published Map</button></div>
+      </section>
+
+      <section class="panel" data-panel="audit">
+        <div class="panel-head"><div><p class="eyebrow">Change history</p><h2>Admin audit log</h2></div><button id="refreshAudit" class="secondary">Refresh</button></div>
+        <div id="auditLog" class="audit-list"></div>
+      </section>
+      <p id="toast" class="toast" hidden></p>
+    </section>
+  </main>
+  <script type="module" src="./admin.js?v=0.19.1-flat"></script>
+</body>
+</html>
