@@ -108,7 +108,7 @@ Upload every file in this folder to the root of your GitHub Pages repository.
 - Added `firestore.rules`. Deploy these rules in Firebase before using the leaderboard screen. The rules keep full saves private while allowing signed-in players to read rankings and write only their own public profile.
 
 
-## v0.14.1 — Defeat Screen & Death Tracking
+## v0.14.2 — Defeat Screen & Death Tracking
 
 - Player defeats now increment the persistent `statistics.deaths` counter.
 - A full defeat screen appears when HP reaches zero.
