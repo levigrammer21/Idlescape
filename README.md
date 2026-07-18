@@ -98,3 +98,11 @@ Upload every file in this folder to the root of your GitHub Pages repository.
 - Existing local saves are migrated to the signed-in account when no cloud save exists.
 - Important actions continue to save locally immediately and queue a debounced cloud write.
 - Replaced the manual Save button with a cloud save-status indicator.
+
+## v0.14.0 — Leaderboards & Statistics
+
+- Added account-based family leaderboards for total level, combat level, current gold, lifetime gold earned, total kills, unique drops, summons, and individual skills.
+- Added clickable public player profiles and editable leaderboard display names. Email addresses are never published to the leaderboard document.
+- Added persistent statistics for kills, kills by enemy, gold earned/spent, gathering, crafting, cooking, unique drops, and play time.
+- Existing saves migrate automatically. Lifetime statistics begin counting from v0.14.0 because older builds did not store historical totals.
+- Added `firestore.rules`. Deploy these rules in Firebase before using the leaderboard screen. The rules keep full saves private while allowing signed-in players to read rankings and write only their own public profile.

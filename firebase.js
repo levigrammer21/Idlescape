@@ -5,10 +5,10 @@ import {
   signOut, updateProfile
 } from 'https://www.gstatic.com/firebasejs/12.1.0/firebase-auth.js';
 import {
-  getFirestore, doc, collection, getDocs, writeBatch, serverTimestamp
+  getFirestore, doc, collection, getDocs, getDoc, setDoc, writeBatch, serverTimestamp, query, orderBy, limit
 } from 'https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js';
 
-const VERSION = '0.13.1';
+const VERSION = '0.14.0';
 const SAVE_KEY_PREFIX = 'idle-wanderer-save-v6:';
 const firebaseConfig = {
   apiKey: 'AIzaSyDPS8qby2nMPc0beclK7igZcD-PvVOjviw',
@@ -207,8 +207,60 @@ async function enterGame(user) {
   }
 }
 
+
+function cleanLeaderboardName(value) {
+  const fallback = activeUser?.displayName || activeUser?.email?.split('@')[0] || 'Wanderer';
+  return String(value || fallback).replace(/[<>]/g, '').trim().slice(0, 24) || 'Wanderer';
+}
+
+async function publishLeaderboard(profile) {
+  if (!activeUser || !profile) return;
+  const payload = {
+    uid: activeUser.uid,
+    displayName: cleanLeaderboardName(profile.displayName),
+    totalLevel: Number(profile.totalLevel) || 0,
+    combatLevel: Number(profile.combatLevel) || 0,
+    coins: Number(profile.coins) || 0,
+    lifetimeGold: Number(profile.lifetimeGold) || 0,
+    totalKills: Number(profile.totalKills) || 0,
+    uniqueDrops: Number(profile.uniqueDrops) || 0,
+    summonsUnlocked: Number(profile.summonsUnlocked) || 0,
+    skillLevels: profile.skillLevels || {},
+    highestSkill: profile.highestSkill || { name: 'None', level: 1 },
+    updatedAt: serverTimestamp()
+  };
+  await setDoc(doc(db, 'leaderboards', activeUser.uid), payload, { merge: true });
+}
+
+async function readLeaderboard(sortKey = 'totalLevel', count = 100) {
+  const allowed = new Set(['totalLevel','combatLevel','coins','lifetimeGold','totalKills','uniqueDrops','summonsUnlocked',
+    'skillLevels.woodcutting','skillLevels.fishing','skillLevels.mining','skillLevels.cooking','skillLevels.crafting',
+    'skillLevels.melee','skillLevels.range','skillLevels.fortitude','skillLevels.summoning','skillLevels.merching']);
+  const field = allowed.has(sortKey) ? sortKey : 'totalLevel';
+  const snapshot = await getDocs(query(collection(db, 'leaderboards'), orderBy(field, 'desc'), limit(Math.max(1, Math.min(100, count)))));
+  return snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+}
+
+async function readLeaderboardProfile(uid) {
+  const snapshot = await getDoc(doc(db, 'leaderboards', uid));
+  return snapshot.exists() ? { id: snapshot.id, ...snapshot.data() } : null;
+}
+
+async function changeDisplayName(name) {
+  if (!activeUser) throw new Error('No signed-in player.');
+  const cleaned = cleanLeaderboardName(name);
+  await updateProfile(activeUser, { displayName: cleaned });
+  await setDoc(doc(db, 'users', activeUser.uid), { displayName: cleaned, updatedAt: serverTimestamp() }, { merge: true });
+  document.getElementById('accountName').textContent = cleaned;
+  return cleaned;
+}
+
 window.IdleCloud = {
   version: VERSION,
+  publishLeaderboard,
+  getLeaderboard: readLeaderboard,
+  getLeaderboardProfile: readLeaderboardProfile,
+  updateDisplayName: changeDisplayName,
   save(state, immediate = false) {
     queueCloudSave(state, immediate);
   },
