@@ -3,25 +3,17 @@ service cloud.firestore {
   match /databases/{database}/documents {
     function signedIn() { return request.auth != null; }
     function owns(uid) { return signedIn() && request.auth.uid == uid; }
-    function admin() { return signedIn() && request.auth.token.admin == true; }
-    function protectedAccountFieldsUnchanged() {
-      return !request.resource.data.diff(resource.data).affectedKeys().hasAny(['banned','suspended']);
-    }
 
     match /users/{uid} {
-      allow read: if owns(uid) || admin();
-      allow create: if owns(uid)
-        && !request.resource.data.keys().hasAny(['banned','suspended']);
-      allow update: if admin() || (owns(uid) && protectedAccountFieldsUnchanged());
-      allow delete: if admin();
+      allow read, create, update, delete: if owns(uid);
       match /save/{section} {
-        allow read, create, update, delete: if owns(uid) || admin();
+        allow read, create, update, delete: if owns(uid);
       }
     }
 
     match /leaderboards/{uid} {
       allow read: if signedIn();
-      allow create, update: if admin() || (owns(uid)
+      allow create, update: if owns(uid)
         && request.resource.data.uid == uid
         && request.resource.data.keys().hasOnly([
           'uid','displayName','totalLevel','combatLevel','coins','lifetimeGold',
@@ -34,16 +26,8 @@ service cloud.firestore {
         && request.resource.data.combatLevel is number
         && request.resource.data.coins is number
         && request.resource.data.lifetimeGold is number
-        && request.resource.data.totalKills is number);
-      allow delete: if owns(uid) || admin();
+        && request.resource.data.totalKills is number;
+      allow delete: if owns(uid);
     }
-
-    match /system/{document} {
-      allow read: if signedIn();
-      allow write: if admin();
-    }
-    match /worldMaps/{document} { allow read, write: if admin(); }
-    match /worldMapHistory/{document} { allow read, write: if admin(); }
-    match /adminAudit/{document} { allow read: if admin(); allow write: if false; }
   }
 }

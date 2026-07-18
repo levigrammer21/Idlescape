@@ -1,63 +1,35 @@
-# Idle Wanderer v0.19.1 — Flat-Root Admin Build
+# Idle Wanderer v0.19.0 — Arsenal & Forge
 
-Everything in this package is placed directly in the repository root. There are no required project folders.
+## Weapons
+- Added four melee weapon families across every crafting tier:
+  - Daggers: 2 ticks, low damage, fastest melee attacks.
+  - Swords: 4 ticks, balanced accuracy and damage.
+  - Spears: 5 ticks, stronger deliberate hits.
+  - Warhammers: 6 ticks, slowest attacks and highest strength.
+- Existing unique and monster-dropped weapons remain usable.
 
-## Public pages
+## Ranged
+- Added Shortbows, Recurve Bows, Longbows, and Slings across the wood tiers.
+- Slings attack every 2 ticks with shorter range and visible arcing stone projectiles.
+- Shortbows attack every 3 ticks with standard arrows.
+- Recurve bows attack every 4 ticks with balanced range and power.
+- Longbows attack every 5 ticks with the longest range and heavier arrows.
+- Ranged projectiles are now visibly drawn travelling from the player to the target.
 
-- `index.html` — the game
-- `admin.html` — the private administrator dashboard
-- `admin.css` and `admin.js` — administrator dashboard assets
+## Armour
+- Retained all metal armour tiers.
+- Added Hide, Scaled, Jaguar, and Frozen Hide light-armour sets.
+- Light armour provides lower defence than heavy metal gear but adds Ranged accuracy.
 
-After Firebase Hosting is deployed, the dashboard is available at `/admin` or `/admin.html`.
+## Town Forge
+- Every town now has a Forge Upgrades service.
+- Combine two identical weapons or armour pieces into one +1 item.
+- Combine two identical +1 items into +2.
+- Combine two identical +2 items plus one Tempering Shard into +3.
+- Upgrades improve accuracy/strength or defence while preserving weapon speed and range.
+- If the source item is equipped, the upgraded result remains equipped.
 
-## Server and Firebase files
+## Creature catalyst
+- Added Tempering Shards to the drop tables of Wolf, Crocodile, Jaguar, Ice Wolf, Frost Troll, and Frost Dragon, with stronger creatures having better chances.
 
-- `server-functions.js` — privileged callable Cloud Functions
-- `set-admin.mjs` — grants the administrator custom claim
-- `package.json` — Cloud Functions dependencies and scripts
-- `firebase.json` — flat-root deployment configuration
-- `firestore.rules` — Firestore access rules
-- `database.rules.json` — Realtime Database rules
-- `.firebaserc` — Firebase project selection
-
-The Hosting ignore list prevents server code, rules, package files, and the claim script from being served publicly. The Functions configuration uses the repository root as its source while excluding the public game files from the function upload.
-
-## Admin features
-
-- Admin-claim-only login
-- Maintenance mode and forced-update screen
-- Minimum-version enforcement
-- Update messages and scheduled shutdowns
-- Online-player viewer
-- Account search and inspection
-- Display-name, coins, position, inventory, suspension, and ban controls
-- Session revocation and account deletion
-- Server-written audit history
-- Revisioned map drafts, publishing, and rollback foundation
-
-## Install and deploy
-
-Run these commands from the repository root:
-
-```bash
-npm install
-firebase deploy --only functions,firestore:rules,database,hosting
-```
-
-## Grant your account administrator access
-
-Configure Application Default Credentials for the Firebase project, then run from the repository root:
-
-```bash
-node set-admin.mjs your-email@example.com
-```
-
-Sign out and back in afterward so Firebase refreshes the custom claim.
-
-## Security
-
-Being able to open `admin.html` does not grant administrator access. Every privileged callable function checks the signed-in user's server-issued `admin` custom claim. Never upload or commit a service-account key or secret `.env` file.
-
-## Map editor status
-
-The dashboard can save, validate, publish, and roll back map JSON revisions. The live game still uses its current built-in map until remote map loading is connected in a later world update.
+No creature stats, map positions, gathering rates, save structure, multiplayer behavior, or existing inventories were reset.
