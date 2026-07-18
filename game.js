@@ -1,7 +1,7 @@
 (() => {
   'use strict';
 
-  const VERSION = '0.15.2';
+  const VERSION = '0.16.0';
   const XP_RATE = 1.5;
   const SAVE_KEY = window.IdleCloud?.localSaveKey;
   if (!SAVE_KEY) throw new Error('No authenticated account save key is available.');
@@ -318,56 +318,77 @@
     frostDragon:{name:'Frost Dragon',behaviour:'aggressive',shape:'dragon',hp:650,defence:105,accuracy:85,maxHit:42,ticks:5,color:'#8fc5d4',aggro:340,respawn:600,drops:[['dragonMeat',2,4,1],['crystal',1,3,.5],['frostScale',1,1,.025],['frozenHeart',1,1,.01]]}
   };
   const enemySeeds=[
-    ['rabbit',1580,2450],['rabbit',1940,2320],['rabbit',2240,2070],
-    ['giantRat',1360,2380],['giantRat',2520,2280],['deer',2650,1920],['deer',2910,2450],
-    ['wildBoar',2380,2620],['wolf',3150,2350],['wolf',2900,2740],['bandit',850,2360],
-    ['skeleton',1200,2920],['skeleton',2020,3150],['wraith',620,3000],
-    ['scorpion',470,1770],['scorpion',700,2200],['sandSerpent',330,2450],['sandGolem',330,1520],
-    ['bogSlime',1250,720],['bogSlime',2050,870],['crocodile',2370,720],['crocodile',770,600],['marshLurker',2750,510],
-    ['jungleSpider',1180,3650],['jungleSpider',2270,3540],['venomSnake',950,3910],['jaguar',2670,3790],['gorilla',2250,4050],
-    ['iceWolf',1120,1040],['iceWolf',2580,1120],['frostTroll',2850,850],['frostDragon',2750,360]
+    // Starting Area: beginner creatures only, including exactly one deer.
+    ['rabbit',1540,2240],['rabbit',1890,2050],['rabbit',2240,2390],
+    ['giantRat',1600,2520],['giantRat',2220,1980],['deer',2130,2540],
+
+    // Dead Grass ring: early-to-mid world threats, including exactly one wolf.
+    ['wildBoar',1180,1910],['wolf',2700,2040],['bandit',1880,1320],
+    ['skeleton',1190,2860],['skeleton',2680,2820],['wraith',1960,3040],
+
+    // Desert.
+    ['scorpion',1320,3540],['scorpion',2350,3740],['sandSerpent',1780,3950],['sandGolem',2680,3460],
+
+    // Swamp.
+    ['bogSlime',3160,1480],['bogSlime',3370,2500],['crocodile',3080,2150],['crocodile',3440,2920],['marshLurker',3290,1160],
+
+    // Jungle.
+    ['jungleSpider',520,1510],['jungleSpider',820,2670],['venomSnake',430,2240],['jaguar',770,3100],['gorilla',550,1160],
+
+    // Tundra.
+    ['iceWolf',1240,620],['iceWolf',2440,760],['frostTroll',1840,410],['frostDragon',2740,430]
   ];
   function makeEnemies(saved={}){
     return enemySeeds.map(([type,x,y],index)=>{const id=`enemy-${type}-${index}`,d=ENEMY_TYPES[type],old=saved[id]||{};return {id,type,x:old.x??x,y:old.y??y,homeX:x,homeY:y,hp:Math.min(old.hp??d.hp,d.hp),maxHp:d.hp,respawnAt:old.respawnAt||0,target:null,returning:false,attackElapsed:0,wanderElapsed:Math.random()*3,wanderX:x,wanderY:y};});
   }
 
-  // One continuous continent. Biomes overlap the base land so there are no black seams.
-  const continent = [[680,210],[1450,100],[2250,180],[2920,430],[3240,900],[3160,1420],[3520,1880],[3430,2550],[3090,2920],[3020,3500],[2630,4070],[1840,4210],[1080,4060],[650,3610],[520,3020],[190,2470],[260,1700],[470,1250],[390,740]];
+  // A broad, continuous continent with squared biome boundaries.
+  const continent = [[260,180],[3540,180],[3660,320],[3660,3980],[3500,4140],[300,4140],[140,3980],[140,320]];
 
+  const rect = (x1,y1,x2,y2) => [[x1,y1],[x2,y1],[x2,y2],[x1,y2]];
   const regions = [
-    { id: 'swamp', name: 'Swamp', color: '#587b61', points: [[650,180],[1500,90],[2260,170],[2860,380],[3000,790],[2760,1120],[2180,1050],[1760,880],[1120,980],[620,730]] },
-    { id: 'northDead', name: 'Northern Dead Grass', color: '#9b9066', points: [[470,760],[1110,900],[1760,820],[2220,1030],[2850,970],[3200,1300],[3000,1700],[2340,1660],[1940,1480],[1280,1570],[760,1390],[430,1120]] },
-    { id: 'desert', name: 'Desert', color: '#cba963', points: [[250,1250],[760,1310],[1120,1590],[1050,2130],[850,2620],[470,2860],[170,2460],[210,1790]] },
-    { id: 'central', name: 'Central Grass', color: '#72ae61', points: [[950,1450],[1530,1370],[2050,1470],[2390,1740],[2450,2340],[2120,2640],[1450,2740],[970,2480],[820,2020]] },
-    { id: 'eastGrass', name: 'Eastern Grass', color: '#69a95f', points: [[2260,1510],[3090,1450],[3500,1880],[3400,2550],[3040,2860],[2430,2550],[2380,2070]] },
-    { id: 'southDead', name: 'Southern Dead Grass', color: '#91865f', points: [[820,2520],[1460,2650],[2140,2530],[2640,2860],[2640,3370],[2130,3590],[1350,3510],[750,3220],[520,2860]] },
-    { id: 'jungle', name: 'Jungle', color: '#438158', points: [[730,3170],[1380,3430],[2180,3490],[2760,3300],[3020,3590],[2640,4070],[1840,4200],[1060,4050],[650,3600]] }
+    // Cardinal biomes.
+    { id: 'tundra', name: 'Tundra', color: '#a9c4cb', points: rect(900,180,2900,1120) },
+    { id: 'jungle', name: 'Jungle', color: '#438158', points: rect(140,1050,1120,3250) },
+    { id: 'swamp', name: 'Swamp', color: '#587b61', points: rect(2880,1050,3660,3250) },
+    { id: 'desert', name: 'Desert', color: '#cba963', points: rect(900,3230,2900,4140) },
+
+    // Dead-grass ring around the protected starting square.
+    { id: 'deadGrass', name: 'Dead Grass', color: '#988b61', points: rect(900,1050,2900,1540) },
+    { id: 'deadGrass', name: 'Dead Grass', color: '#988b61', points: rect(900,2740,2900,3250) },
+    { id: 'deadGrass', name: 'Dead Grass', color: '#988b61', points: rect(900,1540,1320,2740) },
+    { id: 'deadGrass', name: 'Dead Grass', color: '#988b61', points: rect(2480,1540,2900,2740) },
+
+    // Central protected starting area is intentionally last so it wins overlaps.
+    { id: 'central', name: 'Starting Area', color: '#72ae61', points: rect(1320,1540,2480,2740) }
   ];
 
   const waters = [
-    { name: 'Cedar Pond', kind: 'lake', x: 1540, y: 1900, rx: 250, ry: 165, color: '#4d95b5' },
-    { name: 'Willow Mere', kind: 'lake', x: 2870, y: 2160, rx: 310, ry: 195, color: '#4d91ad' },
-    { name: 'Swamp Pool', kind: 'lake', x: 2250, y: 610, rx: 340, ry: 180, color: '#4f8b82' },
-    { name: 'Jungle Lagoon', kind: 'lake', x: 1900, y: 3800, rx: 300, ry: 170, color: '#3e8fa0' }
+    { name: 'Starter Pond', kind: 'lake', x: 1660, y: 2310, rx: 190, ry: 125, color: '#4d95b5' },
+    { name: 'Deadwater Pond', kind: 'lake', x: 2140, y: 1360, rx: 220, ry: 115, color: '#668e9b' },
+    { name: 'Swamp Pool', kind: 'lake', x: 3260, y: 2160, rx: 250, ry: 380, color: '#4f8b82' },
+    { name: 'Jungle Lagoon', kind: 'lake', x: 640, y: 2320, rx: 260, ry: 330, color: '#3e8fa0' },
+    { name: 'Tundra Lake', kind: 'lake', x: 2060, y: 720, rx: 270, ry: 150, color: '#6fa7bd' },
+    { name: 'Desert Oasis', kind: 'lake', x: 2040, y: 3670, rx: 235, ry: 125, color: '#4f9fb5' }
   ];
 
+  // Two usable spots for every fish type. Coastal fish sit offshore with safe stand points on land.
   const fishingSeeds = [
-    ['minnow', 1470, 1880, 1335, 1830, 'Cedar Pond'],
-    ['minnow', 1660, 1940, 1760, 2070, 'Cedar Pond'],
-    ['crappie', 2850, 2100, 2690, 2050, 'Willow Mere'],
-    ['crappie', 2980, 2210, 3125, 2290, 'Willow Mere'],
-    ['bass', 1960, 3765, 1810, 3650, 'Jungle Lagoon'],
-    ['bass', 1780, 3820, 1660, 3925, 'Jungle Lagoon'],
-    ['catfish', 2180, 620, 2050, 770, 'Swamp Pool'],
-    ['catfish', 2370, 560, 2470, 720, 'Swamp Pool'],
-    ['tuna', 3480, 1750, 3310, 1760, 'Eastern Ocean'],
-    ['tuna', 3060, 3620, 2920, 3520, 'Southern Ocean'],
-    ['grouper', 2450, 4190, 2450, 4010, 'Southern Ocean'],
-    ['grouper', 510, 3370, 690, 3370, 'Western Ocean'],
-    ['shark', 1720, 4260, 1720, 4080, 'Deep Southern Ocean'],
-    ['shark', 3300, 2870, 3150, 2790, 'Deep Eastern Ocean']
+    ['minnow', 1580, 2290, 1430, 2220, 'Starter Pond'],
+    ['minnow', 1740, 2340, 1840, 2450, 'Starter Pond'],
+    ['crappie', 2070, 1340, 1940, 1240, 'Deadwater Pond'],
+    ['crappie', 2210, 1390, 2330, 1280, 'Deadwater Pond'],
+    ['bass', 600, 2200, 820, 2110, 'Jungle Lagoon'],
+    ['bass', 700, 2440, 860, 2530, 'Jungle Lagoon'],
+    ['catfish', 3220, 2050, 3020, 1970, 'Swamp Pool'],
+    ['catfish', 3310, 2320, 3060, 2390, 'Swamp Pool'],
+    ['tuna', 1540, 120, 1540, 310, 'Northern Ocean'],
+    ['tuna', 3710, 1760, 3510, 1760, 'Eastern Ocean'],
+    ['grouper', 650, 4200, 980, 4000, 'Southwestern Reef'],
+    ['grouper', 3100, 4200, 2820, 4000, 'Southeastern Reef'],
+    ['shark', 60, 2840, 310, 2840, 'Deep Western Ocean'],
+    ['shark', 3740, 2860, 3500, 2860, 'Deep Eastern Ocean']
   ];
-
   function makeFishingSpots(saved = {}) {
     return fishingSeeds.map(([type,x,y,standX,standY,location], index) => {
       const id = `fish-${type}-${index}`; const prior=saved[id]||{};
@@ -376,21 +397,27 @@
   }
 
   const towns = [
-    { name: 'Swamp Town', x: 1250, y: 520, description: 'A quiet settlement raised above the wet northern marsh.' }, { name: 'North Town', x: 2600, y: 1270, description: 'A hardy northern stop serving travellers headed toward the cold pines.' },
-    { name: 'Desert Town', x: 520, y: 1980, description: 'A sun-baked trading post near the western sands.' }, { name: 'Starting Town', x: 1770, y: 2190, description: 'The central home town and starting point for your family adventure.' },
-    { name: 'East Town', x: 3050, y: 1880, description: 'A green eastern settlement beside open grassland and water.' }, { name: 'South Town', x: 1350, y: 3100, description: 'A weathered town between the central fields and southern jungle.' },
-    { name: 'Jungle Town', x: 2470, y: 3720, description: 'A warm jungle settlement surrounded by valuable hardwoods.' }
+    { name: 'Starting Town', x: 1900, y: 2140, description: 'The protected central town and starting point for every wanderer.' },
+    { name: 'North Town', x: 1900, y: 980, description: 'A fortified tundra outpost below the frozen northern reaches.' },
+    { name: 'Jungle Town', x: 930, y: 1900, description: 'A raised settlement at the edge of the western jungle.' },
+    { name: 'Swamp Town', x: 3090, y: 1800, description: 'A stilt-built settlement overlooking the eastern marsh.' },
+    { name: 'Desert Town', x: 1900, y: 3420, description: 'A shaded trading post at the northern edge of the desert.' }
   ];
 
   const treeSeeds = [
-    ['cedar',1450,1690],['cedar',1740,1580],['cedar',2060,1810],['cedar',1320,2240],
-    ['oak',1120,1800],['oak',2150,2280],['oak',2500,1760],
-    ['willow',2670,2040],['willow',3030,2300],['willow',1450,2050],
-    ['beech',920,2450],['beech',2500,2700],['beech',1120,2850],
-    ['cherry',750,3060],['cherry',1480,3330],['cherry',2240,3230],
-    ['arcticPine',980,620],['arcticPine',1590,440],['arcticPine',2700,700],
-    ['mahogany',1120,3710],['mahogany',2450,3890],['mahogany',2720,3450],
-    ['redwood',1620,3950],['redwood',2200,4020]
+    // Level 1: Starting Area.
+    ['cedar',1480,1740],['cedar',1770,1840],['cedar',2250,1760],['cedar',2290,2580],
+    // Level 10 and 30-40 temperate trees: Dead Grass ring.
+    ['oak',1090,1370],['oak',2700,1360],['oak',1120,3000],
+    ['beech',2740,2980],['beech',1040,1820],['beech',2670,2450],
+    ['cherry',1530,3000],['cherry',2250,3000],['cherry',1900,1220],
+    // Swamp.
+    ['willow',3060,1450],['willow',3400,1940],['willow',3150,2860],
+    // Tundra.
+    ['arcticPine',1120,440],['arcticPine',1620,820],['arcticPine',2680,720],
+    // Jungle.
+    ['mahogany',370,1360],['mahogany',720,1840],['mahogany',920,2900],
+    ['redwood',350,2860],['redwood',780,3160]
   ];
 
   function makeTrees(saved = {}) {
@@ -402,14 +429,21 @@
   }
 
   const rockSeeds = [
-    ['stone',1650,2440],['stone',1930,2490],['stone',2200,2360],
-    ['copper',2380,1580],['copper',2740,1710],
-    ['iron',2700,2520],['iron',3060,2400],
-    ['coal',1080,1360],['coal',1420,1280],
-    ['silver',760,2350],['silver',520,2200],
-    ['pyrite',1080,3130],['pyrite',1520,3020],
-    ['gold',2320,3440],['gold',2650,3600],
-    ['crystal',1200,520],['crystal',1920,420]
+    // Level 1: Starting Area.
+    ['stone',1450,2600],['stone',2050,1660],['stone',2350,2210],
+    // Level 10: Dead Grass ring.
+    ['copper',1070,1580],['copper',2720,1700],['copper',2280,3100],
+    // Jungle.
+    ['iron',360,1980],['iron',850,1150],
+    // Swamp.
+    ['coal',3060,1200],['coal',3450,2700],
+    // Tundra.
+    ['silver',1280,880],['silver',2480,410],
+    // Desert.
+    ['pyrite',1210,3710],['pyrite',2500,3550],
+    ['gold',1570,3970],['gold',2710,3890],
+    // Deep tundra deposits.
+    ['crystal',1770,360],['crystal',2820,850]
   ];
 
   function makeRocks(saved = {}) {
@@ -422,7 +456,7 @@
   const defaultInventory = () => Object.fromEntries(Object.keys(ITEM_DEFS).map(k => [k, 0]));
   const defaultState = () => ({
     version: VERSION,
-    player: { x: 1780, y: 2340, targetX: 1780, targetY: 2340 },
+    player: { x: 1900, y: 2320, targetX: 1900, targetY: 2320 },
     inventory: { ...defaultInventory(), stoneAxe: 1, stonePickaxe: 1, basicFishingRod: 1, coins: 100 },
     skills: Object.fromEntries(Object.keys(SKILL_DEFS).map(k => [k, { xp: 0 }])),
     equipment: { head: null, body: null, legs: null, boots: null, weapon: null, shield: null, cape: null, ring: null, food: null },
@@ -622,8 +656,13 @@
       for(const key of Object.keys(SKILL_DEFS)) if(old.skills?.[key]) fresh.skills[key]=old.skills[key];
       if(!old.skills?.fortitude || (old.skills.fortitude.xp||0)<xpForLevel(10)) fresh.skills.fortitude={xp:xpForLevel(10)};
       fresh.equipment={...fresh.equipment,...(old.equipment||{})}; fresh.audio={...fresh.audio,...(old.audio||{})}; fresh.autoMode=['off','combat','woodcutting','mining','fishing','explore'].includes(old.autoMode)?old.autoMode:'off'; fresh.autoTargetId=old.autoTargetId||null; fresh.autoBiomeId=old.autoBiomeId||regionAt(fresh.player.x,fresh.player.y).id; fresh.activeSummon=SUMMON_DEFS[old.activeSummon]?old.activeSummon:null; fresh.summonAttackElapsed=0; fresh.treeState=old.treeState||{}; fresh.fishingState=old.fishingState||{}; fresh.rockState=old.rockState||{}; fresh.enemyState=old.enemyState||{}; fresh.combat={...fresh.combat,...(old.combat||{})}; fresh.poh=old.poh||{}; fresh.quests=old.quests||{}; fresh.statistics={...fresh.statistics,...(old.statistics||{}),killsByEnemy:{...(old.statistics?.killsByEnemy||{})}};
-      if(old.player && isWalkable(old.player.x,old.player.y)) fresh.player={...fresh.player,x:old.player.x,y:old.player.y,targetX:old.player.x,targetY:old.player.y};
-      if(old.version && old.version !== VERSION){
+      const worldLayoutChanged=old.version && old.version !== VERSION;
+      if(!worldLayoutChanged && old.player && isWalkable(old.player.x,old.player.y)) fresh.player={...fresh.player,x:old.player.x,y:old.player.y,targetX:old.player.x,targetY:old.player.y};
+      if(worldLayoutChanged){
+        // Preserve all progression, but safely place the player and world actors on the rebuilt map.
+        fresh.player={...fresh.player,x:1900,y:2320,targetX:1900,targetY:2320};
+        fresh.autoMode='off';fresh.autoTargetId=null;fresh.autoBiomeId='central';
+        fresh.enemyState={};
         for(const [id,node] of Object.entries(fresh.treeState||{})){const type=id.replace(/-\d+$/,'');const def=TREE_TYPES[type];if(def&&node.remaining>0){node.remaining=Math.max(node.remaining,def.capacity[0]);node.max=Math.max(node.max||0,def.capacity[1]);}}
         for(const node of Object.values(fresh.fishingState||{}))if(node.remaining>0)node.remaining=Math.max(node.remaining,12);
         for(const [id,node] of Object.entries(fresh.rockState||{})){const type=id.split('-')[1],def=ROCK_TYPES[type];if(def&&node.hp>0)node.hp=Math.max(node.hp,def.hp);}
@@ -752,7 +791,7 @@
       activeTree=null;queuedTree=null;activeFishingSpot=null;queuedFishingSpot=null;
       activeRock=null;queuedRock=null;queuedTown=null;actionElapsed=0;
       if(state.autoMode!=='off')setAutoMode('off',false);
-      state.player.x=1780;state.player.y=2340;state.player.targetX=1780;state.player.targetY=2340;
+      state.player.x=1900;state.player.y=2320;state.player.targetX=1900;state.player.targetY=2320;
       state.combat.hp=maxPlayerHp();
       ui.actionProgress.style.width='0%';
       ui.actionName.textContent='Defeated';
@@ -932,8 +971,10 @@
     const s=points.map(([x,y])=>worldToScreen(x,y));ctx.beginPath();ctx.moveTo(s[0].x,s[0].y);
     for(let i=0;i<s.length;i++){const p0=s[(i-1+s.length)%s.length],p1=s[i],p2=s[(i+1)%s.length],p3=s[(i+2)%s.length];const c1={x:p1.x+(p2.x-p0.x)/6,y:p1.y+(p2.y-p0.y)/6},c2={x:p2.x-(p3.x-p1.x)/6,y:p2.y-(p3.y-p1.y)/6};ctx.bezierCurveTo(c1.x,c1.y,c2.x,c2.y,p2.x,p2.y);}ctx.closePath();
   }
+  function straightPath(points){const s=points.map(([x,y])=>worldToScreen(x,y));ctx.beginPath();ctx.moveTo(s[0].x,s[0].y);for(const p of s.slice(1))ctx.lineTo(p.x,p.y);ctx.closePath();}
   function fillSmooth(points,color,stroke=null,width=1){smoothPath(points);ctx.fillStyle=color;ctx.fill();if(stroke){ctx.strokeStyle=stroke;ctx.lineWidth=width;ctx.stroke();}}
-  function drawTileTexture(points){ctx.save();smoothPath(points);ctx.clip();const tile=54,minX=Math.floor(camera.x/tile)*tile,minY=Math.floor(camera.y/tile)*tile;for(let y=minY;y<camera.y+canvas.height+tile;y+=tile)for(let x=minX;x<camera.x+canvas.width+tile;x+=tile){const s=worldToScreen(x,y);ctx.fillStyle=((x/tile+y/tile)%2)?'rgba(255,255,255,.025)':'rgba(0,0,0,.025)';ctx.fillRect(s.x,s.y,tile,tile);}ctx.restore();}
+  function fillStraight(points,color,stroke=null,width=1){straightPath(points);ctx.fillStyle=color;ctx.fill();if(stroke){ctx.strokeStyle=stroke;ctx.lineWidth=width;ctx.stroke();}}
+  function drawTileTexture(points,straight=false){ctx.save();(straight?straightPath:smoothPath)(points);ctx.clip();const tile=54,minX=Math.floor(camera.x/tile)*tile,minY=Math.floor(camera.y/tile)*tile;for(let y=minY;y<camera.y+canvas.height+tile;y+=tile)for(let x=minX;x<camera.x+canvas.width+tile;x+=tile){const s=worldToScreen(x,y);ctx.fillStyle=((x/tile+y/tile)%2)?'rgba(255,255,255,.025)':'rgba(0,0,0,.025)';ctx.fillRect(s.x,s.y,tile,tile);}ctx.restore();}
   function drawWater(w){const s=worldToScreen(w.x,w.y);ctx.beginPath();ctx.ellipse(s.x,s.y,w.rx,w.ry,0,0,Math.PI*2);ctx.fillStyle=w.color;ctx.fill();ctx.strokeStyle='rgba(176,220,231,.48)';ctx.lineWidth=5;ctx.stroke();ctx.save();ctx.beginPath();ctx.ellipse(s.x,s.y,w.rx-8,w.ry-8,0,0,Math.PI*2);ctx.clip();ctx.strokeStyle='rgba(220,245,250,.34)';ctx.lineWidth=3;const drift=(animationClock*18)%54;for(let yy=-w.ry-54;yy<w.ry+54;yy+=42){const wave=Math.sin(animationClock*1.8+yy*.03)*10;ctx.beginPath();ctx.moveTo(s.x-w.rx*.64+drift,s.y+yy+wave);ctx.lineTo(s.x-w.rx*.18+drift,s.y+yy+wave);ctx.stroke();ctx.beginPath();ctx.moveTo(s.x+w.rx*.02-drift,s.y+yy+18-wave);ctx.lineTo(s.x+w.rx*.5-drift,s.y+yy+18-wave);ctx.stroke();}ctx.restore();} 
   function drawFishShape(type,x,y,color){
     ctx.save();ctx.translate(x,y);ctx.fillStyle=color;ctx.strokeStyle='#223640';ctx.lineWidth=2;
@@ -1070,7 +1111,7 @@
     if(activeTree||activeRock){const swing=Math.sin(animationClock*8)*.65;ctx.save();ctx.translate(s.x+11,s.y+8);ctx.rotate(-.8+swing);ctx.strokeStyle=activeRock?'#7b8590':'#8a6540';ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(21,-15);ctx.stroke();ctx.restore();}else drawEquippedWeapon(s);
     if(activeFishingSpot){const fs=worldToScreen(activeFishingSpot.x,activeFishingSpot.y);ctx.strokeStyle='#dbc68b';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(s.x+12,s.y+8);ctx.quadraticCurveTo((s.x+fs.x)/2,s.y-28,fs.x,fs.y);ctx.stroke();ctx.fillStyle='#f1d267';ctx.fillRect(fs.x-2,fs.y-2,4,4);}
   }
-  function draw(){ctx.clearRect(0,0,canvas.width,canvas.height);ctx.fillStyle='#397f9f';ctx.fillRect(0,0,canvas.width,canvas.height);ctx.strokeStyle='rgba(210,240,248,.22)';ctx.lineWidth=3;for(let y=-30+(animationClock*12)%46;y<canvas.height+40;y+=46){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(canvas.width,y+10);ctx.stroke();}fillSmooth(continent,'#72ae61','#d5c68b',8);drawTileTexture(continent);for(const r of regions){fillSmooth(r.points,r.color);drawTileTexture(r.points);}for(const w of waters)drawWater(w);for(const f of fishingSpots)drawFishingSpot(f);for(const t of towns)drawTown(t);for(const t of trees)drawTree(t);for(const r of rocks)drawRock(r);for(const e of enemies)drawEnemy(e);drawRemotePlayers();drawSummon();drawPlayer();for(const f of floaters){const s=worldToScreen(f.x,f.y);ctx.globalAlpha=Math.min(1,f.life*1.4);ctx.fillStyle=f.damage?(f.miss?'#d7dbe2':'#ff6b6b'):'#fff4b8';ctx.strokeStyle='rgba(20,20,20,.8)';ctx.lineWidth=4;ctx.font='bold 14px system-ui';ctx.textAlign='center';ctx.strokeText(f.text,s.x,s.y);ctx.fillText(f.text,s.x,s.y);ctx.textAlign='start';ctx.globalAlpha=1;}}
+  function draw(){ctx.clearRect(0,0,canvas.width,canvas.height);ctx.fillStyle='#397f9f';ctx.fillRect(0,0,canvas.width,canvas.height);ctx.strokeStyle='rgba(210,240,248,.22)';ctx.lineWidth=3;for(let y=-30+(animationClock*12)%46;y<canvas.height+40;y+=46){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(canvas.width,y+10);ctx.stroke();}fillSmooth(continent,'#72ae61','#d5c68b',8);drawTileTexture(continent);for(const r of regions){fillStraight(r.points,r.color,'rgba(55,50,38,.2)',3);drawTileTexture(r.points,true);}for(const w of waters)drawWater(w);for(const f of fishingSpots)drawFishingSpot(f);for(const t of towns)drawTown(t);for(const t of trees)drawTree(t);for(const r of rocks)drawRock(r);for(const e of enemies)drawEnemy(e);drawRemotePlayers();drawSummon();drawPlayer();for(const f of floaters){const s=worldToScreen(f.x,f.y);ctx.globalAlpha=Math.min(1,f.life*1.4);ctx.fillStyle=f.damage?(f.miss?'#d7dbe2':'#ff6b6b'):'#fff4b8';ctx.strokeStyle='rgba(20,20,20,.8)';ctx.lineWidth=4;ctx.font='bold 14px system-ui';ctx.textAlign='center';ctx.strokeText(f.text,s.x,s.y);ctx.fillText(f.text,s.x,s.y);ctx.textAlign='start';ctx.globalAlpha=1;}}
 
   function openPanel(name){if(name==='leaderboards')renderLeaderboards(leaderboardSort);document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active',t.dataset.panel===name));document.querySelectorAll('.panel').forEach(p=>p.classList.toggle('active',p.id===name));}
   function itemCategory(key,item){

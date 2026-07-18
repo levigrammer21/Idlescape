@@ -150,6 +150,17 @@ If your Realtime Database was created in a non-default region and Firebase gives
 This substantially reduces Firestore leaderboard writes without making rankings feel stale for a small private family world.
 
 
+## v0.16.0 — World Rebuild
+
+- Rebuilt the playable continent into squared cardinal biomes: Tundra north, Jungle west, Desert south, and Swamp east.
+- Added a protected square Starting Area with Starting Town, green grass, rabbits, giant rats, exactly one deer, all level-1 gathering resources, and a small minnow pond.
+- Added a squared Dead Grass ring around the Starting Area with all level-10 gathering resources and exactly one wolf.
+- Relocated every existing creature type into its appropriate biome without removing any enemies.
+- Relocated every Woodcutting and Mining resource tier without removing any resource type.
+- Added at least two fishing spots for every fish type: Minnow, Crappie, Bass, Catfish, Tuna, Grouper, and Shark.
+- Relocated regional towns to match the rebuilt world.
+- Existing accounts preserve progression and are returned safely to Starting Town once when migrating to the new map.
+
 ## v0.15.2 — Firebase Efficiency
 
 - Cloud saves now write only top-level save sections that actually changed, while preserving the existing debounced save behavior and metadata updates.
