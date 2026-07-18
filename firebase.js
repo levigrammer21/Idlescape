@@ -11,7 +11,7 @@ import {
   getDatabase, ref as databaseRef, set as databaseSet, update as databaseUpdate, onValue, onDisconnect, serverTimestamp as realtimeTimestamp
 } from 'https://www.gstatic.com/firebasejs/12.1.0/firebase-database.js';
 
-const VERSION = '0.15.1';
+const VERSION = '0.15.2';
 const SAVE_KEY_PREFIX = 'idle-wanderer-save-v6:';
 const firebaseConfig = {
   apiKey: 'AIzaSyDPS8qby2nMPc0beclK7igZcD-PvVOjviw',
@@ -49,6 +49,7 @@ let activeUser = null;
 let saveTimer = null;
 let pendingState = null;
 let saving = false;
+let savedSectionFingerprints = new Map();
 
 function setMessage(message, kind = '') {
   authMessage.textContent = message;
@@ -82,14 +83,25 @@ function setCreateMode(enabled) {
   setMessage('');
 }
 
+function sectionFingerprint(value) {
+  return JSON.stringify(value);
+}
+
 async function loadCloudState(user) {
   const snapshot = await getDocs(collection(db, 'users', user.uid, 'save'));
-  if (snapshot.empty) return null;
+  if (snapshot.empty) {
+    savedSectionFingerprints = new Map();
+    return null;
+  }
   const restored = {};
+  const fingerprints = new Map();
   snapshot.forEach(saveDoc => {
     if (saveDoc.id === '_metadata') return;
-    restored[saveDoc.id] = saveDoc.data().value;
+    const value = saveDoc.data().value;
+    restored[saveDoc.id] = value;
+    fingerprints.set(saveDoc.id, sectionFingerprint(value));
   });
+  savedSectionFingerprints = fingerprints;
   return Object.keys(restored).length ? restored : null;
 }
 
@@ -121,26 +133,27 @@ async function writeCloudState(state) {
     return;
   }
   saving = true;
-  updateCloudIndicator('saving');
   try {
+    const changedSections = [];
+    for (const [key, value] of Object.entries(state)) {
+      const fingerprint = sectionFingerprint(value);
+      if (savedSectionFingerprints.get(key) !== fingerprint) changedSections.push([key, value, fingerprint]);
+    }
+    if (!changedSections.length) {
+      updateCloudIndicator('saved');
+      return;
+    }
+    updateCloudIndicator('saving');
     const batch = writeBatch(db);
     const saveCollection = collection(db, 'users', activeUser.uid, 'save');
-    for (const [key, value] of Object.entries(state)) {
-      batch.set(doc(saveCollection, key), { value });
-    }
+    for (const [key, value] of changedSections) batch.set(doc(saveCollection, key), { value });
     batch.set(doc(saveCollection, '_metadata'), {
       gameVersion: VERSION,
       saveVersion: 1,
       updatedAt: serverTimestamp()
     });
-    batch.set(doc(db, 'users', activeUser.uid), {
-      displayName: activeUser.displayName || '',
-      email: activeUser.email || '',
-      gameVersion: VERSION,
-      lastLoginAt: serverTimestamp(),
-      updatedAt: serverTimestamp()
-    }, { merge: true });
     await batch.commit();
+    for (const [key, , fingerprint] of changedSections) savedSectionFingerprints.set(key, fingerprint);
     updateCloudIndicator('saved');
   } catch (error) {
     console.error('Cloud save failed', error);
@@ -171,6 +184,7 @@ async function clearCloudSave(user) {
   const batch = writeBatch(db);
   snapshot.forEach(saveDoc => batch.delete(saveDoc.ref));
   await batch.commit();
+  savedSectionFingerprints = new Map();
 }
 
 async function enterGame(user) {
@@ -184,6 +198,14 @@ async function enterGame(user) {
       await clearCloudSave(user);
     }
     const cloud = resetRequested ? null : await loadCloudState(user);
+    if (resetRequested) savedSectionFingerprints = new Map();
+    await setDoc(doc(db, 'users', user.uid), {
+      displayName: user.displayName || '',
+      email: user.email || '',
+      gameVersion: VERSION,
+      lastLoginAt: serverTimestamp(),
+      updatedAt: serverTimestamp()
+    }, { merge: true });
     const accountSaveKey = saveKeyFor(user);
     const local = localState(user);
     if (cloud) {
@@ -219,8 +241,11 @@ async function enterGame(user) {
 let multiplayerUnsubscribe = null;
 let multiplayerPlayerRef = null;
 let multiplayerConnected = false;
+let lastPresenceData = null;
+let lastPresenceWriteAt = 0;
+const PRESENCE_HEARTBEAT_MS = 25000;
 
-function safePresencePayload(payload = {}) {
+function safePresenceData(payload = {}) {
   const fallback = activeUser?.displayName || activeUser?.email?.split('@')[0] || 'Wanderer';
   return {
     uid: activeUser?.uid || '',
@@ -235,16 +260,30 @@ function safePresencePayload(payload = {}) {
     area: String(payload.area || 'Central Grass').slice(0, 40),
     combatLevel: Math.max(1, Number(payload.combatLevel) || 1),
     equipment: payload.equipment && typeof payload.equipment === 'object' ? payload.equipment : {},
-    online: true,
-    updatedAt: realtimeTimestamp()
+    online: true
   };
+}
+
+function changedPresenceFields(next, previous) {
+  if (!previous) return { ...next };
+  const changed = {};
+  for (const [key, value] of Object.entries(next)) {
+    const same = key === 'equipment'
+      ? JSON.stringify(value) === JSON.stringify(previous[key])
+      : value === previous[key];
+    if (!same) changed[key] = value;
+  }
+  return changed;
 }
 
 async function connectMultiplayer(initialPayload, onPlayers) {
   if (!activeUser) throw new Error('Sign in before joining the family world.');
   if (multiplayerUnsubscribe) multiplayerUnsubscribe();
   multiplayerPlayerRef = databaseRef(realtimeDb, `worlds/${FAMILY_WORLD_ID}/players/${activeUser.uid}`);
-  await databaseSet(multiplayerPlayerRef, safePresencePayload(initialPayload));
+  const initialPresence = safePresenceData(initialPayload);
+  await databaseSet(multiplayerPlayerRef, { ...initialPresence, updatedAt: realtimeTimestamp() });
+  lastPresenceData = initialPresence;
+  lastPresenceWriteAt = Date.now();
   await onDisconnect(multiplayerPlayerRef).remove();
   const playersRef = databaseRef(realtimeDb, `worlds/${FAMILY_WORLD_ID}/players`);
   multiplayerUnsubscribe = onValue(playersRef, snapshot => {
@@ -258,7 +297,13 @@ async function connectMultiplayer(initialPayload, onPlayers) {
 
 async function updateMultiplayer(payload) {
   if (!activeUser || !multiplayerPlayerRef || !multiplayerConnected) return;
-  await databaseUpdate(multiplayerPlayerRef, safePresencePayload(payload));
+  const next = safePresenceData(payload);
+  const changed = changedPresenceFields(next, lastPresenceData);
+  const now = Date.now();
+  if (!Object.keys(changed).length && now - lastPresenceWriteAt < PRESENCE_HEARTBEAT_MS) return;
+  await databaseUpdate(multiplayerPlayerRef, { ...changed, updatedAt: realtimeTimestamp() });
+  lastPresenceData = next;
+  lastPresenceWriteAt = now;
 }
 
 async function leaveMultiplayer() {
@@ -267,12 +312,18 @@ async function leaveMultiplayer() {
   multiplayerUnsubscribe = null;
   if (multiplayerPlayerRef) await databaseSet(multiplayerPlayerRef, null).catch(() => {});
   multiplayerPlayerRef = null;
+  lastPresenceData = null;
+  lastPresenceWriteAt = 0;
 }
 
 function cleanLeaderboardName(value) {
   const fallback = activeUser?.displayName || activeUser?.email?.split('@')[0] || 'Wanderer';
   return String(value || fallback).replace(/[<>]/g, '').trim().slice(0, 24) || 'Wanderer';
 }
+
+const LEADERBOARD_CACHE_MS = 60000;
+const leaderboardQueryCache = new Map();
+const leaderboardProfileCache = new Map();
 
 async function publishLeaderboard(profile) {
   if (!activeUser || !profile) return;
@@ -292,6 +343,8 @@ async function publishLeaderboard(profile) {
     updatedAt: serverTimestamp()
   };
   await setDoc(doc(db, 'leaderboards', activeUser.uid), payload, { merge: true });
+  leaderboardQueryCache.clear();
+  leaderboardProfileCache.set(activeUser.uid, { at: Date.now(), profile: { id: activeUser.uid, ...payload } });
 }
 
 async function readLeaderboard(sortKey = 'totalLevel', count = 100) {
@@ -299,13 +352,24 @@ async function readLeaderboard(sortKey = 'totalLevel', count = 100) {
     'skillLevels.woodcutting','skillLevels.fishing','skillLevels.mining','skillLevels.cooking','skillLevels.crafting',
     'skillLevels.melee','skillLevels.range','skillLevels.fortitude','skillLevels.summoning','skillLevels.merching']);
   const field = allowed.has(sortKey) ? sortKey : 'totalLevel';
-  const snapshot = await getDocs(query(collection(db, 'leaderboards'), orderBy(field, 'desc'), limit(Math.max(1, Math.min(100, count)))));
-  return snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+  const safeCount = Math.max(1, Math.min(100, count));
+  const cacheKey = `${field}:${safeCount}`;
+  const cached = leaderboardQueryCache.get(cacheKey);
+  if (cached && Date.now() - cached.at < LEADERBOARD_CACHE_MS) return cached.rows;
+  const snapshot = await getDocs(query(collection(db, 'leaderboards'), orderBy(field, 'desc'), limit(safeCount)));
+  const rows = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+  leaderboardQueryCache.set(cacheKey, { at: Date.now(), rows });
+  for (const row of rows) leaderboardProfileCache.set(row.id, { at: Date.now(), profile: row });
+  return rows;
 }
 
 async function readLeaderboardProfile(uid) {
+  const cached = leaderboardProfileCache.get(uid);
+  if (cached && Date.now() - cached.at < LEADERBOARD_CACHE_MS) return cached.profile;
   const snapshot = await getDoc(doc(db, 'leaderboards', uid));
-  return snapshot.exists() ? { id: snapshot.id, ...snapshot.data() } : null;
+  const profile = snapshot.exists() ? { id: snapshot.id, ...snapshot.data() } : null;
+  if (profile) leaderboardProfileCache.set(uid, { at: Date.now(), profile });
+  return profile;
 }
 
 async function changeDisplayName(name) {

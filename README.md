@@ -148,3 +148,13 @@ If your Realtime Database was created in a non-default region and Firebase gives
 - Live multiplayer movement continues to use Realtime Database and is unchanged.
 
 This substantially reduces Firestore leaderboard writes without making rankings feel stale for a small private family world.
+
+
+## v0.15.2 — Firebase Efficiency
+
+- Cloud saves now write only top-level save sections that actually changed, while preserving the existing debounced save behavior and metadata updates.
+- Account profile and login timestamps now update once when entering the game instead of on every cloud save.
+- Live multiplayer presence still updates at the existing movement cadence, but identical idle payloads are skipped and replaced with a 25-second heartbeat.
+- Multiplayer updates send only fields that changed, avoiding repeated equipment and profile data during ordinary movement.
+- Leaderboard query and profile results are cached in memory for 60 seconds, including reuse of rows already loaded for profile dialogs.
+- No gameplay rules, movement responsiveness, save contents, leaderboard publishing cadence, or multiplayer visibility behavior were intentionally changed.
