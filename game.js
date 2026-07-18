@@ -1,7 +1,7 @@
 (() => {
   'use strict';
 
-  const VERSION = '0.18.1';
+  const VERSION = '0.19.0';
   const XP_RATE = 1.5;
   const SAVE_KEY = window.IdleCloud?.localSaveKey;
   if (!SAVE_KEY) throw new Error('No authenticated account save key is available.');
@@ -137,11 +137,19 @@
     addRecipe({id:axeKey,category:'Tools',level:tier.level,output:axeKey,amount:1,xp:Math.max(10,tier.level*3),materials:toolMaterials});
     addRecipe({id:pickKey,category:'Tools',level:tier.level,output:pickKey,amount:1,xp:Math.max(10,tier.level*3),materials:toolMaterials});
 
-    const dagger=`${tier.key}Dagger`, sword=`${tier.key}Sword`;
-    defineItem(dagger,{name:`${tier.name} Dagger`,type:'Weapon',description:`A quick ${tier.name.toLowerCase()} dagger. Damage is determined by combat stats and the target's defence.`,slot:'weapon',stats:{'Attack speed':'3 ticks · 1.8 seconds','Accuracy':`+${tier.accuracy}`,'Strength':`+${tier.strength}`}});
-    defineItem(sword,{name:`${tier.name} Sword`,type:'Weapon',description:`A balanced ${tier.name.toLowerCase()} sword. Damage is determined by combat stats and the target's defence.`,slot:'weapon',stats:{'Attack speed':'4 ticks · 2.4 seconds','Accuracy':`+${tier.accuracy+2}`,'Strength':`+${tier.strength+2}`}});
-    addRecipe({id:dagger,category:'Weapons',level:tier.level,output:dagger,amount:1,xp:Math.max(8,tier.level*2),materials:tier.key==='stone'?{stone:2}:{[mat]:1}});
-    addRecipe({id:sword,category:'Weapons',level:tier.level,output:sword,amount:1,xp:Math.max(12,tier.level*3),materials:tier.key==='stone'?{stone:3,cedarLog:1}:{[mat]:2,[tier.log]:1}});
+    const weaponFamilies=[
+      ['Dagger',2,0,0,1],
+      ['Sword',4,2,2,2],
+      ['Spear',5,4,4,2],
+      ['Warhammer',6,1,7,3]
+    ];
+    for(const [label,ticks,accuracyBonus,strengthBonus,materialCount] of weaponFamilies){
+      const key=`${tier.key}${label}`;
+      const weaponClass=label.toLowerCase();
+      defineItem(key,{name:`${tier.name} ${label}`,type:'Weapon',description:`A ${ticks<=2?'very fast':ticks>=6?'slow, crushing':'balanced'} ${tier.name.toLowerCase()} ${weaponClass}. Faster weapons strike often; slower weapons deliver heavier hits.`,slot:'weapon',weaponClass,stats:{'Attack speed':`${ticks} ticks · ${(ticks*TICK_SECONDS).toFixed(1)} seconds`,'Accuracy':`+${tier.accuracy+accuracyBonus}`,'Strength':`+${tier.strength+strengthBonus}`}});
+      const materials=tier.key==='stone'?{stone:materialCount+1,cedarLog:1}:{[mat]:materialCount,[tier.log]:1};
+      addRecipe({id:key,category:'Weapons',level:tier.level,output:key,amount:1,xp:Math.max(8,tier.level*(materialCount+1)),materials});
+    }
 
     const armor=[['Helmet','head',2],['Body','body',5],['Legs','legs',4],['Boots','boots',2],['Shield','shield',3]];
     for(const [label,slot,count] of armor){
@@ -156,10 +164,31 @@
   defineItem('basicFishingRod', ITEM_DEFS.basicFishingRod);
   addRecipe({id:'basicFishingRod',category:'Tools',level:1,output:'basicFishingRod',amount:1,xp:10,materials:{cedarLog:2}});
 
-  for(const [key,name,level,log,ticks,strength] of BOW_TIERS){
-    const itemKey=`${key}Bow`;
-    defineItem(itemKey,{name:`${name} Bow`,type:'Ranged weapon',description:`A ${name.toLowerCase()} bow. Damage is determined by Ranged skill, ammunition, and the target's defence.`,slot:'weapon',stats:{'Attack speed':`${ticks} ticks · ${(ticks*TICK_SECONDS).toFixed(1)} seconds`,'Ranged accuracy':`+${strength+3}`,'Ranged strength':`+${strength}`,'Range':'3 tiles'}});
-    addRecipe({id:itemKey,category:'Weapons',level,output:itemKey,amount:1,xp:Math.max(10,level*3),materials:{[log]:2}});
+  for(const [key,name,level,log,_ticks,strength] of BOW_TIERS){
+    const shortKey=`${key}Shortbow`, longKey=`${key}Longbow`, slingKey=`${key}Sling`;
+    defineItem(shortKey,{name:`${name} Shortbow`,type:'Ranged weapon',description:`A quick ${name.toLowerCase()} shortbow with a compact firing arc.`,slot:'weapon',weaponClass:'shortbow',projectile:'arrow',stats:{'Attack speed':'3 ticks · 1.8 seconds','Ranged accuracy':`+${strength+3}`,'Ranged strength':`+${strength}`,'Range':'3 tiles'}});
+    defineItem(longKey,{name:`${name} Longbow`,type:'Ranged weapon',description:`A deliberate ${name.toLowerCase()} longbow that trades speed for range and heavier arrows.`,slot:'weapon',weaponClass:'longbow',projectile:'heavyArrow',stats:{'Attack speed':'5 ticks · 3.0 seconds','Ranged accuracy':`+${strength+6}`,'Ranged strength':`+${strength+4}`,'Range':'4 tiles'}});
+    defineItem(slingKey,{name:`${name} Sling`,type:'Ranged weapon',description:`A very fast sling that launches small stones along a curved path.`,slot:'weapon',weaponClass:'sling',projectile:'stone',stats:{'Attack speed':'2 ticks · 1.2 seconds','Ranged accuracy':`+${strength+1}`,'Ranged strength':`+${Math.max(1,strength-1)}`,'Range':'2.5 tiles'}});
+    addRecipe({id:shortKey,category:'Weapons',level,output:shortKey,amount:1,xp:Math.max(10,level*3),materials:{[log]:2}});
+    addRecipe({id:longKey,category:'Weapons',level,output:longKey,amount:1,xp:Math.max(14,level*4),materials:{[log]:3}});
+    addRecipe({id:slingKey,category:'Weapons',level,output:slingKey,amount:1,xp:Math.max(8,level*2),materials:{[log]:1,stone:1}});
+    // Preserve existing bow IDs and convert them into balanced recurve bows.
+    const oldKey=`${key}Bow`;
+    defineItem(oldKey,{name:`${name} Recurve Bow`,type:'Ranged weapon',description:`A balanced ${name.toLowerCase()} recurve bow.`,slot:'weapon',weaponClass:'recurve',projectile:'arrow',stats:{'Attack speed':'4 ticks · 2.4 seconds','Ranged accuracy':`+${strength+4}`,'Ranged strength':`+${strength+2}`,'Range':'3.5 tiles'}});
+  }
+
+  defineItem('temperingShard',{name:'Tempering Shard',type:'Upgrade material',description:'A dense creature-forged shard used for the final stage of town equipment upgrades.',uses:'Town Forge · +3 equipment'});
+
+  // Light armour families use creature materials and favour mobility and ranged accuracy.
+  const LIGHT_ARMOUR_SETS=[
+    ['hide','Hide',5,'animalHide',1],['scaled','Scaled',30,'crocodileHide',3],['jaguar','Jaguar',45,'jaguarHide',5],['frozen','Frozen Hide',55,'frozenHide',7]
+  ];
+  for(const [prefix,name,level,material,defence] of LIGHT_ARMOUR_SETS){
+    for(const [label,slot,count] of [['Hood','head',2],['Vest','body',4],['Chaps','legs',3],['Boots','boots',2]]){
+      const key=`${prefix}${label}`;
+      defineItem(key,{name:`${name} ${label}`,type:'Light armour',description:`Light ${name.toLowerCase()} armour offering modest protection and improved ranged handling.`,slot,stats:{Defence:`+${defence+Math.max(0,count-2)}`,'Ranged accuracy':`+${Math.max(1,Math.floor(defence/2))}`,Weight:'Light'}});
+      addRecipe({id:key,category:'Armour',level,output:key,amount:1,xp:Math.max(12,level*count),materials:{[material]:count}});
+    }
   }
 
 
@@ -235,6 +264,27 @@
     addRecipe({id:recipe.id,category:'Unique Equipment',level:recipe.level,output:recipe.id,amount:1,xp:recipe.xp,materials:recipe.materials});
   }
   for(const [raw,d] of Object.entries(COOKING_DATA)) defineItem(d.cooked,{name:d.name,type:'Cooked food',description:`A properly cooked ${d.name.replace('Cooked ','').toLowerCase()}.`,slot:'food',heal:d.heal,stats:{'Cooking level':String(d.level),'Healing':`${d.heal} HP`}});
+
+  const UPGRADE_SUFFIX='__u';
+  function equipmentUpgradeLevel(key){const match=String(key||'').match(/__u([1-3])$/);return match?Number(match[1]):0;}
+  function equipmentBaseKey(key){return String(key||'').replace(/__u[1-3]$/,'');}
+  function numericStat(value){return parseInt(String(value||'0').replace(/[^-\d]/g,''))||0;}
+  function registerEquipmentUpgrades(){
+    const baseEntries=Object.entries(ITEM_DEFS).filter(([,item])=>item?.slot&&item.slot!=='food'&&!item.summonType);
+    for(const [baseKey,base] of baseEntries){
+      for(let level=1;level<=3;level++){
+        const key=`${baseKey}${UPGRADE_SUFFIX}${level}`,stats={...(base.stats||{})};
+        if('Accuracy' in stats)stats.Accuracy=`+${numericStat(stats.Accuracy)+level*2}`;
+        if('Strength' in stats)stats.Strength=`+${numericStat(stats.Strength)+level*2}`;
+        if('Ranged accuracy' in stats)stats['Ranged accuracy']=`+${numericStat(stats['Ranged accuracy'])+level*2}`;
+        if('Ranged strength' in stats)stats['Ranged strength']=`+${numericStat(stats['Ranged strength'])+level*2}`;
+        if('Defence' in stats)stats.Defence=`+${numericStat(stats.Defence)+level*2}`;
+        stats.Upgrade=`+${level}`;
+        ITEM_DEFS[key]={...base,name:`${base.name} +${level}`,description:`${base.description} Improved at a town forge.`,stats,upgradeLevel:level,baseItemKey:baseKey};
+      }
+    }
+  }
+  registerEquipmentUpgrades();
 
   const TOWN_NPCS = {
     'Starting Town':[['Mira','A cheerful guide who keeps an eye on new wanderers.'],['Old Fen','A retired woodcutter with too many stories.']],
@@ -317,6 +367,9 @@
     frostTroll:{name:'Frost Troll',behaviour:'passive',shape:'troll',hp:320,defence:55,accuracy:50,maxHit:18,ticks:6,color:'#78939b',aggro:250,respawn:300,drops:[['coins',50,145,1],['frozenMeat',2,3,1],['silverOre',2,8,.5],['trollClub',1,1,.01]]},
     frostDragon:{name:'Frost Dragon',behaviour:'passive',shape:'dragon',hp:650,defence:105,accuracy:85,maxHit:50,ticks:5,color:'#8fc5d4',aggro:340,respawn:600,drops:[['coins',250,1000,1],['dragonMeat',2,4,1],['crystal',2,10,.6],['arcticPineLog',2,10,.45],['frostScale',1,1,.025],['frozenHeart',1,1,.01]]}
   };
+  for(const [type,chance] of Object.entries({wolf:.025,crocodile:.03,jaguar:.04,iceWolf:.05,frostTroll:.08,frostDragon:.15})){
+    ENEMY_TYPES[type]?.drops?.push(['temperingShard',1,1,chance]);
+  }
   const enemySeeds=[
     // Starting Area: beginner creatures only, including exactly one deer.
     ['rabbit',1540,2240],['rabbit',1890,2050],['rabbit',2240,2390],
@@ -479,6 +532,7 @@
   let activeTree = null, queuedTree = null, activeFishingSpot = null, queuedFishingSpot = null, activeRock = null, queuedRock = null, queuedTown = null, activeEnemy = null, queuedEnemy = null, combatElapsed = 0, actionElapsed = 0, defeatActive = false;
   let animationClock = 0, autoThinkElapsed = 0;
   const floaters = [];
+  const projectiles = [];
   const remotePlayers = new Map();
   let multiplayerReady = false, multiplayerLastSent = 0, multiplayerFacing = 'down', multiplayerLastX = state.player.x, multiplayerLastY = state.player.y;
   const miniMapView = { zoom: 1.8, centerX: state.player.x, centerY: state.player.y, dragging: false, lastX: 0, lastY: 0, lastDraw: 0 };
@@ -738,11 +792,13 @@
     const ranged=item.type==='Ranged weapon';
     const accuracy=parseInt(String(stats[ranged?'Ranged accuracy':'Accuracy']||'0').replace(/[^-\d]/g,''))||0;
     const strength=parseInt(String(stats[ranged?'Ranged strength':'Strength']||'0').replace(/[^-\d]/g,''))||0;
-    return {key,style:ranged?'range':'melee',ticks:speed,accuracy,strength,range:ranged?150:58};
+    const rangeText=parseFloat(String(stats.Range||'0'))||0;
+    return {key,style:ranged?'range':'melee',ticks:speed,accuracy,strength,range:ranged?Math.max(120,rangeText*50):58,projectile:item.projectile||'arrow',weaponClass:item.weaponClass||''};
   }
   function armourDefence(){return Object.values(state.equipment).reduce((sum,key)=>sum+(parseInt(String(ITEM_DEFS[key]?.stats?.Defence||'0').replace(/[^-\d]/g,''))||0),0);}
+  function armourRangedAccuracy(){return Object.values(state.equipment).reduce((sum,key)=>sum+(parseInt(String(ITEM_DEFS[key]?.stats?.['Ranged accuracy']||'0').replace(/[^-\d]/g,''))||0),0);}
   function equipmentBonus(name){return Object.values(state.equipment).reduce((sum,key)=>sum+(Number(ITEM_DEFS[key]?.bonuses?.[name])||0),0);}
-  function playerCombatStats(){const w=weaponData(),skill=w.style==='range'?'range':'melee',level=levelFromXp(state.skills[skill]?.xp||0);return {style:w.style,level,ticks:w.ticks,range:w.range,accuracy:level*2+w.accuracy+5,maxHit:Math.max(1,Math.floor(level/8)+w.strength),defence:levelFromXp(state.skills.fortitude?.xp||0)+armourDefence()};}
+  function playerCombatStats(){const w=weaponData(),skill=w.style==='range'?'range':'melee',level=levelFromXp(state.skills[skill]?.xp||0);return {style:w.style,level,ticks:w.ticks,range:w.range,accuracy:level*2+w.accuracy+(w.style==='range'?armourRangedAccuracy():0)+5,maxHit:Math.max(1,Math.floor(level/8)+w.strength),defence:levelFromXp(state.skills.fortitude?.xp||0)+armourDefence()};}
   function hitChance(attack,defence){return clamp(attack/(attack+defence*1.35+8),.05,.95);}
   function enemyAt(x,y){let best=null,bestD=48;for(const e of enemies){if(e.hp<=0)continue;const d=Math.hypot(x-e.x,y-e.y);if(d<bestD){best=e;bestD=d;}}return best;}
   function beginCombat(enemy){activeEnemy=enemy;queuedEnemy=null;combatElapsed=0;state.summonAttackElapsed=0;enemy.target='player';enemy.returning=false;ui.actionName.textContent=`Fighting ${ENEMY_TYPES[enemy.type].name}`;ui.status.textContent=`Fighting ${ENEMY_TYPES[enemy.type].name}...`;}
@@ -762,6 +818,7 @@
   function killEnemy(enemy){const name=ENEMY_TYPES[enemy.type].name;state.statistics.totalKills=(state.statistics.totalKills||0)+1;state.statistics.killsByEnemy[enemy.type]=(state.statistics.killsByEnemy[enemy.type]||0)+1;const drops=rollEnemyDrops(enemy);enemy.hp=0;enemy.respawnAt=Date.now()+ENEMY_TYPES[enemy.type].respawn*1000;enemy.target=null;showToast(`${name} defeated${drops.length?` · ${drops.join(', ')}`:''}`);endCombat('Victory');saveGame(false);}
   function playerAttack(enemy){
     const ps=playerCombatStats(),ed=ENEMY_TYPES[enemy.type],hit=Math.random()<hitChance(ps.accuracy,ed.defence);
+    if(ps.style==='range')projectiles.push({x:state.player.x,y:state.player.y-18,targetX:enemy.x,targetY:enemy.y-18,life:0,duration:ps.projectile==='stone'?.42:ps.projectile==='heavyArrow'?.32:.26,type:ps.projectile||'arrow'});
     if(!hit){damageFloater(enemy.x,enemy.y-55,0,false);return;}
     const styleBonus=ps.style==='range'?summonBonus('rangeDamage'):summonBonus('meleeDamage'),dmg=randomInt(1,Math.max(1,Math.round(ps.maxHit*(1+styleBonus))));enemy.hp=Math.max(0,enemy.hp-dmg);damageFloater(enemy.x,enemy.y-55,dmg,true);
     const skill=ps.style==='range'?'range':'melee',combatXp=xpWithSummonBonus(skill,dmg*4),fortXp=xpWithSummonBonus('fortitude',dmg*2);awardSkillXp(skill,combatXp);awardSkillXp('fortitude',fortXp);awardSummoningXp(combatXp);renderSkills();
@@ -965,6 +1022,7 @@
     const region=regionAt(p.x,p.y);ui.region.textContent=region.name;if(document.getElementById('map')?.classList.contains('active'))drawMiniMap();
     const tx=clamp(p.x-canvas.width/2,0,WORLD.width-canvas.width),ty=clamp(p.y-canvas.height/2,0,WORLD.height-canvas.height),follow=1-Math.pow(.018,dt);camera.x+=(tx-camera.x)*follow;camera.y+=(ty-camera.y)*follow;
     for(let i=floaters.length-1;i>=0;i--){floaters[i].life-=dt;floaters[i].y-=24*dt;if(floaters[i].life<=0)floaters.splice(i,1);}
+    for(let i=projectiles.length-1;i>=0;i--){projectiles[i].life+=dt;if(projectiles[i].life>=projectiles[i].duration)projectiles.splice(i,1);}
   }
 
   function smoothPath(points){
@@ -1018,9 +1076,9 @@
       else{const t=(attackPhase-.72)/.28;combatAngle=(-Math.PI/4+Math.PI*1.02)+(Math.PI/4-(-Math.PI/4+Math.PI*1.02))*(t*t*(3-2*t));}
     }
     ctx.save();ctx.translate(s.x+13,s.y+10);ctx.rotate(working?(-.8+Math.sin(animationClock*8)*.65):(activeEnemy?combatAngle:-.35));ctx.lineCap='round';
-    if(key.endsWith('Bow')){ctx.strokeStyle=color;ctx.lineWidth=3;ctx.beginPath();ctx.arc(9,-4,15,-1.25,1.25);ctx.stroke();ctx.strokeStyle='#e5d9af';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(13,-18);ctx.lineTo(13,10);ctx.stroke();}
-    else if(key.endsWith('Sword')||key.endsWith('Blade')||key.endsWith('Spear')){ctx.strokeStyle='#76543b';ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(0,2);ctx.lineTo(7,-5);ctx.stroke();ctx.strokeStyle=color;ctx.lineWidth=6;ctx.beginPath();ctx.moveTo(7,-5);ctx.lineTo(29,-27);ctx.stroke();ctx.strokeStyle='#e7eef2';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(9,-7);ctx.lineTo(29,-27);ctx.stroke();}
-    else if(key.endsWith('Dagger')){ctx.strokeStyle='#76543b';ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(0,2);ctx.lineTo(6,-4);ctx.stroke();ctx.strokeStyle=color;ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(6,-4);ctx.lineTo(18,-16);ctx.stroke();}
+    if(['shortbow','longbow','recurve'].includes(item.weaponClass)||key.endsWith('Bow')){ctx.strokeStyle=color;ctx.lineWidth=3;ctx.beginPath();ctx.arc(9,-4,15,-1.25,1.25);ctx.stroke();ctx.strokeStyle='#e5d9af';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(13,-18);ctx.lineTo(13,10);ctx.stroke();}
+    else if(['sword','spear'].includes(item.weaponClass)||key.endsWith('Sword')||key.endsWith('Blade')||key.endsWith('Spear')){ctx.strokeStyle='#76543b';ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(0,2);ctx.lineTo(7,-5);ctx.stroke();ctx.strokeStyle=color;ctx.lineWidth=6;ctx.beginPath();ctx.moveTo(7,-5);ctx.lineTo(29,-27);ctx.stroke();ctx.strokeStyle='#e7eef2';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(9,-7);ctx.lineTo(29,-27);ctx.stroke();}
+    else if(item.weaponClass==='dagger'||key.endsWith('Dagger')){ctx.strokeStyle='#76543b';ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(0,2);ctx.lineTo(6,-4);ctx.stroke();ctx.strokeStyle=color;ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(6,-4);ctx.lineTo(18,-16);ctx.stroke();}
     else {ctx.strokeStyle='#795739';ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(0,2);ctx.lineTo(20,-15);ctx.stroke();ctx.fillStyle=color;ctx.fillRect(15,-21,11,10);}
     ctx.restore();
   }
@@ -1120,7 +1178,8 @@
     if(activeTree||activeRock){const swing=Math.sin(animationClock*8)*.65;ctx.save();ctx.translate(s.x+11,s.y+8);ctx.rotate(-.8+swing);ctx.strokeStyle=activeRock?'#7b8590':'#8a6540';ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(21,-15);ctx.stroke();ctx.restore();}else drawEquippedWeapon(s);
     if(activeFishingSpot){const fs=worldToScreen(activeFishingSpot.x,activeFishingSpot.y);ctx.strokeStyle='#dbc68b';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(s.x+12,s.y+8);ctx.quadraticCurveTo((s.x+fs.x)/2,s.y-28,fs.x,fs.y);ctx.stroke();ctx.fillStyle='#f1d267';ctx.fillRect(fs.x-2,fs.y-2,4,4);}
   }
-  function draw(){ctx.clearRect(0,0,canvas.width,canvas.height);ctx.fillStyle='#397f9f';ctx.fillRect(0,0,canvas.width,canvas.height);ctx.strokeStyle='rgba(210,240,248,.22)';ctx.lineWidth=3;for(let y=-30+(animationClock*12)%46;y<canvas.height+40;y+=46){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(canvas.width,y+10);ctx.stroke();}fillSmooth(continent,'#72ae61','#d5c68b',8);drawTileTexture(continent);for(const r of regions){fillStraight(r.points,r.color,'rgba(55,50,38,.2)',3);drawTileTexture(r.points,true);}for(const w of waters)drawWater(w);for(const f of fishingSpots)drawFishingSpot(f);for(const t of towns)drawTown(t);for(const t of trees)drawTree(t);for(const r of rocks)drawRock(r);for(const e of enemies)drawEnemy(e);drawRemotePlayers();drawSummon();drawPlayer();for(const f of floaters){const s=worldToScreen(f.x,f.y);ctx.globalAlpha=Math.min(1,f.life*1.4);ctx.fillStyle=f.damage?(f.miss?'#d7dbe2':'#ff6b6b'):'#fff4b8';ctx.strokeStyle='rgba(20,20,20,.8)';ctx.lineWidth=4;ctx.font='bold 14px system-ui';ctx.textAlign='center';ctx.strokeText(f.text,s.x,s.y);ctx.fillText(f.text,s.x,s.y);ctx.textAlign='start';ctx.globalAlpha=1;}}
+  function drawProjectiles(){for(const p of projectiles){const t=Math.min(1,p.life/p.duration),ease=t*(2-t),x=p.x+(p.targetX-p.x)*ease,y=p.y+(p.targetY-p.y)*ease-(p.type==='stone'?Math.sin(Math.PI*t)*28:0),s=worldToScreen(x,y);ctx.save();ctx.translate(s.x,s.y);const angle=Math.atan2(p.targetY-p.y,p.targetX-p.x);ctx.rotate(angle);if(p.type==='stone'){ctx.fillStyle='#8d9297';ctx.strokeStyle='#34393e';ctx.lineWidth=2;ctx.beginPath();ctx.arc(0,0,5,0,Math.PI*2);ctx.fill();ctx.stroke();}else{ctx.strokeStyle=p.type==='heavyArrow'?'#d8ecf4':'#f1dfad';ctx.lineWidth=p.type==='heavyArrow'?4:2;ctx.beginPath();ctx.moveTo(-10,0);ctx.lineTo(10,0);ctx.stroke();ctx.fillStyle=p.type==='heavyArrow'?'#9fd4e7':'#d7c07d';ctx.beginPath();ctx.moveTo(11,0);ctx.lineTo(4,-4);ctx.lineTo(4,4);ctx.closePath();ctx.fill();}ctx.restore();}}
+  function draw(){ctx.clearRect(0,0,canvas.width,canvas.height);ctx.fillStyle='#397f9f';ctx.fillRect(0,0,canvas.width,canvas.height);ctx.strokeStyle='rgba(210,240,248,.22)';ctx.lineWidth=3;for(let y=-30+(animationClock*12)%46;y<canvas.height+40;y+=46){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(canvas.width,y+10);ctx.stroke();}fillSmooth(continent,'#72ae61','#d5c68b',8);drawTileTexture(continent);for(const r of regions){fillStraight(r.points,r.color,'rgba(55,50,38,.2)',3);drawTileTexture(r.points,true);}for(const w of waters)drawWater(w);for(const f of fishingSpots)drawFishingSpot(f);for(const t of towns)drawTown(t);for(const t of trees)drawTree(t);for(const r of rocks)drawRock(r);for(const e of enemies)drawEnemy(e);drawRemotePlayers();drawSummon();drawPlayer();drawProjectiles();for(const f of floaters){const s=worldToScreen(f.x,f.y);ctx.globalAlpha=Math.min(1,f.life*1.4);ctx.fillStyle=f.damage?(f.miss?'#d7dbe2':'#ff6b6b'):'#fff4b8';ctx.strokeStyle='rgba(20,20,20,.8)';ctx.lineWidth=4;ctx.font='bold 14px system-ui';ctx.textAlign='center';ctx.strokeText(f.text,s.x,s.y);ctx.fillText(f.text,s.x,s.y);ctx.textAlign='start';ctx.globalAlpha=1;}}
 
   function openPanel(name){if(name==='leaderboards')renderLeaderboards(leaderboardSort);document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active',t.dataset.panel===name));document.querySelectorAll('.panel').forEach(p=>p.classList.toggle('active',p.id===name));}
   function itemCategory(key,item){
@@ -1153,11 +1212,12 @@
   function totalLevel(){return Object.values(state.skills).reduce((sum,v)=>sum+levelFromXp(v?.xp||0),0);}
   function openTown(town){
     currentTown=town;ui.townName.textContent=town.name;ui.townDescription.textContent=town.description;
-    const services=[['NPCs','Talk to local residents and view rotating requests.'],['Crafting Table','Create tools, weapons, armour, bows, and refined materials.'],['Cooking Fire','Cook raw fish and meat instantly.'],['Player-Owned Home','Build permanent rooms and family features.'],['Shop','Buy supplies or sell any owned item.'],['Notice Board','View this town’s rotating quests.'],['Inn','Hear a short local rumour and rest.']];
+    const services=[['NPCs','Talk to local residents and view rotating requests.'],['Crafting Table','Create tools, weapons, armour, bows, and refined materials.'],['Forge Upgrades','Combine duplicate weapons or armour into stronger +1, +2, and +3 equipment.'],['Cooking Fire','Cook raw fish and meat instantly.'],['Player-Owned Home','Build permanent rooms and family features.'],['Shop','Buy supplies or sell any owned item.'],['Notice Board','View this town’s rotating quests.'],['Inn','Hear a short local rumour and rest.']];
     ui.townServices.innerHTML=services.map(([name,description])=>`<button class="town-service" data-service="${name}"><strong>${name}</strong><span>${description}</span></button>`).join('');
     ui.townServices.querySelectorAll('[data-service]').forEach(b=>b.addEventListener('click',()=>{
       const service=b.dataset.service;ui.townDialog.close();
       if(service==='Crafting Table')return openCrafting(town);
+      if(service==='Forge Upgrades')return openForge(town);
       if(service==='Cooking Fire')return openCooking(town);
       if(service==='NPCs')return openNPCs(town);
       if(service==='Notice Board')return openQuests(town);
@@ -1166,6 +1226,26 @@
       if(service==='Inn')return openInn(town);
     }));
     ui.townDialog.showModal();ui.status.textContent=`Visiting ${town.name}`;ui.actionName.textContent='In town';
+  }
+  function forgeCandidates(){
+    return Object.entries(state.inventory).filter(([key,count])=>count>=2&&ITEM_DEFS[key]?.slot&&ITEM_DEFS[key].slot!=='food'&&equipmentUpgradeLevel(key)<3);
+  }
+  function openForge(town){
+    const candidates=forgeCandidates();
+    const html=candidates.length?candidates.map(([key,count])=>{
+      const item=ITEM_DEFS[key],level=equipmentUpgradeLevel(key),next=level+1,needsShard=next===3,can=count>=2&&(!needsShard||(state.inventory.temperingShard||0)>=1);
+      return `<article class="service-card ${can?'':'locked'}"><div><strong>${item.name} → ${ITEM_DEFS[`${equipmentBaseKey(key)}${UPGRADE_SUFFIX}${next}`]?.name}</strong><span>Combine 2 identical items${needsShard?' + 1 Tempering Shard':''}</span><small>Owned ×${count}${needsShard?` · Shards ${(state.inventory.temperingShard||0)}/1`:''}</small></div><button data-forge="${key}" ${can?'':'disabled'}>Upgrade</button></article>`;
+    }).join(''):'<div class="empty-state"><strong>No upgrade pair ready</strong><span>Bring two identical weapons or armour pieces. +3 also requires a Tempering Shard from powerful creatures.</span></div>';
+    openService('Town Forge',`${town.name} Forge`,'Two identical pieces become one upgraded item. Attack speed and range stay the same; combat stats improve.',html);
+    ui.serviceContent.querySelectorAll('[data-forge]').forEach(button=>button.addEventListener('click',()=>{
+      const source=button.dataset.forge,level=equipmentUpgradeLevel(source),next=level+1,target=`${equipmentBaseKey(source)}${UPGRADE_SUFFIX}${next}`;
+      if((state.inventory[source]||0)<2||!ITEM_DEFS[target])return;
+      if(next===3&&(state.inventory.temperingShard||0)<1)return showToast('A Tempering Shard is required');
+      state.inventory[source]-=2;state.inventory[target]=(state.inventory[target]||0)+1;
+      if(next===3)state.inventory.temperingShard--;
+      const slot=Object.keys(state.equipment).find(slot=>state.equipment[slot]===source);if(slot)state.equipment[slot]=target;
+      awardSkillXp('crafting',Math.max(15,next*25));showToast(`${ITEM_DEFS[target].name} forged`);audioEngine.sfx('craft');renderAll();saveGame(false);openForge(town);
+    }));
   }
   function openService(type,title,description,html){ui.serviceType.textContent=type;ui.serviceTitle.textContent=title;ui.serviceDescription.textContent=description||'';ui.serviceContent.innerHTML=html;ui.serviceDialog.showModal();}
   function cookingEntries(){return Object.entries(COOKING_DATA).filter(([raw])=>(state.inventory[raw]||0)>0);}
