@@ -1,7 +1,7 @@
 (() => {
   'use strict';
 
-  const VERSION = '0.15.0';
+  const VERSION = '0.15.1';
   const XP_RATE = 1.5;
   const SAVE_KEY = window.IdleCloud?.localSaveKey;
   if (!SAVE_KEY) throw new Error('No authenticated account save key is available.');
@@ -634,6 +634,8 @@
 
 
   const UNIQUE_DROP_KEYS = new Set(Object.entries(ITEM_DEFS).filter(([,d])=>/Rare combat drop|Unique/.test(d.type||'')).map(([k])=>k));
+  const LEADERBOARD_PUBLISH_INTERVAL = 60 * 60 * 1000;
+  const LEADERBOARD_PUBLISH_KEY = 'idle-wanderer-leaderboard-last-publish';
   let leaderboardPublishTimer=null;
   let leaderboardSort='totalLevel';
   function totalLevel(){return Object.values(state.skills).reduce((sum,s)=>sum+levelFromXp(s.xp||0),0);}
@@ -643,12 +645,25 @@
     const highest=Object.entries(skillLevels).sort((a,b)=>b[1]-a[1])[0]||['none',1];
     return {displayName:window.IdleCloud?.user?.displayName||'Wanderer',totalLevel:totalLevel(),combatLevel:combatLevel(),coins:state.inventory.coins||0,lifetimeGold:state.statistics.lifetimeGoldEarned||0,totalKills:state.statistics.totalKills||0,uniqueDrops:state.statistics.uniqueDropsFound||0,deaths:state.statistics.deaths||0,summonsUnlocked:Object.keys(SUMMON_DEFS).filter(k=>(state.inventory[`${k}Essence`]||0)>0).length,skillLevels,highestSkill:{name:SKILL_DEFS[highest[0]]?.name||highest[0],level:highest[1]}};
   }
-  function queueLeaderboardPublish(immediate=false){clearTimeout(leaderboardPublishTimer);leaderboardPublishTimer=setTimeout(()=>window.IdleCloud?.publishLeaderboard(leaderboardProfile()).catch(e=>console.warn('Leaderboard publish failed',e)),immediate?0:1800);}
+  function queueLeaderboardPublish(force=false){
+    clearTimeout(leaderboardPublishTimer);
+    const lastPublished=Number(localStorage.getItem(LEADERBOARD_PUBLISH_KEY)||0);
+    const elapsed=Date.now()-lastPublished;
+    const delay=force?0:Math.max(0,LEADERBOARD_PUBLISH_INTERVAL-elapsed);
+    leaderboardPublishTimer=setTimeout(async()=>{
+      try{
+        await window.IdleCloud?.publishLeaderboard(leaderboardProfile());
+        localStorage.setItem(LEADERBOARD_PUBLISH_KEY,String(Date.now()));
+      }catch(e){
+        console.warn('Leaderboard publish failed',e);
+      }
+    },delay);
+  }
   function leaderboardValue(row,key){if(key.startsWith('skillLevels.'))return row.skillLevels?.[key.split('.')[1]]||1;return Number(row[key])||0;}
   const LEADERBOARD_CATEGORIES=[['totalLevel','Total Level'],['combatLevel','Combat'],['totalKills','Kills'],['coins','Gold'],['lifetimeGold','Gold Earned'],['uniqueDrops','Uniques'],['summonsUnlocked','Summons'],['skillLevels.woodcutting','Woodcutting'],['skillLevels.mining','Mining'],['skillLevels.fishing','Fishing'],['skillLevels.cooking','Cooking'],['skillLevels.crafting','Crafting'],['skillLevels.melee','Melee'],['skillLevels.range','Ranged'],['skillLevels.fortitude','Fortitude'],['skillLevels.summoning','Summoning']];
   async function renderLeaderboards(sortKey=leaderboardSort){
     leaderboardSort=sortKey;if(!ui.leaderboards)return;ui.leaderboards.innerHTML='<div class="leaderboard-loading">Loading rankings…</div>';
-    try{queueLeaderboardPublish(true);const rows=await window.IdleCloud.getLeaderboard(sortKey,100),me=window.IdleCloud.user?.uid;
+    try{queueLeaderboardPublish(false);const rows=await window.IdleCloud.getLeaderboard(sortKey,100),me=window.IdleCloud.user?.uid;
       const mine=leaderboardProfile();ui.leaderboards.innerHTML=`<div class="leaderboard-head"><div><strong>Family Leaderboards</strong><span>Friendly rankings from cloud saves</span></div><button id="renamePlayerButton" class="small-action">Rename</button></div><div class="leaderboard-own-stats"><div><span>Total level</span><strong>${mine.totalLevel}</strong></div><div><span>Combat</span><strong>${mine.combatLevel}</strong></div><div><span>Kills</span><strong>${mine.totalKills.toLocaleString()}</strong></div><div><span>Gold</span><strong>${mine.coins.toLocaleString()}</strong></div></div><div class="leaderboard-tabs">${LEADERBOARD_CATEGORIES.map(([k,n])=>`<button data-rank="${k}" class="${k===sortKey?'active':''}">${n}</button>`).join('')}</div><div class="leaderboard-list">${rows.length?rows.map((r,i)=>`<button class="leaderboard-row ${r.id===me?'is-me':''}" data-profile="${r.id}"><b class="rank-position">${i<3?['🥇','🥈','🥉'][i]:`#${i+1}`}</b><span><strong>${escapeHtml(r.displayName||'Wanderer')}</strong><small>${r.id===me?'You · ':''}Total ${r.totalLevel||0}</small></span><em>${leaderboardValue(r,sortKey).toLocaleString()}</em></button>`).join(''):'<p class="leaderboard-empty">No ranked players yet. Your profile is being published now.</p>'}</div>`;
       ui.leaderboards.querySelectorAll('[data-rank]').forEach(b=>b.addEventListener('click',()=>renderLeaderboards(b.dataset.rank)));
       ui.leaderboards.querySelectorAll('[data-profile]').forEach(b=>b.addEventListener('click',()=>showLeaderboardProfile(b.dataset.profile)));
@@ -665,7 +680,7 @@
     state.fishingState=Object.fromEntries(fishingSpots.map(f=>[f.id,{remaining:f.remaining,respawnAt:f.respawnAt}]));
     state.rockState=Object.fromEntries(rocks.map(r=>[r.id,{hp:r.hp,respawnAt:r.respawnAt}]));
     state.enemyState=Object.fromEntries(enemies.map(e=>[e.id,{x:e.x,y:e.y,hp:e.hp,respawnAt:e.respawnAt}]));
-    state.lastSavedAt=Date.now(); state.version=VERSION; localStorage.setItem(SAVE_KEY,JSON.stringify(state)); window.IdleCloud?.save(state, show); queueLeaderboardPublish(show); if(show){showToast('Cloud save queued');audioEngine.sfx('save');}
+    state.lastSavedAt=Date.now(); state.version=VERSION; localStorage.setItem(SAVE_KEY,JSON.stringify(state)); window.IdleCloud?.save(state, show); queueLeaderboardPublish(false); if(show){showToast('Cloud save queued');audioEngine.sfx('save');}
   }
   function showToast(message){ ui.toast.textContent=message;ui.toast.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>ui.toast.classList.remove('show'),1800); }
   function worldToScreen(x,y){ return {x:x-camera.x,y:y-camera.y}; }

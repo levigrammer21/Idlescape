@@ -137,3 +137,14 @@ This build adds live shared-map presence for a small private group. Signed-in pl
 4. Deploy every file in this archive so the v0.15.0 service-worker cache replaces the previous build.
 
 If your Realtime Database was created in a non-default region and Firebase gives it a URL other than `https://idle-wonders-default-rtdb.firebaseio.com`, replace `databaseURL` in `firebase.js` with the exact URL displayed in the Firebase console.
+
+
+## v0.15.1 — Hourly Leaderboards
+
+- Leaderboard profiles now publish at most once per hour per browser/account.
+- Opening or refreshing the leaderboard no longer creates an immediate Firestore write.
+- Normal game saves no longer force a leaderboard write.
+- Renaming a player remains an intentional immediate leaderboard update.
+- Live multiplayer movement continues to use Realtime Database and is unchanged.
+
+This substantially reduces Firestore leaderboard writes without making rankings feel stale for a small private family world.
