@@ -1,7 +1,7 @@
 (() => {
   'use strict';
 
-  const VERSION = '0.18.0';
+  const VERSION = '0.18.1';
   const XP_RATE = 1.5;
   const SAVE_KEY = window.IdleCloud?.localSaveKey;
   if (!SAVE_KEY) throw new Error('No authenticated account save key is available.');
@@ -158,7 +158,7 @@
 
   for(const [key,name,level,log,ticks,strength] of BOW_TIERS){
     const itemKey=`${key}Bow`;
-    defineItem(itemKey,{name:`${name} Bow`,type:'Ranged weapon',description:`A ${name.toLowerCase()} bow. Damage is determined by Ranged skill, ammunition, and the target's defence.`,slot:'weapon',stats:{'Attack speed':`${ticks} ticks · ${(ticks*TICK_SECONDS).toFixed(1)} seconds`,'Ranged accuracy':`+${strength+3}`,'Ranged strength':`+${strength}`,'Range':'6 tiles'}});
+    defineItem(itemKey,{name:`${name} Bow`,type:'Ranged weapon',description:`A ${name.toLowerCase()} bow. Damage is determined by Ranged skill, ammunition, and the target's defence.`,slot:'weapon',stats:{'Attack speed':`${ticks} ticks · ${(ticks*TICK_SECONDS).toFixed(1)} seconds`,'Ranged accuracy':`+${strength+3}`,'Ranged strength':`+${strength}`,'Range':'3 tiles'}});
     addRecipe({id:itemKey,category:'Weapons',level,output:itemKey,amount:1,xp:Math.max(10,level*3),materials:{[log]:2}});
   }
 
@@ -738,7 +738,7 @@
     const ranged=item.type==='Ranged weapon';
     const accuracy=parseInt(String(stats[ranged?'Ranged accuracy':'Accuracy']||'0').replace(/[^-\d]/g,''))||0;
     const strength=parseInt(String(stats[ranged?'Ranged strength':'Strength']||'0').replace(/[^-\d]/g,''))||0;
-    return {key,style:ranged?'range':'melee',ticks:speed,accuracy,strength,range:ranged?260:58};
+    return {key,style:ranged?'range':'melee',ticks:speed,accuracy,strength,range:ranged?150:58};
   }
   function armourDefence(){return Object.values(state.equipment).reduce((sum,key)=>sum+(parseInt(String(ITEM_DEFS[key]?.stats?.Defence||'0').replace(/[^-\d]/g,''))||0),0);}
   function equipmentBonus(name){return Object.values(state.equipment).reduce((sum,key)=>sum+(Number(ITEM_DEFS[key]?.bonuses?.[name])||0),0);}

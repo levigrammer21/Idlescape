@@ -1,18 +1,16 @@
-# Idle Wanderer v0.18.0 — Compact Game UI
+# Idle Wanderer v0.18.1 — Ranged Combat
 
-A visual and layout-only mobile UI update built from v0.17.1.
+A focused combat update built from v0.18.0.
 
 ## Changes
 
-- Increased the share of the screen available to the live game world and active panel.
-- Compressed the header, cloud status, coin counter, region, HP, online count, and action controls.
-- Rebuilt the main navigation as a six-button icon bar with small labels.
-- Reduced inventory filter height and card spacing.
-- Kept a three-column mobile inventory grid while shortening item cards.
-- Removed repeated item-type text from cards; full information remains in the item dialog.
-- Improved pressed and keyboard-focus feedback.
-- Added responsive rules for short and narrow phone screens.
+- Bows now attack from a modestly longer distance than melee weapons.
+- Bow item details now report a 3-tile attack range.
+- Successful attacks with ranged weapons award Ranged XP.
+- Successful ranged damage continues to award Fortitude and Summoning XP using the existing combat rules.
+- Offline combat awards Ranged XP when a ranged weapon is equipped.
+- Melee weapons continue to use the original close-combat range and award Melee XP.
 
 ## Gameplay safety
 
-This update does not alter combat, movement, drops, saves, resources, enemies, progression, multiplayer behavior, or world placement.
+No weapon damage, accuracy, attack speed, enemy stats, drops, movement speed, saves, multiplayer behavior, or world placement were changed.
