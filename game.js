@@ -1,7 +1,7 @@
 (() => {
   'use strict';
 
-  const VERSION = '0.17.0';
+  const VERSION = '0.17.1';
   const XP_RATE = 1.5;
   const SAVE_KEY = window.IdleCloud?.localSaveKey;
   if (!SAVE_KEY) throw new Error('No authenticated account save key is available.');
@@ -295,27 +295,27 @@
 
 
   const ENEMY_TYPES = {
-    rabbit:{name:'Rabbit',behaviour:'passive',shape:'rabbit',hp:8,defence:1,accuracy:3,maxHit:1,ticks:5,color:'#d9cfb8',respawn:20,drops:[['rawRabbit',1,1,1],['rabbitFoot',1,1,.0125]]},
-    giantRat:{name:'Giant Rat',behaviour:'passive',shape:'rat',hp:14,defence:3,accuracy:6,maxHit:2,ticks:4,color:'#746d68',respawn:24,drops:[['ratMeat',1,1,1],['ratTail',1,1,.025]]},
-    deer:{name:'Deer',behaviour:'passive',shape:'deer',hp:24,defence:7,accuracy:9,maxHit:3,ticks:5,color:'#a6774e',respawn:32,drops:[['rawVenison',1,2,1],['animalHide',1,1,.55],['antler',1,1,.0167]]},
-    wildBoar:{name:'Wild Boar',behaviour:'aggressive',shape:'boar',hp:30,defence:9,accuracy:12,maxHit:5,ticks:4,color:'#74523c',aggro:190,respawn:38,drops:[['rawPork',1,2,1],['animalHide',1,1,.45],['boarTusk',1,1,.02]]},
-    wolf:{name:'Wolf',behaviour:'aggressive',shape:'wolf',hp:40,defence:12,accuracy:15,maxHit:6,ticks:3,color:'#66717b',aggro:230,respawn:45,drops:[['wolfMeat',1,2,1],['animalHide',1,1,.5],['wolfFang',1,1,.0154]]},
-    bandit:{name:'Bandit',behaviour:'aggressive',shape:'humanoid',hp:48,defence:14,accuracy:18,maxHit:7,ticks:4,color:'#8d6548',aggro:220,respawn:55,drops:[['coins',8,24,1],['clothScrap',1,2,.7],['banditDagger',1,1,.01]]},
-    skeleton:{name:'Skeleton',behaviour:'aggressive',shape:'skeleton',hp:55,defence:17,accuracy:20,maxHit:8,ticks:4,color:'#ded9c8',aggro:220,respawn:60,drops:[['bones',1,2,1],['coins',10,30,.7],['ancientBone',1,1,.0133]]},
-    wraith:{name:'Wraith',behaviour:'aggressive',shape:'wraith',hp:85,defence:25,accuracy:29,maxHit:11,ticks:5,color:'#8c85ad',aggro:250,respawn:150,drops:[['spiritResidue',1,2,1],['wraithCloth',1,1,.01]]},
-    scorpion:{name:'Scorpion',behaviour:'aggressive',shape:'scorpion',hp:36,defence:10,accuracy:16,maxHit:6,ticks:3,color:'#b4773f',aggro:190,respawn:42,drops:[['scorpionMeat',1,1,1],['venomGland',1,1,.0167]]},
-    sandSerpent:{name:'Sand Serpent',behaviour:'aggressive',shape:'serpent',hp:62,defence:19,accuracy:24,maxHit:9,ticks:4,color:'#b89b58',aggro:230,respawn:70,drops:[['serpentMeat',1,2,1],['serpentScale',1,2,.5],['sandFang',1,1,.0118]]},
-    sandGolem:{name:'Sand Golem',behaviour:'aggressive',shape:'golem',hp:110,defence:34,accuracy:30,maxHit:13,ticks:6,color:'#c4a66d',aggro:200,respawn:180,drops:[['stone',2,5,1],['goldOre',1,2,.3],['golemCore',1,1,.01]]},
-    bogSlime:{name:'Bog Slime',behaviour:'passive',shape:'slime',hp:32,defence:8,accuracy:10,maxHit:4,ticks:5,color:'#739d75',respawn:38,drops:[['slimeGel',1,3,1],['clearGel',1,1,.02]]},
-    crocodile:{name:'Crocodile',behaviour:'aggressive',shape:'crocodile',hp:78,defence:24,accuracy:28,maxHit:11,ticks:4,color:'#526f47',aggro:240,respawn:85,drops:[['crocodileMeat',1,2,1],['crocodileHide',1,1,.65],['crocodileTooth',1,1,.0143]]},
-    marshLurker:{name:'Marsh Lurker',behaviour:'aggressive',shape:'lurker',hp:120,defence:37,accuracy:38,maxHit:15,ticks:5,color:'#47675c',aggro:260,respawn:210,drops:[['murkyHide',1,2,1],['lurkerEye',1,1,.01]]},
-    jungleSpider:{name:'Jungle Spider',behaviour:'aggressive',shape:'spider',hp:50,defence:15,accuracy:23,maxHit:8,ticks:3,color:'#563d4a',aggro:210,respawn:55,drops:[['spiderSilk',1,2,1],['venomSac',1,1,.0182]]},
-    venomSnake:{name:'Venom Snake',behaviour:'aggressive',shape:'serpent',hp:65,defence:21,accuracy:29,maxHit:10,ticks:3,color:'#4e8b52',aggro:230,respawn:75,drops:[['snakeMeat',1,2,1],['serpentScale',1,1,.55],['venomFang',1,1,.0133]]},
-    jaguar:{name:'Jaguar',behaviour:'aggressive',shape:'cat',hp:100,defence:31,accuracy:39,maxHit:14,ticks:3,color:'#c39a45',aggro:270,respawn:130,drops:[['jaguarMeat',1,2,1],['jaguarHide',1,1,.7],['jaguarClaw',1,1,.0111]]},
-    gorilla:{name:'Gorilla',behaviour:'aggressive',shape:'gorilla',hp:150,defence:43,accuracy:42,maxHit:18,ticks:5,color:'#4e4b47',aggro:240,respawn:240,drops:[['gorillaMeat',1,2,1],['mahoganyLog',1,2,.35],['gorillaKnuckle',1,1,.01]]},
-    iceWolf:{name:'Ice Wolf',behaviour:'aggressive',shape:'wolf',hp:115,defence:36,accuracy:43,maxHit:16,ticks:3,color:'#a8c4cc',aggro:280,respawn:145,drops:[['frozenMeat',1,2,1],['frozenHide',1,1,.65],['iceFang',1,1,.0125]]},
-    frostTroll:{name:'Frost Troll',behaviour:'aggressive',shape:'troll',hp:200,defence:55,accuracy:50,maxHit:23,ticks:6,color:'#78939b',aggro:250,respawn:300,drops:[['frozenMeat',2,3,1],['goldOre',1,3,.45],['trollClub',1,1,.01]]},
-    frostDragon:{name:'Frost Dragon',behaviour:'aggressive',shape:'dragon',hp:650,defence:105,accuracy:85,maxHit:42,ticks:5,color:'#8fc5d4',aggro:340,respawn:600,drops:[['dragonMeat',2,4,1],['crystal',1,3,.5],['frostScale',1,1,.025],['frozenHeart',1,1,.01]]}
+    rabbit:{name:'Rabbit',behaviour:'passive',shape:'rabbit',hp:5,defence:1,accuracy:3,maxHit:1,ticks:5,color:'#d9cfb8',respawn:20,drops:[['coins',1,5,1],['rawRabbit',1,1,1],['cedarLog',1,2,.25],['rabbitFoot',1,1,.0125]]},
+    giantRat:{name:'Giant Rat',behaviour:'passive',shape:'rat',hp:10,defence:3,accuracy:6,maxHit:2,ticks:4,color:'#746d68',respawn:24,drops:[['coins',1,6,1],['ratMeat',1,1,1],['stone',1,2,.25],['ratTail',1,1,.025]]},
+    deer:{name:'Deer',behaviour:'passive',shape:'deer',hp:15,defence:7,accuracy:9,maxHit:3,ticks:5,color:'#a6774e',respawn:32,drops:[['coins',1,8,1],['rawVenison',1,3,1],['cedarLog',1,3,.4],['animalHide',1,1,.55],['antler',1,1,.0167]]},
+    wildBoar:{name:'Wild Boar',behaviour:'passive',shape:'boar',hp:30,defence:9,accuracy:12,maxHit:4,ticks:4,color:'#74523c',aggro:190,respawn:38,drops:[['coins',2,7,1],['rawPork',1,2,1],['oakLog',1,3,.35],['animalHide',1,1,.45],['boarTusk',1,1,.02]]},
+    wolf:{name:'Wolf',behaviour:'aggressive',shape:'wolf',hp:45,defence:12,accuracy:15,maxHit:5,ticks:3,color:'#66717b',aggro:230,respawn:45,drops:[['coins',3,7,1],['wolfMeat',1,2,1],['copperOre',1,3,.35],['animalHide',1,1,.5],['wolfFang',1,1,.0154]]},
+    bandit:{name:'Bandit',behaviour:'aggressive',shape:'humanoid',hp:45,defence:14,accuracy:18,maxHit:5,ticks:4,color:'#8d6548',aggro:220,respawn:55,drops:[['coins',4,10,1],['clothScrap',1,2,.7],['copperOre',1,3,.3],['banditDagger',1,1,.01]]},
+    skeleton:{name:'Skeleton',behaviour:'passive',shape:'skeleton',hp:50,defence:17,accuracy:20,maxHit:3,ticks:4,color:'#ded9c8',aggro:220,respawn:60,drops:[['coins',4,10,1],['bones',1,2,1],['stone',1,3,.4],['ancientBone',1,1,.0133]]},
+    wraith:{name:'Wraith',behaviour:'aggressive',shape:'wraith',hp:135,defence:25,accuracy:29,maxHit:10,ticks:5,color:'#8c85ad',aggro:250,respawn:150,drops:[['coins',10,30,1],['spiritResidue',1,2,1],['silverOre',1,4,.35],['wraithCloth',1,1,.01]]},
+    scorpion:{name:'Scorpion',behaviour:'passive',shape:'scorpion',hp:50,defence:10,accuracy:16,maxHit:5,ticks:3,color:'#b4773f',aggro:190,respawn:42,drops:[['coins',2,12,1],['scorpionMeat',1,1,1],['copperOre',1,3,.3],['venomGland',1,1,.0167]]},
+    sandSerpent:{name:'Sand Serpent',behaviour:'aggressive',shape:'serpent',hp:85,defence:19,accuracy:24,maxHit:7,ticks:4,color:'#b89b58',aggro:230,respawn:70,drops:[['coins',5,20,1],['serpentMeat',1,2,1],['pyriteOre',1,3,.35],['serpentScale',1,2,.5],['sandFang',1,1,.0118]]},
+    sandGolem:{name:'Sand Golem',behaviour:'passive',shape:'golem',hp:125,defence:34,accuracy:30,maxHit:6,ticks:6,color:'#c4a66d',aggro:200,respawn:180,drops:[['coins',10,35,1],['stone',3,10,1],['pyriteOre',1,5,.45],['golemCore',1,1,.01]]},
+    bogSlime:{name:'Bog Slime',behaviour:'passive',shape:'slime',hp:65,defence:8,accuracy:10,maxHit:4,ticks:5,color:'#739d75',respawn:38,drops:[['coins',10,20,1],['slimeGel',1,3,1],['willowLog',1,3,.3],['clearGel',1,1,.02]]},
+    crocodile:{name:'Crocodile',behaviour:'aggressive',shape:'crocodile',hp:90,defence:24,accuracy:28,maxHit:10,ticks:4,color:'#526f47',aggro:240,respawn:85,drops:[['coins',5,40,1],['crocodileMeat',1,2,1],['willowLog',1,3,.35],['crocodileHide',1,1,.65],['crocodileTooth',1,1,.0143]]},
+    marshLurker:{name:'Marsh Lurker',behaviour:'passive',shape:'lurker',hp:190,defence:37,accuracy:38,maxHit:17,ticks:5,color:'#47675c',aggro:260,respawn:210,drops:[['coins',20,50,1],['murkyHide',1,2,1],['coal',2,6,.45],['lurkerEye',1,1,.01]]},
+    jungleSpider:{name:'Jungle Spider',behaviour:'aggressive',shape:'spider',hp:65,defence:15,accuracy:23,maxHit:10,ticks:3,color:'#563d4a',aggro:210,respawn:55,drops:[['coins',10,40,1],['spiderSilk',1,2,1],['mahoganyLog',1,3,.35],['venomSac',1,1,.0182]]},
+    venomSnake:{name:'Venom Snake',behaviour:'passive',shape:'serpent',hp:80,defence:21,accuracy:29,maxHit:15,ticks:3,color:'#4e8b52',aggro:230,respawn:75,drops:[['coins',10,40,1],['snakeMeat',1,2,1],['goldOre',1,3,.3],['serpentScale',1,1,.55],['venomFang',1,1,.0133]]},
+    jaguar:{name:'Jaguar',behaviour:'aggressive',shape:'cat',hp:135,defence:31,accuracy:39,maxHit:18,ticks:3,color:'#c39a45',aggro:270,respawn:130,drops:[['coins',20,50,1],['jaguarMeat',1,2,1],['mahoganyLog',1,4,.4],['jaguarHide',1,1,.7],['jaguarClaw',1,1,.0111]]},
+    gorilla:{name:'Gorilla',behaviour:'passive',shape:'gorilla',hp:250,defence:43,accuracy:42,maxHit:20,ticks:5,color:'#4e4b47',aggro:240,respawn:240,drops:[['coins',40,100,1],['gorillaMeat',1,2,1],['mahoganyLog',2,10,.55],['gorillaKnuckle',1,1,.01]]},
+    iceWolf:{name:'Ice Wolf',behaviour:'aggressive',shape:'wolf',hp:165,defence:36,accuracy:43,maxHit:20,ticks:3,color:'#a8c4cc',aggro:280,respawn:145,drops:[['coins',25,100,1],['frozenMeat',1,2,1],['arcticPineLog',1,4,.4],['frozenHide',1,1,.65],['iceFang',1,1,.0125]]},
+    frostTroll:{name:'Frost Troll',behaviour:'passive',shape:'troll',hp:320,defence:55,accuracy:50,maxHit:18,ticks:6,color:'#78939b',aggro:250,respawn:300,drops:[['coins',50,145,1],['frozenMeat',2,3,1],['silverOre',2,8,.5],['trollClub',1,1,.01]]},
+    frostDragon:{name:'Frost Dragon',behaviour:'passive',shape:'dragon',hp:650,defence:105,accuracy:85,maxHit:50,ticks:5,color:'#8fc5d4',aggro:340,respawn:600,drops:[['coins',250,1000,1],['dragonMeat',2,4,1],['crystal',2,10,.6],['arcticPineLog',2,10,.45],['frostScale',1,1,.025],['frozenHeart',1,1,.01]]}
   };
   const enemySeeds=[
     // Starting Area: beginner creatures only, including exactly one deer.
