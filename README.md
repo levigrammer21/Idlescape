@@ -1,3 +1,14 @@
+# Idle Wanderer v0.17.0 — Visual Clarity Pass
+
+- Sharpened the existing simple visual language without replacing it with external art.
+- Added high-contrast names above enemies, trees, rocks, and fishing spots so world objects are immediately identifiable.
+- Strengthened creature and object outlines, shadows, contrast, and selection readability.
+- Rebuilt summons as recognizable miniature spirit creatures based on their actual species.
+- Added animated spirit rings, orbiting motes, glow, companion names, and distinct silhouettes for serpent, spider, scorpion, dragon, large humanoid, and animal summons.
+- Improved panel, card, HUD, dialog, tab, progress-bar, and mobile touch clarity.
+- Kept combat stats, timings, drops, progression, world positions, and save data unchanged.
+
+Upload every file in this folder to the root of your GitHub Pages repository.
 # Idle Wanderer v0.11.0 — Unique Equipment Progression
 
 - Rare creature drops remain crafting materials and are never equipped directly.
