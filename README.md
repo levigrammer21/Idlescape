@@ -1,11 +1,18 @@
-# Idle Wanderer v0.17.1 — Creature Loot Update
+# Idle Wanderer v0.18.0 — Compact Game UI
 
-- Applied the revised creature HP, maximum-hit, and aggression values from the updated creature sheet.
-- Every current creature now drops coins using its assigned coin range.
-- Every creature can now drop an appropriate Woodcutting or Mining resource from its biome.
-- Smaller creatures drop small resource stacks; large creatures and bosses can drop larger stacks.
-- Existing meat, hides, materials, unique drops, respawn timers, combat accuracy, defence, and attack speeds remain intact unless explicitly changed by the sheet.
-- Passive creatures still defend themselves when attacked; they simply no longer initiate combat.
-- Hawk and Fox were not added because their spreadsheet rows do not yet include complete stats or drops.
+A visual and layout-only mobile UI update built from v0.17.1.
 
-Upload every file in this folder to the root of your GitHub Pages repository.
+## Changes
+
+- Increased the share of the screen available to the live game world and active panel.
+- Compressed the header, cloud status, coin counter, region, HP, online count, and action controls.
+- Rebuilt the main navigation as a six-button icon bar with small labels.
+- Reduced inventory filter height and card spacing.
+- Kept a three-column mobile inventory grid while shortening item cards.
+- Removed repeated item-type text from cards; full information remains in the item dialog.
+- Improved pressed and keyboard-focus feedback.
+- Added responsive rules for short and narrow phone screens.
+
+## Gameplay safety
+
+This update does not alter combat, movement, drops, saves, resources, enemies, progression, multiplayer behavior, or world placement.

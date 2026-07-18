@@ -1,7 +1,7 @@
 (() => {
   'use strict';
 
-  const VERSION = '0.17.1';
+  const VERSION = '0.18.0';
   const XP_RATE = 1.5;
   const SAVE_KEY = window.IdleCloud?.localSaveKey;
   if (!SAVE_KEY) throw new Error('No authenticated account save key is available.');
