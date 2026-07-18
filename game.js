@@ -1,7 +1,7 @@
 (() => {
   'use strict';
 
-  const VERSION = '0.14.2';
+  const VERSION = '0.14.3';
   const XP_RATE = 1.5;
   const SAVE_KEY = window.IdleCloud?.localSaveKey;
   if (!SAVE_KEY) throw new Error('No authenticated account save key is available.');
@@ -749,7 +749,7 @@
     return false;
   }
   function eatFood(){const key=state.equipment.food,item=ITEM_DEFS[key];if(!key||!item?.heal||(state.inventory[key]||0)<1)return;const max=maxPlayerHp();if(state.combat.hp>=max)return showToast('Already at full health');state.inventory[key]--;state.combat.hp=Math.min(max,state.combat.hp+item.heal);if(state.inventory[key]<=0)state.equipment.food=null;showToast(`Ate ${item.name} · +${item.heal} HP`);renderInventory();renderEquipment();renderCombatHud();saveGame(false);}
-  function renderCombatHud(){const max=maxPlayerHp();state.combat.hp=clamp(state.combat.hp||max,0,max);if(ui.combatHp){ui.combatHp.textContent=`${state.combat.hp}/${max}`;ui.combatHpFill.style.width=`${state.combat.hp/max*100}%`;}const key=state.equipment.food,count=key?(state.inventory[key]||0):0;if(ui.eatButton){ui.eatButton.hidden=!key||count<1;ui.eatButton.textContent=key?`Eat ${ITEM_DEFS[key].name.replace('Cooked ','')}`:'Eat';ui.eatCount.textContent=count;}}
+  function renderCombatHud(){const max=maxPlayerHp();state.combat.hp=clamp(state.combat.hp ?? max,0,max);if(ui.combatHp){ui.combatHp.textContent=`${state.combat.hp}/${max}`;ui.combatHpFill.style.width=`${state.combat.hp/max*100}%`;}const key=state.equipment.food,count=key?(state.inventory[key]||0):0;if(ui.eatButton){ui.eatButton.hidden=!key||count<1;ui.eatButton.textContent=key?`Eat ${ITEM_DEFS[key].name.replace('Cooked ','')}`:'Eat';ui.eatCount.textContent=count;}}
 
   const AUTO_LABELS={off:'OFF',combat:'COMBAT',woodcutting:'WOODCUTTING',mining:'MINING',fishing:'FISHING',explore:'EXPLORE'};
   function currentBiomeId(){return regionAt(state.player.x,state.player.y).id||'central';}

@@ -117,3 +117,9 @@ Upload every file in this folder to the root of your GitHub Pages repository.
 - Auto Combat and Auto Explore stop after defeat.
 - The enemy keeps its remaining HP.
 - Death totals are included in public player profiles.
+
+
+## v0.14.3 — Death Trigger Fix
+
+- Fixed a JavaScript truthiness bug where `0 HP` was replaced with full HP inside the combat HUD before the defeat check ran.
+- The defeat handler now receives a real zero-health state, increments deaths, stops combat, returns the player to Starting Town, and opens the defeat screen.
