@@ -129,3 +129,16 @@
 .profile-stat-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-bottom:18px}.profile-stat-grid div{display:grid;gap:3px;padding:12px;border-radius:12px;background:rgba(255,255,255,.045);border:1px solid rgba(255,255,255,.08)}.profile-stat-grid span,.profile-skills span{font-size:.74rem;color:#9ba6b4}.profile-stat-grid strong{font-size:1.15rem;color:#f1d77d}.leaderboard-profile-content h3{margin:4px 0 10px}.profile-skills{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}.profile-skills div{display:flex;justify-content:space-between;gap:8px;padding:8px 10px;border-radius:9px;background:rgba(255,255,255,.035)}
 @media(max-width:620px){.tabs{overflow-x:auto;justify-content:flex-start}.tab{min-width:64px}.leaderboard-row{grid-template-columns:36px 1fr auto;padding:9px}.profile-stat-grid,.profile-skills{grid-template-columns:1fr 1fr}}
 .leaderboard-own-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px;margin-bottom:12px}.leaderboard-own-stats div{display:grid;gap:2px;padding:9px;border-radius:10px;background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.07)}.leaderboard-own-stats span{font-size:.67rem;color:#929eac}.leaderboard-own-stats strong{font-size:.95rem;color:#f0d77c}@media(max-width:520px){.leaderboard-own-stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+
+/* v0.14.1 Defeat screen */
+.defeat-dialog{max-width:460px;text-align:center;padding:30px;background:linear-gradient(180deg,#241f2b,#171922);border:1px solid rgba(220,180,255,.35);box-shadow:0 24px 80px rgba(0,0,0,.7)}
+.defeat-dialog::backdrop{background:rgba(8,9,14,.82);backdrop-filter:blur(4px)}
+.defeat-emblem{width:82px;height:82px;margin:0 auto 14px;display:grid;place-items:center;border-radius:50%;font-size:44px;background:rgba(159,94,190,.16);border:1px solid rgba(220,180,255,.3);box-shadow:0 0 38px rgba(159,94,190,.22)}
+.defeat-dialog h2{margin:8px 0 10px;font-size:1.7rem}
+.defeat-dialog .item-description{line-height:1.55}
+.defeat-summary{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:20px 0}
+.defeat-summary>div{padding:13px;border-radius:12px;background:rgba(255,255,255,.045);border:1px solid rgba(255,255,255,.08)}
+.defeat-summary span{display:block;font-size:.75rem;text-transform:uppercase;letter-spacing:.08em;opacity:.68;margin-bottom:4px}
+.defeat-summary strong{font-size:1.12rem}
+.defeat-dialog .primary-button{width:100%;padding:13px 18px;font-weight:800}

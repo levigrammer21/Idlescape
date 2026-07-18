@@ -8,7 +8,7 @@ import {
   getFirestore, doc, collection, getDocs, getDoc, setDoc, writeBatch, serverTimestamp, query, orderBy, limit
 } from 'https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js';
 
-const VERSION = '0.14.0';
+const VERSION = '0.14.1';
 const SAVE_KEY_PREFIX = 'idle-wanderer-save-v6:';
 const firebaseConfig = {
   apiKey: 'AIzaSyDPS8qby2nMPc0beclK7igZcD-PvVOjviw',

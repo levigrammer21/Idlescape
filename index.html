@@ -16,7 +16,7 @@
       <div class="login-mark" aria-hidden="true">IW</div>
       <p class="login-kicker">A quiet world is waiting</p>
       <h1>Idle Wanderer</h1>
-      <p class="login-version">v0.14.0 · Leaderboards</p>
+      <p class="login-version">v0.14.1 · Defeat Screen</p>
       <button id="googleSignInButton" class="google-button" type="button"><span>G</span> Continue with Google</button>
       <div class="login-divider"><span>or</span></div>
       <form id="authForm" class="auth-form">
@@ -36,7 +36,7 @@
   <main id="app" hidden>
     <header class="topbar">
       <div class="title-block">
-        <h1>Idle Wanderer <span id="headerVersion" class="header-version">v0.14.0</span></h1>
+        <h1>Idle Wanderer <span id="headerVersion" class="header-version">v0.14.1</span></h1>
         <p id="statusText">Tap the ground, a tree, a rock, a fishing spot, or a town.</p>
       </div>
       <div class="topbar-center" aria-label="Coins">
@@ -85,7 +85,7 @@
           <button id="resetButton" class="wide-button muted-button">Reset Game</button>
         </div>
         <p class="hint">Town services are opened from the world itself. Skills will be developed one at a time, beginning with Woodcutting.</p>
-        <p class="version">Version 0.14.0 · Leaderboards & Statistics</p>
+        <p class="version">Version 0.14.1 · Defeat Screen & Death Tracking</p>
       </section>
     </section>
   </main>
@@ -124,11 +124,24 @@
     <p class="hint">Offline progress is capped at 8 hours and stays inside your saved biome.</p>
   </dialog>
 
+
+  <dialog id="defeatDialog" class="item-dialog defeat-dialog">
+    <div class="defeat-emblem" aria-hidden="true">☠</div>
+    <span class="label">Defeated</span>
+    <h2>You awaken in Starting Town</h2>
+    <p id="defeatMessage" class="item-description">You keep all equipment, items, coins, and progress. The enemy remains injured.</p>
+    <div class="defeat-summary">
+      <div><span>Total defeats</span><strong id="defeatCount">1</strong></div>
+      <div><span>Penalty</span><strong>None</strong></div>
+    </div>
+    <button id="defeatContinueButton" class="primary-button">Continue</button>
+  </dialog>
+
   <dialog id="leaderboardProfileDialog" class="item-dialog leaderboard-profile-dialog">
     <div class="dialog-head"><div><span class="label">Player Profile</span><h2 id="leaderboardProfileName">Wanderer</h2></div><button id="closeLeaderboardProfileButton" class="close-button" aria-label="Close">×</button></div>
     <div id="leaderboardProfileContent" class="leaderboard-profile-content"></div>
   </dialog>
 
-  <script type="module" src="firebase.js?v=0.14.0"></script>
+  <script type="module" src="firebase.js?v=0.14.1"></script>
 </body>
 </html>

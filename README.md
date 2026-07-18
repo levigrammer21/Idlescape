@@ -106,3 +106,14 @@ Upload every file in this folder to the root of your GitHub Pages repository.
 - Added persistent statistics for kills, kills by enemy, gold earned/spent, gathering, crafting, cooking, unique drops, and play time.
 - Existing saves migrate automatically. Lifetime statistics begin counting from v0.14.0 because older builds did not store historical totals.
 - Added `firestore.rules`. Deploy these rules in Firebase before using the leaderboard screen. The rules keep full saves private while allowing signed-in players to read rankings and write only their own public profile.
+
+
+## v0.14.1 — Defeat Screen & Death Tracking
+
+- Player defeats now increment the persistent `statistics.deaths` counter.
+- A full defeat screen appears when HP reaches zero.
+- The player is fully healed and returned to Starting Town.
+- No items, coins, equipment, XP, or other progress are lost.
+- Auto Combat and Auto Explore stop after defeat.
+- The enemy keeps its remaining HP.
+- Death totals are included in public player profiles.
