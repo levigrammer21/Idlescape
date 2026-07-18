@@ -1,7 +1,7 @@
 (() => {
   'use strict';
 
-  const VERSION = '0.19.0';
+  const VERSION = '0.19.1';
   const XP_RATE = 1.5;
   const SAVE_KEY = window.IdleCloud?.localSaveKey;
   if (!SAVE_KEY) throw new Error('No authenticated account save key is available.');
@@ -617,6 +617,19 @@
   };
   let inventoryFilter='all';
 
+  const holdWalk = {
+    pointerId: null,
+    pressed: false,
+    active: false,
+    clientX: 0,
+    clientY: 0,
+    startedAt: 0,
+    timer: null
+  };
+  const HOLD_WALK_DELAY_MS = 110;
+  const HOLD_WALK_DEADZONE = 12;
+  const HOLD_WALK_FULL_SPEED_DISTANCE = 86;
+
 
   function randomInt(min,max){ return Math.floor(Math.random()*(max-min+1))+min; }
   function clamp(v,min,max){ return Math.max(min,Math.min(max,v)); }
@@ -710,7 +723,7 @@
       for(const key of Object.keys(SKILL_DEFS)) if(old.skills?.[key]) fresh.skills[key]=old.skills[key];
       if(!old.skills?.fortitude || (old.skills.fortitude.xp||0)<xpForLevel(10)) fresh.skills.fortitude={xp:xpForLevel(10)};
       fresh.equipment={...fresh.equipment,...(old.equipment||{})}; fresh.audio={...fresh.audio,...(old.audio||{})}; fresh.autoMode=['off','combat','woodcutting','mining','fishing','explore'].includes(old.autoMode)?old.autoMode:'off'; fresh.autoTargetId=old.autoTargetId||null; fresh.autoBiomeId=old.autoBiomeId||regionAt(fresh.player.x,fresh.player.y).id; fresh.activeSummon=SUMMON_DEFS[old.activeSummon]?old.activeSummon:null; fresh.summonAttackElapsed=0; fresh.treeState=old.treeState||{}; fresh.fishingState=old.fishingState||{}; fresh.rockState=old.rockState||{}; fresh.enemyState=old.enemyState||{}; fresh.combat={...fresh.combat,...(old.combat||{})}; fresh.poh=old.poh||{}; fresh.quests=old.quests||{}; fresh.statistics={...fresh.statistics,...(old.statistics||{}),killsByEnemy:{...(old.statistics?.killsByEnemy||{})}};
-      const worldLayoutChanged=old.version && old.version !== VERSION;
+      const worldLayoutChanged=old.version && !['0.19.0','0.19.1'].includes(old.version);
       if(!worldLayoutChanged && old.player && isWalkable(old.player.x,old.player.y)) fresh.player={...fresh.player,x:old.player.x,y:old.player.y,targetX:old.player.x,targetY:old.player.y};
       if(worldLayoutChanged){
         // Preserve all progression, but safely place the player and world actors on the rebuilt map.
@@ -932,6 +945,72 @@
     const h=Math.floor(elapsed/3600),m=Math.floor(elapsed%3600/60);ui.offlineTime.textContent=`Away ${h?`${h}h `:''}${m}m · ${regionAt(state.player.x,state.player.y).name}`;ui.offlineResults.innerHTML=rows.join('');ui.offlineDialog.showModal();state.lastSavedAt=Date.now();saveGame(false);
   }
 
+  function pointerCanvasPosition(event){
+    const rect=canvas.getBoundingClientRect();
+    return {
+      x:(event.clientX-rect.left)*canvas.width/rect.width,
+      y:(event.clientY-rect.top)*canvas.height/rect.height
+    };
+  }
+  function activateHoldWalk(){
+    if(!holdWalk.pressed||holdWalk.active||defeatActive)return;
+    holdWalk.active=true;
+    if(state.autoMode!=='off')setAutoMode('off',false);
+    stopAction(true);
+    ui.actionName.textContent='Walking';
+    ui.status.textContent='Hold and drag to steer. Release to stop.';
+  }
+  function beginCanvasPointer(event){
+    if(event.pointerType==='mouse'&&event.button!==0)return;
+    event.preventDefault();
+    const point=pointerCanvasPosition(event);
+    holdWalk.pointerId=event.pointerId;
+    holdWalk.pressed=true;
+    holdWalk.active=false;
+    holdWalk.clientX=point.x;
+    holdWalk.clientY=point.y;
+    holdWalk.startedAt=performance.now();
+    clearTimeout(holdWalk.timer);
+    holdWalk.timer=setTimeout(activateHoldWalk,HOLD_WALK_DELAY_MS);
+    canvas.setPointerCapture?.(event.pointerId);
+  }
+  function moveCanvasPointer(event){
+    if(!holdWalk.pressed||event.pointerId!==holdWalk.pointerId)return;
+    event.preventDefault();
+    const point=pointerCanvasPosition(event);
+    holdWalk.clientX=point.x;
+    holdWalk.clientY=point.y;
+    if(!holdWalk.active&&performance.now()-holdWalk.startedAt>=HOLD_WALK_DELAY_MS)activateHoldWalk();
+  }
+  function endCanvasPointer(event){
+    if(!holdWalk.pressed||event.pointerId!==holdWalk.pointerId)return;
+    event.preventDefault();
+    clearTimeout(holdWalk.timer);
+    const wasActive=holdWalk.active;
+    const point=pointerCanvasPosition(event);
+    holdWalk.pressed=false;
+    holdWalk.active=false;
+    holdWalk.pointerId=null;
+    if(canvas.hasPointerCapture?.(event.pointerId))canvas.releasePointerCapture(event.pointerId);
+    if(wasActive){
+      stopAction(true);
+      ui.status.textContent='Tap the ground, a resource, a creature, or a town.';
+      ui.actionName.textContent='Exploring';
+      return;
+    }
+    handlePointer({...event,clientX:event.clientX,clientY:event.clientY,preventDefault(){}});
+  }
+  function cancelCanvasPointer(event){
+    if(!holdWalk.pressed||event.pointerId!==holdWalk.pointerId)return;
+    event.preventDefault();
+    clearTimeout(holdWalk.timer);
+    holdWalk.pressed=false;
+    holdWalk.active=false;
+    holdWalk.pointerId=null;
+    if(canvas.hasPointerCapture?.(event.pointerId))canvas.releasePointerCapture(event.pointerId);
+    stopAction(true);
+  }
+
   function handlePointer(event){
     event.preventDefault(); const rect=canvas.getBoundingClientRect(); const sx=(event.clientX-rect.left)*canvas.width/rect.width, sy=(event.clientY-rect.top)*canvas.height/rect.height; const p=screenToWorld(sx,sy);
     const town=townAt(p.x,p.y), tree=treeAt(p.x,p.y), rock=rockAt(p.x,p.y), fishingSpot=fishingSpotAt(p.x,p.y), enemy=enemyAt(p.x,p.y); stopAction(false);
@@ -1003,9 +1082,21 @@
     for(const r of rocks){if(r.hp<=0&&r.respawnAt&&now>=r.respawnAt){r.hp=r.maxHp;r.respawnAt=0;}}
     for(const f of fishingSpots){if(f.remaining<=0&&f.respawnAt&&now>=f.respawnAt){f.remaining=randomInt(12,20);f.respawnAt=0;}}
     for(const e of enemies){const d=ENEMY_TYPES[e.type];if(e.hp<=0){if(e.respawnAt&&now>=e.respawnAt){e.hp=e.maxHp;e.respawnAt=0;e.x=e.homeX;e.y=e.homeY;}continue;}e.wanderElapsed-=dt;if(!e.target&&d.behaviour==='aggressive'&&Math.hypot(e.x-state.player.x,e.y-state.player.y)<d.aggro&&regionAt(e.x,e.y).id===regionAt(state.player.x,state.player.y).id){e.target='player';activeEnemy=e;ui.actionName.textContent=`Attacked by ${d.name}`;}if(e.target==='player'){const dd=Math.hypot(state.player.x-e.x,state.player.y-e.y);if(regionAt(e.x,e.y).id!==regionAt(e.homeX,e.homeY).id||Math.hypot(e.x-e.homeX,e.y-e.homeY)>520){e.target=null;e.returning=true;}else if(dd>52){const step=Math.min(dd-48,135*dt);e.x+=(state.player.x-e.x)/dd*step;e.y+=(state.player.y-e.y)/dd*step;}e.attackElapsed+=dt;if(dd<=62&&e.attackElapsed>=d.ticks*TICK_SECONDS){e.attackElapsed=0;enemyAttack(e);}}else if(e.returning){const dd=Math.hypot(e.homeX-e.x,e.homeY-e.y);if(dd<5){e.x=e.homeX;e.y=e.homeY;e.returning=false;}else{const step=Math.min(dd,120*dt);e.x+=(e.homeX-e.x)/dd*step;e.y+=(e.homeY-e.y)/dd*step;}}else if(e.wanderElapsed<=0){e.wanderElapsed=randomInt(2,5);const a=Math.random()*Math.PI*2,r=Math.random()*70;e.wanderX=e.homeX+Math.cos(a)*r;e.wanderY=e.homeY+Math.sin(a)*r;}else{const dd=Math.hypot(e.wanderX-e.x,e.wanderY-e.y);if(dd>3){const step=Math.min(dd,45*dt);e.x+=(e.wanderX-e.x)/dd*step;e.y+=(e.wanderY-e.y)/dd*step;}}}
-    const p=state.player,dx=p.targetX-p.x,dy=p.targetY-p.y,dist=Math.hypot(dx,dy);
-    if(dist>2){const move=Math.min(dist,190*(1+equipmentBonus('moveSpeed')+summonBonus('moveSpeed'))*dt),nx=p.x+dx/dist*move,ny=p.y+dy/dist*move;if(isWalkable(nx,ny)){p.x=nx;p.y=ny;}else{p.targetX=p.x;p.targetY=p.y;queuedTree=null;queuedFishingSpot=null;queuedRock=null;queuedTown=null;showToast('That route is blocked');}}
-    else {p.x=p.targetX;p.y=p.targetY;if(queuedEnemy && queuedEnemy.hp>0 && Math.hypot(p.x-queuedEnemy.x,p.y-queuedEnemy.y)<=playerCombatStats().range+12){beginCombat(queuedEnemy);}else if(queuedTown && Math.hypot(p.x-queuedTown.x,p.y-queuedTown.y)<105){const town=queuedTown;queuedTown=null;openTown(town);}else if(queuedRock && queuedRock.hp>0 && Math.hypot(p.x-queuedRock.x,p.y-queuedRock.y)<90)beginMining(queuedRock);else if(queuedFishingSpot && queuedFishingSpot.remaining>0 && Math.hypot(p.x-queuedFishingSpot.standX,p.y-queuedFishingSpot.standY)<20)beginFishing(queuedFishingSpot);else if(queuedTree && queuedTree.remaining>0 && Math.hypot(p.x-queuedTree.x,p.y-queuedTree.y)<78)beginChopping(queuedTree);else if(!activeTree&&!activeFishingSpot&&!activeRock&&!activeEnemy){ui.status.textContent='Tap the ground, a resource, a creature, or a town.';ui.actionName.textContent='Exploring';}}
+    const p=state.player;
+    if(holdWalk.active){
+      const playerScreen=worldToScreen(p.x,p.y),dx=holdWalk.clientX-playerScreen.x,dy=holdWalk.clientY-playerScreen.y,dist=Math.hypot(dx,dy);
+      p.targetX=p.x;p.targetY=p.y;
+      if(dist>HOLD_WALK_DEADZONE){
+        const strength=clamp((dist-HOLD_WALK_DEADZONE)/(HOLD_WALK_FULL_SPEED_DISTANCE-HOLD_WALK_DEADZONE),0,1);
+        const move=190*(1+equipmentBonus('moveSpeed')+summonBonus('moveSpeed'))*strength*dt;
+        const nx=p.x+dx/dist*move,ny=p.y+dy/dist*move;
+        if(isWalkable(nx,ny)){p.x=nx;p.y=ny;}
+      }
+    }else{
+      const dx=p.targetX-p.x,dy=p.targetY-p.y,dist=Math.hypot(dx,dy);
+      if(dist>2){const move=Math.min(dist,190*(1+equipmentBonus('moveSpeed')+summonBonus('moveSpeed'))*dt),nx=p.x+dx/dist*move,ny=p.y+dy/dist*move;if(isWalkable(nx,ny)){p.x=nx;p.y=ny;}else{p.targetX=p.x;p.targetY=p.y;queuedTree=null;queuedFishingSpot=null;queuedRock=null;queuedTown=null;showToast('That route is blocked');}}
+      else {p.x=p.targetX;p.y=p.targetY;if(queuedEnemy && queuedEnemy.hp>0 && Math.hypot(p.x-queuedEnemy.x,p.y-queuedEnemy.y)<=playerCombatStats().range+12){beginCombat(queuedEnemy);}else if(queuedTown && Math.hypot(p.x-queuedTown.x,p.y-queuedTown.y)<105){const town=queuedTown;queuedTown=null;openTown(town);}else if(queuedRock && queuedRock.hp>0 && Math.hypot(p.x-queuedRock.x,p.y-queuedRock.y)<90)beginMining(queuedRock);else if(queuedFishingSpot && queuedFishingSpot.remaining>0 && Math.hypot(p.x-queuedFishingSpot.standX,p.y-queuedFishingSpot.standY)<20)beginFishing(queuedFishingSpot);else if(queuedTree && queuedTree.remaining>0 && Math.hypot(p.x-queuedTree.x,p.y-queuedTree.y)<78)beginChopping(queuedTree);else if(!activeTree&&!activeFishingSpot&&!activeRock&&!activeEnemy){ui.status.textContent='Tap the ground, a resource, a creature, or a town.';ui.actionName.textContent='Exploring';}}
+    }
     if(activeEnemy){
       const ps=playerCombatStats(),summon=activeSummonDef(),dist=Math.hypot(p.x-activeEnemy.x,p.y-activeEnemy.y);if(activeEnemy.hp<=0)endCombat('Victory');else if(dist>ps.range+25){queuedEnemy=activeEnemy;activeEnemy=null;}else{combatElapsed+=dt;if(summon)state.summonAttackElapsed=(state.summonAttackElapsed||0)+dt;ui.actionProgress.style.width=`${Math.min(100,combatElapsed/(ps.ticks*TICK_SECONDS)*100)}%`;if(combatElapsed>=ps.ticks*TICK_SECONDS){combatElapsed=0;playerAttack(activeEnemy);}if(activeEnemy&&summon&&state.summonAttackElapsed>=summon.ticks*TICK_SECONDS){state.summonAttackElapsed=0;summonAttack(activeEnemy);}}
     } else if(activeTree){
@@ -1347,6 +1438,6 @@
   function frame(now){updateMultiplayer(now);const dt=Math.min((now-lastFrame)/1000,.05);lastFrame=now;update(dt);draw();if(now-miniMapView.lastDraw>180&&document.getElementById('map')?.classList.contains('active')){miniMapView.lastDraw=now;drawMiniMap();}requestAnimationFrame(frame);}
 
   ui.familyWorldToggle?.addEventListener('click',()=>{ui.onlinePlayers.hidden=!ui.onlinePlayers.hidden;});
-  canvas.addEventListener('pointerdown',handlePointer,{passive:false});document.addEventListener('pointerdown',()=>audioEngine.unlock(),{passive:true});document.addEventListener('touchstart',()=>audioEngine.unlock(),{passive:true});document.addEventListener('click',()=>audioEngine.unlock(),{passive:true});document.getElementById('stopButton').addEventListener('click',()=>{setAutoMode('off');stopAction(true);});ui.autoMode.addEventListener('change',()=>{stopAction(true);setAutoMode(ui.autoMode.value);});ui.eatButton.addEventListener('click',eatFood);document.querySelectorAll('.tab').forEach(t=>t.addEventListener('click',()=>openPanel(t.dataset.panel)));document.getElementById('closeItemButton').addEventListener('click',()=>ui.dialog.close());document.getElementById('closeTownButton').addEventListener('click',()=>ui.townDialog.close());document.getElementById('closeCraftingButton').addEventListener('click',()=>ui.craftingDialog.close());document.getElementById('closeServiceButton').addEventListener('click',()=>ui.serviceDialog.close());document.getElementById('closeOfflineButton').addEventListener('click',()=>ui.offlineDialog.close());document.getElementById('defeatContinueButton')?.addEventListener('click',()=>{defeatActive=false;ui.defeatDialog.close();ui.actionName.textContent='Exploring';ui.status.textContent='Tap the ground, a resource, a creature, or a town.';});ui.defeatDialog?.addEventListener('cancel',e=>{e.preventDefault();});document.getElementById('closeLeaderboardProfileButton')?.addEventListener('click',()=>ui.leaderboardProfileDialog.close());ui.itemAction.addEventListener('click',toggleSelectedEquipment);ui.dialog.addEventListener('click',e=>{if(e.target===ui.dialog)ui.dialog.close();});ui.townDialog.addEventListener('click',e=>{if(e.target===ui.townDialog)ui.townDialog.close();});ui.craftingDialog.addEventListener('click',e=>{if(e.target===ui.craftingDialog)ui.craftingDialog.close();});ui.serviceDialog.addEventListener('click',e=>{if(e.target===ui.serviceDialog)ui.serviceDialog.close();});document.getElementById('exportButton').addEventListener('click',()=>{saveGame(false);const blob=new Blob([JSON.stringify(state,null,2)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`idle-wanderer-save-${Date.now()}.json`;a.click();URL.revokeObjectURL(a.href);});document.getElementById('importInput').addEventListener('change',async e=>{const file=e.target.files?.[0];if(!file)return;try{const imported=JSON.parse(await file.text());localStorage.setItem(SAVE_KEY,JSON.stringify(imported));await window.IdleCloud?.flush(imported);location.reload();}catch{showToast('Invalid save file');}});document.getElementById('logoutButton')?.addEventListener('click',()=>window.IdleCloud?.signOut());document.getElementById('resetButton').addEventListener('click',()=>{if(confirm('Reset all progress for this account? This will replace the cloud save.')){localStorage.removeItem(SAVE_KEY);sessionStorage.setItem('idle-wanderer-reset','1');location.reload();}});window.addEventListener('pagehide',()=>{saveGame(false);window.IdleCloud?.flush(state);window.IdleMultiplayer?.leave();});setInterval(()=>{state.statistics.playTimeSeconds=(state.statistics.playTimeSeconds||0)+15;saveGame(false);},15000);if('serviceWorker'in navigator)navigator.serviceWorker.register('./service-worker.js').catch(console.error);
+  canvas.addEventListener('pointerdown',beginCanvasPointer,{passive:false});canvas.addEventListener('pointermove',moveCanvasPointer,{passive:false});canvas.addEventListener('pointerup',endCanvasPointer,{passive:false});canvas.addEventListener('pointercancel',cancelCanvasPointer,{passive:false});document.addEventListener('pointerdown',()=>audioEngine.unlock(),{passive:true});document.addEventListener('touchstart',()=>audioEngine.unlock(),{passive:true});document.addEventListener('click',()=>audioEngine.unlock(),{passive:true});document.getElementById('stopButton').addEventListener('click',()=>{setAutoMode('off');stopAction(true);});ui.autoMode.addEventListener('change',()=>{stopAction(true);setAutoMode(ui.autoMode.value);});ui.eatButton.addEventListener('click',eatFood);document.querySelectorAll('.tab').forEach(t=>t.addEventListener('click',()=>openPanel(t.dataset.panel)));document.getElementById('closeItemButton').addEventListener('click',()=>ui.dialog.close());document.getElementById('closeTownButton').addEventListener('click',()=>ui.townDialog.close());document.getElementById('closeCraftingButton').addEventListener('click',()=>ui.craftingDialog.close());document.getElementById('closeServiceButton').addEventListener('click',()=>ui.serviceDialog.close());document.getElementById('closeOfflineButton').addEventListener('click',()=>ui.offlineDialog.close());document.getElementById('defeatContinueButton')?.addEventListener('click',()=>{defeatActive=false;ui.defeatDialog.close();ui.actionName.textContent='Exploring';ui.status.textContent='Tap the ground, a resource, a creature, or a town.';});ui.defeatDialog?.addEventListener('cancel',e=>{e.preventDefault();});document.getElementById('closeLeaderboardProfileButton')?.addEventListener('click',()=>ui.leaderboardProfileDialog.close());ui.itemAction.addEventListener('click',toggleSelectedEquipment);ui.dialog.addEventListener('click',e=>{if(e.target===ui.dialog)ui.dialog.close();});ui.townDialog.addEventListener('click',e=>{if(e.target===ui.townDialog)ui.townDialog.close();});ui.craftingDialog.addEventListener('click',e=>{if(e.target===ui.craftingDialog)ui.craftingDialog.close();});ui.serviceDialog.addEventListener('click',e=>{if(e.target===ui.serviceDialog)ui.serviceDialog.close();});document.getElementById('exportButton').addEventListener('click',()=>{saveGame(false);const blob=new Blob([JSON.stringify(state,null,2)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`idle-wanderer-save-${Date.now()}.json`;a.click();URL.revokeObjectURL(a.href);});document.getElementById('importInput').addEventListener('change',async e=>{const file=e.target.files?.[0];if(!file)return;try{const imported=JSON.parse(await file.text());localStorage.setItem(SAVE_KEY,JSON.stringify(imported));await window.IdleCloud?.flush(imported);location.reload();}catch{showToast('Invalid save file');}});document.getElementById('logoutButton')?.addEventListener('click',()=>window.IdleCloud?.signOut());document.getElementById('resetButton').addEventListener('click',()=>{if(confirm('Reset all progress for this account? This will replace the cloud save.')){localStorage.removeItem(SAVE_KEY);sessionStorage.setItem('idle-wanderer-reset','1');location.reload();}});window.addEventListener('pagehide',()=>{saveGame(false);window.IdleCloud?.flush(state);window.IdleMultiplayer?.leave();});setInterval(()=>{state.statistics.playTimeSeconds=(state.statistics.playTimeSeconds||0)+15;saveGame(false);},15000);if('serviceWorker'in navigator)navigator.serviceWorker.register('./service-worker.js').catch(console.error);
   camera.x=clamp(state.player.x-canvas.width/2,0,WORLD.width-canvas.width);camera.y=clamp(state.player.y-canvas.height/2,0,WORLD.height-canvas.height);renderAll();setAutoMode(state.autoMode,false);processOfflineProgress();queueLeaderboardPublish(true);startMultiplayer();requestAnimationFrame(frame);
 })();
