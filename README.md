@@ -33,3 +33,34 @@
 - Added Tempering Shards to the drop tables of Wolf, Crocodile, Jaguar, Ice Wolf, Frost Troll, and Frost Dragon, with stronger creatures having better chances.
 
 No creature stats, map positions, gathering rates, save structure, multiplayer behavior, or existing inventories were reset.
+
+## v0.19.1 — Admin Foundations
+
+Adds a separate private `/admin` control room and the server-side Firebase Functions required for privileged operations.
+
+### Admin dashboard
+- Admin-claim-only login.
+- Global maintenance mode, minimum-version enforcement, update messaging, and scheduled shutdown settings.
+- Live online-player viewer.
+- Account search and inspection.
+- Display-name, coin, position, inventory, suspension, and ban controls.
+- Session revocation and full account deletion.
+- Revisioned map JSON drafts, publishing, history, and rollback foundation.
+- Immutable server-written admin audit log.
+
+### Game integration
+- Signed-in clients listen to a single `system/config` document.
+- Maintenance mode or an outdated version safely blocks gameplay and disconnects multiplayer presence.
+- Suspended and banned accounts are stopped before their save loads.
+- Browsers cannot be remotely closed, so forced-update mode presents a blocking update screen and requires reload.
+
+### Deployment
+1. Install the Firebase CLI and select the `idle-wonders` project.
+2. From `functions/`, run `npm install`.
+3. Deploy with `firebase deploy --only functions,firestore:rules,database,hosting`.
+4. Grant your account the custom claim once:
+   - Configure Application Default Credentials for the project.
+   - Run `node functions/scripts/set-admin.mjs your-email@example.com`.
+   - Sign out and back in before opening `/admin`.
+
+The map workspace stores and publishes validated remote map revisions, but the current hard-coded game map does not consume remote map data yet. That integration should be a separate world-system update.

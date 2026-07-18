@@ -5,13 +5,13 @@ import {
   signOut, updateProfile
 } from 'https://www.gstatic.com/firebasejs/12.1.0/firebase-auth.js';
 import {
-  getFirestore, doc, collection, getDocs, getDoc, setDoc, writeBatch, serverTimestamp, query, orderBy, limit
+  getFirestore, doc, collection, getDocs, getDoc, setDoc, writeBatch, serverTimestamp, query, orderBy, limit, onSnapshot
 } from 'https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js';
 import {
   getDatabase, ref as databaseRef, set as databaseSet, update as databaseUpdate, onValue, onDisconnect, serverTimestamp as realtimeTimestamp
 } from 'https://www.gstatic.com/firebasejs/12.1.0/firebase-database.js';
 
-const VERSION = '0.19.0';
+const VERSION = '0.19.1';
 const SAVE_KEY_PREFIX = 'idle-wanderer-save-v6:';
 const firebaseConfig = {
   apiKey: 'AIzaSyDPS8qby2nMPc0beclK7igZcD-PvVOjviw',
@@ -187,11 +187,93 @@ async function clearCloudSave(user) {
   savedSectionFingerprints = new Map();
 }
 
+
+let systemConfigUnsubscribe = null;
+let systemBlocked = false;
+
+function compareVersions(left = '0', right = '0') {
+  const a = String(left).split('.').map(value => Number(value) || 0);
+  const b = String(right).split('.').map(value => Number(value) || 0);
+  for (let i = 0; i < Math.max(a.length, b.length); i += 1) {
+    if ((a[i] || 0) !== (b[i] || 0)) return (a[i] || 0) - (b[i] || 0);
+  }
+  return 0;
+}
+
+function timestampMillis(value) {
+  if (!value) return 0;
+  if (typeof value.toMillis === 'function') return value.toMillis();
+  const parsed = new Date(value).getTime();
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function ensureSystemOverlay() {
+  let overlay = document.getElementById('systemBlockOverlay');
+  if (overlay) return overlay;
+  overlay = document.createElement('section');
+  overlay.id = 'systemBlockOverlay';
+  overlay.hidden = true;
+  overlay.innerHTML = `<div class="system-block-card"><div class="system-block-crest">IW</div><p class="system-block-kicker">Idle Wanderer</p><h2 id="systemBlockTitle">Update required</h2><p id="systemBlockMessage"></p><button id="systemReloadButton" type="button">Reload Game</button></div>`;
+  const style = document.createElement('style');
+  style.textContent = `#systemBlockOverlay{position:fixed;inset:0;z-index:100000;display:grid;place-items:center;padding:20px;background:rgba(7,13,9,.94);backdrop-filter:blur(8px)}#systemBlockOverlay[hidden]{display:none}.system-block-card{width:min(440px,100%);padding:30px;text-align:center;border:2px solid #776338;border-radius:22px;background:linear-gradient(#263829,#152019);color:#f5ecd7;box-shadow:0 24px 80px #000}.system-block-crest{display:grid;place-items:center;width:62px;height:62px;margin:0 auto 14px;border:2px solid #d4aa50;border-radius:18px;color:#d4aa50;font:800 22px Georgia}.system-block-kicker{color:#d4aa50;font-weight:800;letter-spacing:.15em;text-transform:uppercase;font-size:11px}.system-block-card button{margin-top:12px;padding:11px 18px;border:1px solid #8d7036;border-radius:10px;background:#d4aa50;color:#241a08;font-weight:850}`;
+  document.head.appendChild(style);
+  document.body.appendChild(overlay);
+  document.getElementById('systemReloadButton').addEventListener('click', () => location.reload());
+  return overlay;
+}
+
+async function applySystemConfig(config = {}) {
+  const shutdownAt = timestampMillis(config.shutdownAt);
+  const shutdownActive = shutdownAt > 0 && Date.now() >= shutdownAt;
+  const updateRequired = config.minimumVersion && compareVersions(VERSION, config.minimumVersion) < 0;
+  const blocked = Boolean(config.maintenanceMode || shutdownActive || updateRequired);
+  const overlay = ensureSystemOverlay();
+  if (!blocked) {
+    systemBlocked = false;
+    overlay.hidden = true;
+    appShell.inert = false;
+    return false;
+  }
+  systemBlocked = true;
+  document.getElementById('systemBlockTitle').textContent = updateRequired ? 'Update required' : 'Temporarily closed';
+  document.getElementById('systemBlockMessage').textContent = config.message || (updateRequired ? `Version ${config.minimumVersion} or newer is required.` : 'The game is temporarily closed while an update is being prepared.');
+  overlay.hidden = false;
+  appShell.inert = true;
+  await leaveMultiplayer().catch(() => {});
+  return true;
+}
+
+function watchSystemConfig() {
+  if (systemConfigUnsubscribe) systemConfigUnsubscribe();
+  systemConfigUnsubscribe = onSnapshot(doc(db, 'system', 'config'), snapshot => {
+    applySystemConfig(snapshot.exists() ? snapshot.data() : {}).catch(console.error);
+  }, error => console.warn('System configuration listener failed', error));
+}
+
 async function enterGame(user) {
   activeUser = user;
   setBusy(true);
   setMessage('Loading your cloud save…');
   try {
+    const [accountSnapshot, systemSnapshot] = await Promise.all([
+      getDoc(doc(db, 'users', user.uid)),
+      getDoc(doc(db, 'system', 'config'))
+    ]);
+    const accountData = accountSnapshot.data() || {};
+    if (accountData.banned || accountData.suspended) {
+      ensureSystemOverlay();
+      document.getElementById('systemBlockTitle').textContent = accountData.banned ? 'Account unavailable' : 'Account suspended';
+      document.getElementById('systemBlockMessage').textContent = accountData.banned ? 'This account has been disabled by an administrator.' : 'This account is temporarily suspended. Contact the game administrator.';
+      document.getElementById('systemBlockOverlay').hidden = false;
+      setBusy(false);
+      return;
+    }
+    if (await applySystemConfig(systemSnapshot.exists() ? systemSnapshot.data() : {})) {
+      setBusy(false);
+      watchSystemConfig();
+      return;
+    }
+    watchSystemConfig();
     const resetRequested = sessionStorage.getItem('idle-wanderer-reset') === '1';
     if (resetRequested) {
       sessionStorage.removeItem('idle-wanderer-reset');
@@ -473,6 +555,8 @@ onAuthStateChanged(auth, user => {
   if (user) enterGame(user);
   else {
     activeUser = null;
+    if (systemConfigUnsubscribe) systemConfigUnsubscribe();
+    systemConfigUnsubscribe = null;
     setBusy(false);
     loginScreen.hidden = false;
     appShell.hidden = true;
