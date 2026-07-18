@@ -7,8 +7,11 @@ import {
 import {
   getFirestore, doc, collection, getDocs, getDoc, setDoc, writeBatch, serverTimestamp, query, orderBy, limit
 } from 'https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js';
+import {
+  getDatabase, ref as databaseRef, set as databaseSet, update as databaseUpdate, onValue, onDisconnect, serverTimestamp as realtimeTimestamp
+} from 'https://www.gstatic.com/firebasejs/12.1.0/firebase-database.js';
 
-const VERSION = '0.14.1';
+const VERSION = '0.15.0';
 const SAVE_KEY_PREFIX = 'idle-wanderer-save-v6:';
 const firebaseConfig = {
   apiKey: 'AIzaSyDPS8qby2nMPc0beclK7igZcD-PvVOjviw',
@@ -16,12 +19,15 @@ const firebaseConfig = {
   projectId: 'idle-wonders',
   storageBucket: 'idle-wonders.firebasestorage.app',
   messagingSenderId: '537194194344',
-  appId: '1:537194194344:web:d71107c9a027215e18299d'
+  appId: '1:537194194344:web:d71107c9a027215e18299d',
+  databaseURL: 'https://idle-wonders-default-rtdb.firebaseio.com'
 };
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
+const realtimeDb = getDatabase(app);
+const FAMILY_WORLD_ID = 'family-world';
 const provider = new GoogleAuthProvider();
 provider.setCustomParameters({ prompt: 'select_account' });
 
@@ -208,6 +214,61 @@ async function enterGame(user) {
 }
 
 
+
+
+let multiplayerUnsubscribe = null;
+let multiplayerPlayerRef = null;
+let multiplayerConnected = false;
+
+function safePresencePayload(payload = {}) {
+  const fallback = activeUser?.displayName || activeUser?.email?.split('@')[0] || 'Wanderer';
+  return {
+    uid: activeUser?.uid || '',
+    name: String(payload.name || fallback).replace(/[<>]/g, '').trim().slice(0, 24) || 'Wanderer',
+    x: Math.max(0, Math.min(3800, Number(payload.x) || 1780)),
+    y: Math.max(0, Math.min(4300, Number(payload.y) || 2340)),
+    targetX: Math.max(0, Math.min(3800, Number(payload.targetX ?? payload.x) || 1780)),
+    targetY: Math.max(0, Math.min(4300, Number(payload.targetY ?? payload.y) || 2340)),
+    facing: ['left','right','up','down'].includes(payload.facing) ? payload.facing : 'down',
+    moving: Boolean(payload.moving),
+    activity: String(payload.activity || 'Exploring').slice(0, 40),
+    area: String(payload.area || 'Central Grass').slice(0, 40),
+    combatLevel: Math.max(1, Number(payload.combatLevel) || 1),
+    equipment: payload.equipment && typeof payload.equipment === 'object' ? payload.equipment : {},
+    online: true,
+    updatedAt: realtimeTimestamp()
+  };
+}
+
+async function connectMultiplayer(initialPayload, onPlayers) {
+  if (!activeUser) throw new Error('Sign in before joining the family world.');
+  if (multiplayerUnsubscribe) multiplayerUnsubscribe();
+  multiplayerPlayerRef = databaseRef(realtimeDb, `worlds/${FAMILY_WORLD_ID}/players/${activeUser.uid}`);
+  await databaseSet(multiplayerPlayerRef, safePresencePayload(initialPayload));
+  await onDisconnect(multiplayerPlayerRef).remove();
+  const playersRef = databaseRef(realtimeDb, `worlds/${FAMILY_WORLD_ID}/players`);
+  multiplayerUnsubscribe = onValue(playersRef, snapshot => {
+    const all = snapshot.val() || {};
+    const others = Object.fromEntries(Object.entries(all).filter(([uid, player]) => uid !== activeUser.uid && player?.online !== false));
+    onPlayers?.(others);
+  }, error => console.warn('Family world listener failed', error));
+  multiplayerConnected = true;
+  return { worldId: FAMILY_WORLD_ID, uid: activeUser.uid };
+}
+
+async function updateMultiplayer(payload) {
+  if (!activeUser || !multiplayerPlayerRef || !multiplayerConnected) return;
+  await databaseUpdate(multiplayerPlayerRef, safePresencePayload(payload));
+}
+
+async function leaveMultiplayer() {
+  multiplayerConnected = false;
+  if (multiplayerUnsubscribe) multiplayerUnsubscribe();
+  multiplayerUnsubscribe = null;
+  if (multiplayerPlayerRef) await databaseSet(multiplayerPlayerRef, null).catch(() => {});
+  multiplayerPlayerRef = null;
+}
+
 function cleanLeaderboardName(value) {
   const fallback = activeUser?.displayName || activeUser?.email?.split('@')[0] || 'Wanderer';
   return String(value || fallback).replace(/[<>]/g, '').trim().slice(0, 24) || 'Wanderer';
@@ -225,6 +286,7 @@ async function publishLeaderboard(profile) {
     totalKills: Number(profile.totalKills) || 0,
     uniqueDrops: Number(profile.uniqueDrops) || 0,
     summonsUnlocked: Number(profile.summonsUnlocked) || 0,
+    deaths: Number(profile.deaths) || 0,
     skillLevels: profile.skillLevels || {},
     highestSkill: profile.highestSkill || { name: 'None', level: 1 },
     updatedAt: serverTimestamp()
@@ -270,11 +332,20 @@ window.IdleCloud = {
     await writeCloudState(structuredClone(state));
   },
   async signOut() {
+    await leaveMultiplayer();
     await signOut(auth);
     location.reload();
   },
   get user() { return activeUser; },
   get localSaveKey() { return activeUser ? saveKeyFor(activeUser) : null; }
+};
+
+window.IdleMultiplayer = {
+  worldId: FAMILY_WORLD_ID,
+  connect: connectMultiplayer,
+  update: updateMultiplayer,
+  leave: leaveMultiplayer,
+  get connected() { return multiplayerConnected; }
 };
 
 setCreateMode(false);

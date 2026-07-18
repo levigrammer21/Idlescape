@@ -17,7 +17,7 @@ service cloud.firestore {
         && request.resource.data.uid == uid
         && request.resource.data.keys().hasOnly([
           'uid','displayName','totalLevel','combatLevel','coins','lifetimeGold',
-          'totalKills','uniqueDrops','summonsUnlocked','skillLevels','highestSkill','updatedAt'
+          'totalKills','uniqueDrops','summonsUnlocked','deaths','skillLevels','highestSkill','updatedAt'
         ])
         && request.resource.data.displayName is string
         && request.resource.data.displayName.size() > 0

@@ -119,7 +119,21 @@ Upload every file in this folder to the root of your GitHub Pages repository.
 - Death totals are included in public player profiles.
 
 
-## v0.14.3 — Death Trigger Fix
+## v0.15.0 — Death Trigger Fix
 
 - Fixed a JavaScript truthiness bug where `0 HP` was replaced with full HP inside the combat HUD before the defeat check ran.
 - The defeat handler now receives a real zero-health state, increments deaths, stops combat, returns the player to Starting Town, and opens the defeat screen.
+
+
+## v0.15.0 — Private Family World
+
+This build adds live shared-map presence for a small private group. Signed-in players in the same Firebase project join the fixed `family-world`, see one another move on the map, and can open the online-player panel. Character saves, enemies, gathering nodes, loot, and combat remain personal in this first multiplayer foundation.
+
+### Required Firebase setup
+
+1. In Firebase Console, open **Build → Realtime Database** and create the database.
+2. Open its **Rules** tab and publish the contents of `database.rules.json`. These development rules allow any authenticated player in your Firebase project to read and write live world presence.
+3. Keep/publish `firestore.rules` for saves and leaderboards.
+4. Deploy every file in this archive so the v0.15.0 service-worker cache replaces the previous build.
+
+If your Realtime Database was created in a non-default region and Firebase gives it a URL other than `https://idle-wonders-default-rtdb.firebaseio.com`, replace `databaseURL` in `firebase.js` with the exact URL displayed in the Firebase console.
