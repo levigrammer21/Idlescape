@@ -1,38 +1,22 @@
-# Idle Wanderer v0.21.0 — Living Companions
+# Idle Wanderer v0.22.0 — Adventurer Records
 
-## World-building update
-- Added biome-specific decorative scenery across the continent.
-- Starting Area: flowers, grass, and bushes.
-- Dead Grass: dry tufts, stumps, stones, and bones.
-- Tundra: snow tufts, frozen bushes, ice shards, and snow rocks.
-- Jungle: ferns, broad leaves, vines, and mushrooms.
-- Swamp: reeds, mud patches, lilies, and dead trees.
-- Desert: cacti, dune grass, desert rocks, and old remains.
+## Passive health regeneration
+- Players recover 1 HP every 30 seconds while injured.
+- Regeneration pauses at full health and does not create offline healing rewards.
 
-## Real town residents
-- Town residents now appear as visible NPCs around every town.
-- Tap an NPC in the world to walk over and speak with them.
-- Resident names and roles appear above their characters.
-- The town Residents menu remains available as a convenient directory.
+## Cleaner equipment inventory
+- The copy currently equipped in each equipment slot is hidden from Inventory.
+- Equipped gear remains visible and manageable from the Equipment screen.
+- Extra unequipped copies of the same item still appear in Inventory.
 
-## Helpful dialogue
-- Starting Town now has four dedicated guides:
-  - Mira explains starter gathering, tools, skills, and requests.
-  - Elias explains Spirit Essence, unlocking summons, companion bonuses, and Summoning XP.
-  - Bram explains melee, ranged combat, Fortitude, food, and aggressive creatures.
-  - Old Fen explains gathering progression and where to go after the starting area.
-- Other towns now provide biome-specific guidance about resources, danger, crafting, and progression.
-- NPC conversations continue to include their daily quests.
+## Personal Bestiary and Collection Log
+- Added a Bestiary tab containing every creature in the world.
+- Each entry tracks the signed-in player's personal kill count.
+- Unde­feated creatures remain hidden until the player earns their first kill.
+- Every creature shows its rare-drop collection entries.
+- Rare drops and Spirit Essences are recorded permanently when received.
+- Existing saves receive collection credit for rare items currently owned.
 
 ## Compatibility
-- Existing saves and progression remain compatible.
-- Continuous hold-to-walk from v0.19.2 is preserved.
-
-## v0.21.0 — Living Companions
-- Added a shared Companion Food Box accessed from the Skills panel or Summoning skill.
-- Cooked food contributes food energy equal to its healing value; one energy lasts one active minute.
-- Only the active summon consumes food, and consumption pauses while offline.
-- Hungry summons remain visible but stop attacking, granting passive bonuses, and gaining Summoning XP.
-- Added Spirit Feasts and Companion Provision recipes so previously underused creature materials feed back into the summoning loop.
-- Item detail text now lists actual crafting, equipment, food-box, summoning, or town uses instead of future-use placeholders.
-- Equipped items are visibly protected from shop selling.
+- Existing v0.21.0 saves and all progression remain compatible.
+- Companion Food Box behavior is unchanged.

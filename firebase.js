@@ -11,7 +11,7 @@ import {
   getDatabase, ref as databaseRef, set as databaseSet, update as databaseUpdate, onValue, onDisconnect, serverTimestamp as realtimeTimestamp
 } from 'https://www.gstatic.com/firebasejs/12.1.0/firebase-database.js';
 
-const VERSION = '0.21.0';
+const VERSION = '0.22.0';
 const SAVE_KEY_PREFIX = 'idle-wanderer-save-v6:';
 const firebaseConfig = {
   apiKey: 'AIzaSyDPS8qby2nMPc0beclK7igZcD-PvVOjviw',

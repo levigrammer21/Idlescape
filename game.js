@@ -1,7 +1,7 @@
 (() => {
   'use strict';
 
-  const VERSION = '0.21.0';
+  const VERSION = '0.22.0';
   const XP_RATE = 1.5;
   const SAVE_KEY = window.IdleCloud?.localSaveKey;
   if (!SAVE_KEY) throw new Error('No authenticated account save key is available.');
@@ -14,7 +14,7 @@
   const ui = {
     status: document.getElementById('statusText'), actionName: document.getElementById('actionName'),
     actionProgress: document.getElementById('actionProgress'), inventory: document.getElementById('inventory'),
-    skills: document.getElementById('skills'), equipment: document.getElementById('equipment'),
+    skills: document.getElementById('skills'), equipment: document.getElementById('equipment'), bestiary: document.getElementById('bestiary'),
     map: document.getElementById('map'), toast: document.getElementById('toast'), region: document.getElementById('regionText'),
     dialog: document.getElementById('itemDialog'), itemType: document.getElementById('itemType'), itemName: document.getElementById('itemName'),
     itemDescription: document.getElementById('itemDescription'), itemStats: document.getElementById('itemStats'), itemAction: document.getElementById('itemActionButton'),
@@ -596,7 +596,7 @@
     audio: { music: true, sfx: true, musicVolume: 0.72, sfxVolume: 0.9 },
     autoMode: 'off', autoTargetId: null, autoBiomeId: 'central',
     treeState: {}, fishingState: {}, rockState: {}, enemyState: {}, combat: { hp: 10 }, poh: {}, quests: {}, shopDay: '',
-    statistics: { totalKills:0, killsByEnemy:{}, lifetimeGoldEarned:0, lifetimeGoldSpent:0, itemsGathered:0, itemsCrafted:0, foodCooked:0, treesCut:0, rocksMined:0, fishCaught:0, uniqueDropsFound:0, deaths:0, playTimeSeconds:0 },
+    statistics: { totalKills:0, killsByEnemy:{}, rareDropsByEnemy:{}, lifetimeGoldEarned:0, lifetimeGoldSpent:0, itemsGathered:0, itemsCrafted:0, foodCooked:0, treesCut:0, rocksMined:0, fishCaught:0, uniqueDropsFound:0, deaths:0, playTimeSeconds:0 },
     lastSavedAt: Date.now()
   });
 
@@ -609,7 +609,7 @@
   let enemies = makeEnemies(state.enemyState);
   let lastFrame = performance.now(), toastTimer = null, selectedItemKey = null;
   let activeTree = null, queuedTree = null, activeFishingSpot = null, queuedFishingSpot = null, activeRock = null, queuedRock = null, queuedTown = null, queuedNPC = null, activeEnemy = null, queuedEnemy = null, combatElapsed = 0, actionElapsed = 0, defeatActive = false;
-  let animationClock = 0, autoThinkElapsed = 0;
+  let animationClock = 0, autoThinkElapsed = 0, hpRegenElapsed = 0;
   const floaters = [];
   const projectiles = [];
   const remotePlayers = new Map();
@@ -812,7 +812,7 @@
       }
       for(const key of Object.keys(SKILL_DEFS)) if(old.skills?.[key]) fresh.skills[key]=old.skills[key];
       if(!old.skills?.fortitude || (old.skills.fortitude.xp||0)<xpForLevel(10)) fresh.skills.fortitude={xp:xpForLevel(10)};
-      fresh.equipment={...fresh.equipment,...(old.equipment||{})}; fresh.audio={...fresh.audio,...(old.audio||{})}; fresh.autoMode=['off','combat','woodcutting','mining','fishing','explore'].includes(old.autoMode)?old.autoMode:'off'; fresh.autoTargetId=old.autoTargetId||null; fresh.autoBiomeId=old.autoBiomeId||regionAt(fresh.player.x,fresh.player.y).id; fresh.activeSummon=SUMMON_DEFS[old.activeSummon]?old.activeSummon:null; fresh.summonAttackElapsed=0; fresh.summonFoodEnergy=Math.max(0,Number(old.summonFoodEnergy)||0); fresh.summonFoodElapsed=Math.max(0,Number(old.summonFoodElapsed)||0); fresh.treeState=old.treeState||{}; fresh.fishingState=old.fishingState||{}; fresh.rockState=old.rockState||{}; fresh.enemyState=old.enemyState||{}; fresh.combat={...fresh.combat,...(old.combat||{})}; fresh.poh=old.poh||{}; fresh.quests=old.quests||{}; fresh.statistics={...fresh.statistics,...(old.statistics||{}),killsByEnemy:{...(old.statistics?.killsByEnemy||{})}};
+      fresh.equipment={...fresh.equipment,...(old.equipment||{})}; fresh.audio={...fresh.audio,...(old.audio||{})}; fresh.autoMode=['off','combat','woodcutting','mining','fishing','explore'].includes(old.autoMode)?old.autoMode:'off'; fresh.autoTargetId=old.autoTargetId||null; fresh.autoBiomeId=old.autoBiomeId||regionAt(fresh.player.x,fresh.player.y).id; fresh.activeSummon=SUMMON_DEFS[old.activeSummon]?old.activeSummon:null; fresh.summonAttackElapsed=0; fresh.summonFoodEnergy=Math.max(0,Number(old.summonFoodEnergy)||0); fresh.summonFoodElapsed=Math.max(0,Number(old.summonFoodElapsed)||0); fresh.treeState=old.treeState||{}; fresh.fishingState=old.fishingState||{}; fresh.rockState=old.rockState||{}; fresh.enemyState=old.enemyState||{}; fresh.combat={...fresh.combat,...(old.combat||{})}; fresh.poh=old.poh||{}; fresh.quests=old.quests||{}; fresh.statistics={...fresh.statistics,...(old.statistics||{}),killsByEnemy:{...(old.statistics?.killsByEnemy||{})},rareDropsByEnemy:{...(old.statistics?.rareDropsByEnemy||{})}}; for(const type of Object.keys(ENEMY_TYPES)){for(const key of rareDropKeysForEnemy(type)){if((fresh.inventory[key]||0)>0){fresh.statistics.rareDropsByEnemy[type] ||= {};fresh.statistics.rareDropsByEnemy[type][key]=true;}}}
       const worldLayoutChanged=old.version && !['0.19.0','0.19.1','0.19.2'].includes(old.version);
       if(!worldLayoutChanged && old.player && isWalkable(old.player.x,old.player.y)) fresh.player={...fresh.player,x:old.player.x,y:old.player.y,targetX:old.player.x,targetY:old.player.y};
       if(worldLayoutChanged){
@@ -830,6 +830,17 @@
 
 
   const UNIQUE_DROP_KEYS = new Set(Object.entries(ITEM_DEFS).filter(([,d])=>/Rare combat drop|Unique/.test(d.type||'')).map(([k])=>k));
+  function rareDropKeysForEnemy(type){
+    const drops=(ENEMY_TYPES[type]?.drops||[]).filter(([, , , chance])=>Number(chance)<0.1).map(([key])=>key);
+    if(SUMMON_DEFS[type])drops.push(`${type}Essence`);
+    return [...new Set(drops)];
+  }
+  function recordRareDrop(type,key){
+    if(!rareDropKeysForEnemy(type).includes(key))return;
+    state.statistics.rareDropsByEnemy ||= {};
+    state.statistics.rareDropsByEnemy[type] ||= {};
+    state.statistics.rareDropsByEnemy[type][key]=true;
+  }
   const LEADERBOARD_PUBLISH_INTERVAL = 60 * 60 * 1000;
   const LEADERBOARD_PUBLISH_KEY = 'idle-wanderer-leaderboard-last-publish';
   let leaderboardPublishTimer=null;
@@ -910,10 +921,10 @@
   function rollEnemyDrops(enemy){
     const d=ENEMY_TYPES[enemy.type],received=[];
     for(const [key,min,max,chance] of d.drops||[]){
-      if(Math.random()>chance)continue;const amount=randomInt(min,max);state.inventory[key]=(state.inventory[key]||0)+amount;if(key==='coins')recordGoldEarned(amount);if(UNIQUE_DROP_KEYS.has(key))state.statistics.uniqueDropsFound=(state.statistics.uniqueDropsFound||0)+amount;received.push(`${ITEM_DEFS[key]?.name||key}${amount>1?` ×${amount}`:''}`);
+      if(Math.random()>chance)continue;const amount=randomInt(min,max);state.inventory[key]=(state.inventory[key]||0)+amount;if(key==='coins')recordGoldEarned(amount);if(UNIQUE_DROP_KEYS.has(key))state.statistics.uniqueDropsFound=(state.statistics.uniqueDropsFound||0)+amount;recordRareDrop(enemy.type,key);received.push(`${ITEM_DEFS[key]?.name||key}${amount>1?` ×${amount}`:''}`);
     }
     const essenceKey=`${enemy.type}Essence`;
-    if(SUMMON_DEFS[enemy.type] && !(state.inventory[essenceKey]>0) && Math.random()<1/50){state.inventory[essenceKey]=1;state.statistics.uniqueDropsFound=(state.statistics.uniqueDropsFound||0)+1;received.push(ITEM_DEFS[essenceKey].name);}
+    if(SUMMON_DEFS[enemy.type] && !(state.inventory[essenceKey]>0) && Math.random()<1/50){state.inventory[essenceKey]=1;state.statistics.uniqueDropsFound=(state.statistics.uniqueDropsFound||0)+1;recordRareDrop(enemy.type,essenceKey);received.push(ITEM_DEFS[essenceKey].name);}
     renderInventory();
     if(received.length)floaters.push({x:enemy.x,y:enemy.y-72,text:received.slice(0,2).join(' · '),life:2});
     return received;
@@ -1158,6 +1169,8 @@
     animationClock+=dt;
     if(holdWalk.pressed&&!holdWalk.active&&performance.now()-holdWalk.startedAt>=HOLD_WALK_DELAY_MS)activateHoldWalk();
     if(defeatActive){ui.actionProgress.style.width='0%';return;}
+    const playerMaxHp=maxPlayerHp();
+    if((state.combat.hp??playerMaxHp)<playerMaxHp){hpRegenElapsed+=dt;while(hpRegenElapsed>=30&&state.combat.hp<playerMaxHp){hpRegenElapsed-=30;state.combat.hp=Math.min(playerMaxHp,state.combat.hp+1);renderCombatHud();}}else hpRegenElapsed=0;
     if(state.activeSummon&&(state.summonFoodEnergy||0)>0){
       state.summonFoodElapsed=(state.summonFoodElapsed||0)+dt;
       while(state.summonFoodElapsed>=SUMMON_FOOD_SECONDS_PER_ENERGY&&(state.summonFoodEnergy||0)>0){
@@ -1362,7 +1375,7 @@
   function drawProjectiles(){for(const p of projectiles){const t=Math.min(1,p.life/p.duration),ease=t*(2-t),x=p.x+(p.targetX-p.x)*ease,y=p.y+(p.targetY-p.y)*ease-(p.type==='stone'?Math.sin(Math.PI*t)*28:0),s=worldToScreen(x,y);ctx.save();ctx.translate(s.x,s.y);const angle=Math.atan2(p.targetY-p.y,p.targetX-p.x);ctx.rotate(angle);if(p.type==='stone'){ctx.fillStyle='#8d9297';ctx.strokeStyle='#34393e';ctx.lineWidth=2;ctx.beginPath();ctx.arc(0,0,5,0,Math.PI*2);ctx.fill();ctx.stroke();}else{ctx.strokeStyle=p.type==='heavyArrow'?'#d8ecf4':'#f1dfad';ctx.lineWidth=p.type==='heavyArrow'?4:2;ctx.beginPath();ctx.moveTo(-10,0);ctx.lineTo(10,0);ctx.stroke();ctx.fillStyle=p.type==='heavyArrow'?'#9fd4e7':'#d7c07d';ctx.beginPath();ctx.moveTo(11,0);ctx.lineTo(4,-4);ctx.lineTo(4,4);ctx.closePath();ctx.fill();}ctx.restore();}}
   function draw(){ctx.clearRect(0,0,canvas.width,canvas.height);ctx.fillStyle='#397f9f';ctx.fillRect(0,0,canvas.width,canvas.height);ctx.strokeStyle='rgba(210,240,248,.22)';ctx.lineWidth=3;for(let y=-30+(animationClock*12)%46;y<canvas.height+40;y+=46){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(canvas.width,y+10);ctx.stroke();}fillSmooth(continent,'#72ae61','#d5c68b',8);drawTileTexture(continent);for(const r of regions){fillStraight(r.points,r.color,'rgba(55,50,38,.2)',3);drawTileTexture(r.points,true);}for(const w of waters)drawWater(w);for(const item of worldDecor)drawWorldDecorItem(item);for(const f of fishingSpots)drawFishingSpot(f);for(const t of towns)drawTown(t);for(const npc of worldNPCs)drawNPC(npc);for(const t of trees)drawTree(t);for(const r of rocks)drawRock(r);for(const e of enemies)drawEnemy(e);drawRemotePlayers();drawSummon();drawPlayer();drawProjectiles();for(const f of floaters){const s=worldToScreen(f.x,f.y);ctx.globalAlpha=Math.min(1,f.life*1.4);ctx.fillStyle=f.damage?(f.miss?'#d7dbe2':'#ff6b6b'):'#fff4b8';ctx.strokeStyle='rgba(20,20,20,.8)';ctx.lineWidth=4;ctx.font='bold 14px system-ui';ctx.textAlign='center';ctx.strokeText(f.text,s.x,s.y);ctx.fillText(f.text,s.x,s.y);ctx.textAlign='start';ctx.globalAlpha=1;}}
 
-  function openPanel(name){if(name==='leaderboards')renderLeaderboards(leaderboardSort);document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active',t.dataset.panel===name));document.querySelectorAll('.panel').forEach(p=>p.classList.toggle('active',p.id===name));}
+  function openPanel(name){if(name==='leaderboards')renderLeaderboards(leaderboardSort);if(name==='bestiary')renderBestiary();document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active',t.dataset.panel===name));document.querySelectorAll('.panel').forEach(p=>p.classList.toggle('active',p.id===name));}
   function itemCategory(key,item){
     if(item.summonType)return 'summons';
     if(item.slot==='weapon'||/weapon|bow/i.test(item.type))return 'weapons';
@@ -1377,7 +1390,8 @@
   }
   function renderInventory(){
     const categories=[['all','All'],['weapons','Weapons'],['armour','Armour'],['food','Food'],['materials','Materials'],['tools','Tools'],['summons','Summons'],['other','Other']];
-    const owned=Object.entries(state.inventory).filter(([k,q])=>q>0&&k!=='coins'&&ITEM_DEFS[k]);
+    const equippedCounts=Object.values(state.equipment).filter(Boolean).reduce((counts,key)=>{counts[key]=(counts[key]||0)+1;return counts;},{});
+    const owned=Object.entries(state.inventory).map(([k,q])=>[k,Math.max(0,q-(equippedCounts[k]||0))]).filter(([k,q])=>q>0&&k!=='coins'&&ITEM_DEFS[k]);
     const shown=inventoryFilter==='all'?owned:owned.filter(([k])=>itemCategory(k,ITEM_DEFS[k])===inventoryFilter);
     ui.inventory.innerHTML=`<div class="inventory-filters">${categories.map(([k,label])=>`<button class="inventory-filter ${inventoryFilter===k?'active':''}" data-filter="${k}">${label}</button>`).join('')}</div>${shown.length?`<div class="item-grid">${shown.map(([k,q])=>`<button class="item" data-item="${k}"><strong>${ITEM_DEFS[k].name}</strong><span>×${q}</span><small>${ITEM_DEFS[k].type}</small></button>`).join('')}</div>`:`<div class="empty-state"><strong>No ${inventoryFilter==='all'?'items':inventoryFilter} owned</strong><span>Items in this category will appear here.</span></div>`}`;
     ui.inventory.querySelectorAll('[data-filter]').forEach(b=>b.addEventListener('click',()=>{inventoryFilter=b.dataset.filter;renderInventory();}));
@@ -1509,6 +1523,14 @@
     showToast(`Crafted ${ITEM_DEFS[recipe.output].name}${count>1?` ×${count}`:''}`);audioEngine.sfx('craft');renderInventory();renderSkills();renderEquipment();renderCraftingMenu();saveGame(false);
   }
 
+  function renderBestiary(){
+    if(!ui.bestiary)return;
+    const totalTypes=Object.keys(ENEMY_TYPES).length;
+    const defeatedTypes=Object.keys(ENEMY_TYPES).filter(type=>(state.statistics.killsByEnemy?.[type]||0)>0).length;
+    const allRare=Object.keys(ENEMY_TYPES).flatMap(type=>rareDropKeysForEnemy(type).map(key=>[type,key]));
+    const foundRare=allRare.filter(([type,key])=>state.statistics.rareDropsByEnemy?.[type]?.[key]).length;
+    ui.bestiary.innerHTML=`<div class="bestiary-summary"><div><span>Creatures defeated</span><strong>${defeatedTypes}/${totalTypes}</strong></div><div><span>Rare entries found</span><strong>${foundRare}/${allRare.length}</strong></div><div><span>Total kills</span><strong>${(state.statistics.totalKills||0).toLocaleString()}</strong></div></div><div class="bestiary-list">${Object.entries(ENEMY_TYPES).map(([type,enemy])=>{const kills=state.statistics.killsByEnemy?.[type]||0,rare=rareDropKeysForEnemy(type);return `<details class="bestiary-entry ${kills?'discovered':'unknown'}"><summary><span><strong>${kills?enemy.name:'Unknown Creature'}</strong><small>${kills?`${kills.toLocaleString()} personal kill${kills===1?'':'s'}`:'Not yet defeated'}</small></span><b>${kills?'✓':'?'}</b></summary><div class="collection-log"><h3>Rare collection</h3>${rare.length?rare.map(key=>{const found=Boolean(state.statistics.rareDropsByEnemy?.[type]?.[key]);return `<div class="collection-item ${found?'found':'missing'}"><span>${found?'◆':'◇'}</span><strong>${found?(ITEM_DEFS[key]?.name||key):'Unfound rare item'}</strong><small>${found?'Collected':'Keep hunting this creature'}</small></div>`}).join(''):'<p class="hint">This creature has no rare collection entries.</p>'}</div></details>`}).join('')}</div>`;
+  }
   function renderEquipment(){const slots=[['head','Head'],['cape','Cape'],['body','Body'],['weapon','Weapon'],['shield','Shield'],['legs','Legs'],['boots','Boots'],['ring','Ring'],['food','Food']],ps=playerCombatStats();ui.equipment.innerHTML=`<div class="map-summary"><strong>${ps.style==='range'?'Ranged':'Melee'} combat stats</strong><span>Level ${ps.level} · Accuracy ${ps.accuracy} · Max hit ${ps.maxHit} · Defence ${ps.defence}</span></div><div class="equipment-slots">${slots.map(([k,l])=>{const item=state.equipment[k]&&ITEM_DEFS[state.equipment[k]];return `<button class="slot ${item?'filled':''}" data-slot="${k}" ${item?'':'disabled'}><span>${l}</span><strong>${item?item.name:'Empty'}</strong></button>`}).join('')}</div>`;ui.equipment.querySelectorAll('.slot.filled').forEach(b=>b.addEventListener('click',()=>showItem(state.equipment[b.dataset.slot])));}
   function renderMapPanel(){
     ui.map.innerHTML='<div class="minimap-wrap"><canvas id="miniMapCanvas" width="720" height="720" aria-label="Draggable world minimap"></canvas><span class="minimap-hint">Drag to explore · tap your marker button to recenter</span><button id="recenterMapButton" class="minimap-recenter">◎</button></div>';
@@ -1525,7 +1547,7 @@
 
   function showItem(key){const item=ITEM_DEFS[key];if(!item)return;selectedItemKey=key;ui.itemAction.dataset.action='';ui.itemType.textContent=item.type;ui.itemName.textContent=item.name;ui.itemDescription.textContent=item.description;const rows=[];if(item.uses)rows.push(['Used for',item.uses]);for(const [k,v] of Object.entries(item.stats||{}))rows.push([k,v]);if(item.summonType)rows.push(['Current status',state.activeSummon===item.summonType?(summonIsFed()?'Active and fed':'Active but hungry'):'Available to summon']);ui.itemStats.innerHTML=rows.map(([k,v])=>`<div><span>${k}</span><strong>${v}</strong></div>`).join('');const equipped=Object.keys(state.equipment).find(s=>state.equipment[s]===key);if(item.summonType&&state.inventory[key]>0){ui.itemAction.hidden=false;ui.itemAction.textContent=state.activeSummon===item.summonType?'Already Summoned':'Summon';ui.itemAction.disabled=state.activeSummon===item.summonType;}else if(item.slot&&state.inventory[key]>0){ui.itemAction.hidden=false;ui.itemAction.disabled=false;ui.itemAction.textContent=equipped?'Unequip':'Equip';}else{ui.itemAction.hidden=true;ui.itemAction.disabled=false;}ui.dialog.showModal();}
   function toggleSelectedEquipment(){if(ui.itemAction.dataset.action==='foodBox'){ui.dialog.close();openSummonFoodBox();return;}const key=selectedItemKey,item=ITEM_DEFS[key];if(item?.summonType){if(state.activeSummon===item.summonType)return;state.activeSummon=item.summonType;state.summonAttackElapsed=0;ui.dialog.close();showToast(`${SUMMON_DEFS[item.summonType].name} answers your call${summonIsFed()?'':' — stock the Food Box'}`);audioEngine.sfx('summon');renderAll();saveGame(false);return;}if(!item?.slot)return;const existing=Object.keys(state.equipment).find(s=>state.equipment[s]===key);if(existing)state.equipment[existing]=null;else state.equipment[item.slot]=key;ui.dialog.close();renderEquipment();renderCombatHud();saveGame(false);}
-  function renderAll(){renderInventory();renderSkills();renderEquipment();renderMapPanel();renderCombatHud();renderHeader();if(ui.leaderboards?.classList.contains('active'))renderLeaderboards(leaderboardSort);}
+  function renderAll(){renderInventory();renderSkills();renderEquipment();renderBestiary();renderMapPanel();renderCombatHud();renderHeader();if(ui.leaderboards?.classList.contains('active'))renderLeaderboards(leaderboardSort);}
   function frame(now){updateMultiplayer(now);const dt=Math.min((now-lastFrame)/1000,.05);lastFrame=now;update(dt);draw();if(now-miniMapView.lastDraw>180&&document.getElementById('map')?.classList.contains('active')){miniMapView.lastDraw=now;drawMiniMap();}requestAnimationFrame(frame);}
 
   ui.familyWorldToggle?.addEventListener('click',()=>{ui.onlinePlayers.hidden=!ui.onlinePlayers.hidden;});

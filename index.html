@@ -16,7 +16,7 @@
       <div class="login-mark" aria-hidden="true">IW</div>
       <p class="login-kicker">A quiet world is waiting</p>
       <h1>Idle Wanderer</h1>
-      <p class="login-version">v0.21.0 · Living Companions</p>
+      <p class="login-version">v0.22.0 · Adventurer Records</p>
       <button id="googleSignInButton" class="google-button" type="button"><span>G</span> Continue with Google</button>
       <div class="login-divider"><span>or</span></div>
       <form id="authForm" class="auth-form">
@@ -36,7 +36,7 @@
   <main id="app" hidden>
     <header class="topbar">
       <div class="title-block">
-        <h1>Idle Wanderer <span id="headerVersion" class="header-version">v0.21.0</span></h1>
+        <h1>Idle Wanderer <span id="headerVersion" class="header-version">v0.22.0</span></h1>
         <p id="statusText">Tap the ground, a tree, a rock, a fishing spot, or a town.</p>
       </div>
       <div class="topbar-center" aria-label="Coins">
@@ -68,6 +68,7 @@
       <button class="tab" data-panel="skills" aria-label="Skills"><span class="tab-icon">✦</span><span>Skills</span></button>
       <button class="tab" data-panel="equipment" aria-label="Equipment"><span class="tab-icon">🛡</span><span>Equip</span></button>
       <button class="tab" data-panel="map" aria-label="Map"><span class="tab-icon">⌖</span><span>Map</span></button>
+      <button class="tab" data-panel="bestiary" aria-label="Bestiary"><span class="tab-icon">🐾</span><span>Beasts</span></button>
       <button class="tab" data-panel="leaderboards" aria-label="Ranks"><span class="tab-icon">♛</span><span>Ranks</span></button>
       <button class="tab" data-panel="menu" aria-label="Menu"><span class="tab-icon">☰</span><span>Menu</span></button>
     </nav>
@@ -77,6 +78,7 @@
       <section id="skills" class="panel"></section>
       <section id="equipment" class="panel"></section>
       <section id="map" class="panel"></section>
+      <section id="bestiary" class="panel"></section>
       <section id="leaderboards" class="panel"><div class="leaderboard-loading">Loading leaderboards…</div></section>
       <section id="menu" class="panel">
         <div class="menu-grid">
@@ -86,7 +88,7 @@
           <button id="resetButton" class="wide-button muted-button">Reset Game</button>
         </div>
         <p class="hint">Town services are opened from the world itself. Skills will be developed one at a time, beginning with Woodcutting.</p>
-        <p class="version">Version 0.21.0 · Living Companions</p>
+        <p class="version">Version 0.22.0 · Adventurer Records</p>
       </section>
     </section>
   </main>
@@ -143,6 +145,6 @@
     <div id="leaderboardProfileContent" class="leaderboard-profile-content"></div>
   </dialog>
 
-  <script type="module" src="firebase.js?v=0.21.0"></script>
+  <script type="module" src="firebase.js?v=0.22.0"></script>
 </body>
 </html>
