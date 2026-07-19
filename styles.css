@@ -185,3 +185,7 @@ dialog{border:1px solid rgba(255,255,255,.16)!important;box-shadow:0 28px 90px r
 button:focus-visible,select:focus-visible{outline:2px solid #f4d36e;outline-offset:2px}.tab,.inventory-filter,.item,.slot,.skill-card,.wide-button{transition:transform .08s ease,filter .08s ease,border-color .12s ease}.tab:active,.inventory-filter:active,.item:active,.slot:active,.skill-card:active,.wide-button:active{transform:scale(.98);filter:brightness(1.08)}
 @media(max-width:390px){#app{grid-template-rows:auto minmax(255px,1fr) auto auto minmax(128px,32vh)}.topbar p{max-width:190px}.action-strip{grid-template-columns:minmax(72px,1fr) minmax(34px,.8fr) auto auto auto}.auto-control select{width:66px}.eat-button{max-width:62px}.item-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media(max-height:700px){#app{grid-template-rows:auto minmax(225px,1fr) auto auto minmax(110px,29vh)}.topbar p{display:none}.tab{min-height:38px}.action-strip{padding:4px 5px}}
+
+/* v0.21.0 Living Companions */
+.summon-food-card{width:100%;display:grid;gap:4px;margin-bottom:9px;padding:11px 12px;text-align:left;border:1px solid #7d6940;border-radius:11px;background:#29271f;color:var(--text)}
+.summon-food-card span{color:#e7c86c;font-size:.65rem;font-weight:850;text-transform:uppercase;letter-spacing:.07em}.summon-food-card strong{font-size:.88rem}.summon-food-card small{color:var(--muted);font-size:.64rem;line-height:1.35}.summon-food-card.fed{border-color:#4e8f61;background:#1d2b24}.summon-food-card.hungry{border-color:#9b5559;background:#302124}.shop-row.locked{opacity:.72}

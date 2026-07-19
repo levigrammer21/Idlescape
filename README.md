@@ -1,4 +1,4 @@
-# Idle Wanderer v0.20.0 — Living World
+# Idle Wanderer v0.21.0 — Living Companions
 
 ## World-building update
 - Added biome-specific decorative scenery across the continent.
@@ -27,3 +27,12 @@
 ## Compatibility
 - Existing saves and progression remain compatible.
 - Continuous hold-to-walk from v0.19.2 is preserved.
+
+## v0.21.0 — Living Companions
+- Added a shared Companion Food Box accessed from the Skills panel or Summoning skill.
+- Cooked food contributes food energy equal to its healing value; one energy lasts one active minute.
+- Only the active summon consumes food, and consumption pauses while offline.
+- Hungry summons remain visible but stop attacking, granting passive bonuses, and gaining Summoning XP.
+- Added Spirit Feasts and Companion Provision recipes so previously underused creature materials feed back into the summoning loop.
+- Item detail text now lists actual crafting, equipment, food-box, summoning, or town uses instead of future-use placeholders.
+- Equipped items are visibly protected from shop selling.

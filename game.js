@@ -1,7 +1,7 @@
 (() => {
   'use strict';
 
-  const VERSION = '0.20.0';
+  const VERSION = '0.21.0';
   const XP_RATE = 1.5;
   const SAVE_KEY = window.IdleCloud?.localSaveKey;
   if (!SAVE_KEY) throw new Error('No authenticated account save key is available.');
@@ -265,6 +265,45 @@
   }
   for(const [raw,d] of Object.entries(COOKING_DATA)) defineItem(d.cooked,{name:d.name,type:'Cooked food',description:`A properly cooked ${d.name.replace('Cooked ','').toLowerCase()}.`,slot:'food',heal:d.heal,stats:{'Cooking level':String(d.level),'Healing':`${d.heal} HP`}});
 
+
+  // Companion provisions give otherwise-overlooked creature materials a lasting purpose.
+  defineItem('spiritFeast',{name:'Spirit Feast',type:'Companion provision',description:'A hearty ritual meal prepared from cooked food and creature materials. It is stored directly in the Companion Food Box.',foodEnergy:30,uses:'Companion Food Box · 30 food energy',stats:{'Food energy':'30 minutes'}});
+  const COMPANION_PROVISION_MATERIALS=[
+    ['ratTail',5],['boarTusk',12],['bones',15],['spiritResidue',35],['serpentScale',35],['sandFang',40],
+    ['slimeGel',25],['clearGel',35],['murkyHide',45],['lurkerEye',50],['spiderSilk',40],['venomSac',45],
+    ['venomFang',50],['gorillaKnuckle',60]
+  ];
+  for(const [material,level] of COMPANION_PROVISION_MATERIALS){
+    if(!ITEM_DEFS[material])continue;
+    addRecipe({id:`spiritFeast_${material}`,category:'Companion Provisions',level,output:'spiritFeast',amount:1,xp:Math.max(15,level*2),materials:{[material]:1,cookedMinnow:1}});
+  }
+
+  function appendItemUse(item,text){
+    const parts=String(item.uses||'').split(' · ').map(x=>x.trim()).filter(x=>x&&!/^Future/i.test(x));
+    if(text&&!parts.includes(text))parts.push(text);
+    item.uses=parts.join(' · ');
+  }
+  function finalizeItemUses(){
+    const ingredientRecipes=new Map();
+    for(const recipe of RECIPES){
+      for(const key of Object.keys(recipe.materials||{})){
+        if(!ingredientRecipes.has(key))ingredientRecipes.set(key,[]);
+        ingredientRecipes.get(key).push(ITEM_DEFS[recipe.output]?.name||recipe.output);
+      }
+    }
+    for(const [key,item] of Object.entries(ITEM_DEFS)){
+      if(item.heal){item.foodEnergy=item.heal;appendItemUse(item,`Heal player · Companion Food Box (${item.heal} energy)`);}
+      if(item.foodEnergy&&!item.heal)appendItemUse(item,`Companion Food Box (${item.foodEnergy} energy)`);
+      if(item.summonType)appendItemUse(item,'Unlock and summon companion');
+      if(item.slot&&item.slot!=='food')appendItemUse(item,'Equip · Forge upgrades');
+      if(item.tool)appendItemUse(item,'Automatic gathering tool');
+      const outputs=ingredientRecipes.get(key)||[];
+      if(outputs.length)appendItemUse(item,`Crafting: ${[...new Set(outputs)].slice(0,3).join(', ')}${outputs.length>3?'…':''}`);
+      if(!item.uses&&key!=='coins')item.uses='Trade · Town requests';
+    }
+  }
+  finalizeItemUses();
+
   const UPGRADE_SUFFIX='__u';
   function equipmentUpgradeLevel(key){const match=String(key||'').match(/__u([1-3])$/);return match?Number(match[1]):0;}
   function equipmentBaseKey(key){return String(key||'').replace(/__u[1-3]$/,'');}
@@ -289,7 +328,7 @@
   const TOWN_NPCS = {
     'Starting Town':[
       {name:'Mira',role:'Wanderer Guide',color:'#d99162',offsetX:-86,offsetY:62,intro:'Welcome to Idle Wanderer. Start close to town: cedar trees, stone rocks, minnows, rabbits, and rats are all meant for new wanderers.',dialog:'Tap a resource to walk to it and begin gathering. Your starter axe, pickaxe, and fishing rod work from your inventory, so you do not need to equip them. Skills unlock stronger resources as they level. The notice board and each resident can offer a daily request.'},
-      {name:'Elias',role:'Spirit Caller',color:'#7a70b8',offsetX:88,offsetY:58,intro:'Creatures sometimes leave behind summoning essence—a rare spirit bond rather than ordinary loot.',dialog:'Every summonable creature has a small chance to leave its Spirit Essence when defeated. Once you find one, open it in your inventory and press Summon. The companion stays unlocked permanently, fights beside you, and may improve gathering, combat, movement, or experience. While a companion is active, ordinary actions also train Summoning.'},
+      {name:'Elias',role:'Spirit Caller',color:'#7a70b8',offsetX:88,offsetY:58,intro:'Creatures sometimes leave behind summoning essence—a rare spirit bond rather than ordinary loot.',dialog:'Every summonable creature has a small chance to leave its Spirit Essence when defeated. Once you find one, open it in your inventory and press Summon. The companion stays unlocked permanently, fights beside you, and may improve gathering, combat, movement, or experience. Keep cooked food in the Companion Food Box. Food energy matches healing, so a 4 HP meal lasts twice as long as a 2 HP meal. A hungry summon stops attacking, granting bonuses, and gaining XP. While fed and active, ordinary actions also train Summoning.'},
       {name:'Bram',role:'Combat Trainer',color:'#5f83a5',offsetX:-92,offsetY:-48,intro:'A steady weapon and food in your pack will carry you farther than charging blindly.',dialog:'Tap a creature to approach and fight it. Melee weapons attack nearby; bows and other ranged weapons let you fight from farther away. Damage trains Melee or Ranged, while Fortitude raises your maximum health. Cook fish or meat in town, equip food, and use the Eat button when hurt. Aggressive creatures may attack first outside the safe starting area.'},
       {name:'Old Fen',role:'Master Gatherer',color:'#72865c',offsetX:92,offsetY:-50,intro:'Woodcutting, Mining, and Fishing are simple to begin, but the world rewards specialists.',dialog:'Higher skill levels unlock new trees, rocks, and fish. Better tools reduce action time, and crafted materials lead to weapons, armour, and town upgrades. Try cedar, stone, and minnows first. When those feel easy, explore the dead-grass ring for oak, copper, and crappie.'}
     ],
@@ -553,7 +592,7 @@
     inventory: { ...defaultInventory(), stoneAxe: 1, stonePickaxe: 1, basicFishingRod: 1, coins: 100 },
     skills: Object.fromEntries(Object.keys(SKILL_DEFS).map(k => [k, { xp: 0 }])),
     equipment: { head: null, body: null, legs: null, boots: null, weapon: null, shield: null, cape: null, ring: null, food: null },
-    activeSummon: null, summonAttackElapsed: 0,
+    activeSummon: null, summonAttackElapsed: 0, summonFoodEnergy: 0, summonFoodElapsed: 0,
     audio: { music: true, sfx: true, musicVolume: 0.72, sfxVolume: 0.9 },
     autoMode: 'off', autoTargetId: null, autoBiomeId: 'central',
     treeState: {}, fishingState: {}, rockState: {}, enemyState: {}, combat: { hp: 10 }, poh: {}, quests: {}, shopDay: '',
@@ -737,13 +776,25 @@
     const level = levelFromXp(state.skills[skillKey]?.xp || 0);
     return ownedTools(toolType).find(([key]) => (ITEM_DEFS[key].requiredSkillLevel || 1) <= level)?.[0] || null;
   }
+  const SUMMON_FOOD_SECONDS_PER_ENERGY=60;
   function activeSummonDef(){return state.activeSummon?SUMMON_DEFS[state.activeSummon]||null:null;}
-  function summonBonus(name){const d=activeSummonDef();return d?.passive===name?d.passiveValue:0;}
+  function summonIsFed(){return Boolean(activeSummonDef()&&(state.summonFoodEnergy||0)>0);}
+  function summonBonus(name){const d=summonIsFed()?activeSummonDef():null;return d?.passive===name?d.passiveValue:0;}
   function xpWithSummonBonus(skill,amount){
-    const d=activeSummonDef(),specific=d?.passive===`${skill}Xp`?d.passiveValue:0,combat=d?.passive==='combatXp'&&['melee','range','fortitude'].includes(skill)?d.passiveValue:0,all=d?.passive==='allXp'?d.passiveValue:0;
+    const d=summonIsFed()?activeSummonDef():null,specific=d?.passive===`${skill}Xp`?d.passiveValue:0,combat=d?.passive==='combatXp'&&['melee','range','fortitude'].includes(skill)?d.passiveValue:0,all=d?.passive==='allXp'?d.passiveValue:0;
     return Math.max(1,Math.round(amount*XP_RATE*(1+specific+combat+all)));
   }
-  function awardSummoningXp(sourceXp){if(!activeSummonDef()||sourceXp<=0)return;awardSkillXp('summoning',Math.max(1,Math.floor(sourceXp/3)));}
+  function awardSummoningXp(sourceXp){if(!summonIsFed()||sourceXp<=0)return;awardSkillXp('summoning',Math.max(1,Math.floor(sourceXp/3)));}
+  function summonFoodDuration(){const seconds=(state.summonFoodEnergy||0)*SUMMON_FOOD_SECONDS_PER_ENERGY-(state.summonFoodElapsed||0);if(seconds<=0)return 'Empty';const h=Math.floor(seconds/3600),m=Math.ceil((seconds%3600)/60);return h?`${h}h ${m}m`:`${m}m`;}
+  function depositSummonFood(key,all=false){const item=ITEM_DEFS[key],owned=state.inventory[key]||0,amount=all?owned:Math.min(1,owned);if(!item?.foodEnergy||amount<1)return;state.inventory[key]-=amount;state.summonFoodEnergy=(state.summonFoodEnergy||0)+item.foodEnergy*amount;showToast(`Added ${item.foodEnergy*amount} food energy`);renderAll();openSummonFoodBox();saveGame(false);}
+  function openSummonFoodBox(){
+    const foods=Object.entries(state.inventory).filter(([key,count])=>count>0&&ITEM_DEFS[key]?.foodEnergy);
+    const active=activeSummonDef(),status=!active?'No active summon':summonIsFed()?`${active.name} is fed and helping`:`${active.name} is hungry and inactive`;
+    const rows=foods.length?foods.map(([key,count])=>{const item=ITEM_DEFS[key];return `<article class="service-card"><div><strong>${item.name} ×${count}</strong><span>${item.foodEnergy} energy each · ${item.foodEnergy} minute${item.foodEnergy===1?'':'s'} each</span></div><div class="service-actions"><button data-feed="${key}">Deposit 1</button><button data-feedall="${key}">Deposit All</button></div></article>`}).join(''):'<div class="empty-state"><strong>No provisions available</strong><span>Cook fish or meat, or craft Spirit Feasts.</span></div>';
+    openService('Summoning', 'Companion Food Box', `${status} · ${Math.floor(state.summonFoodEnergy||0)} energy · ${summonFoodDuration()} remaining`, rows);
+    ui.serviceContent.querySelectorAll('[data-feed]').forEach(b=>b.addEventListener('click',()=>depositSummonFood(b.dataset.feed,false)));
+    ui.serviceContent.querySelectorAll('[data-feedall]').forEach(b=>b.addEventListener('click',()=>depositSummonFood(b.dataset.feedall,true)));
+  }
   function gatheringDuration(def, toolType){
     const toolKey=bestOwnedTool(toolType), bonus=toolKey ? (ITEM_DEFS[toolKey].speedBonus || 0) : 0;
     const summonSpeed=toolType==='axe'?summonBonus('woodcuttingSpeed'):toolType==='pickaxe'?summonBonus('miningSpeed'):summonBonus('fishingSpeed');
@@ -761,7 +812,7 @@
       }
       for(const key of Object.keys(SKILL_DEFS)) if(old.skills?.[key]) fresh.skills[key]=old.skills[key];
       if(!old.skills?.fortitude || (old.skills.fortitude.xp||0)<xpForLevel(10)) fresh.skills.fortitude={xp:xpForLevel(10)};
-      fresh.equipment={...fresh.equipment,...(old.equipment||{})}; fresh.audio={...fresh.audio,...(old.audio||{})}; fresh.autoMode=['off','combat','woodcutting','mining','fishing','explore'].includes(old.autoMode)?old.autoMode:'off'; fresh.autoTargetId=old.autoTargetId||null; fresh.autoBiomeId=old.autoBiomeId||regionAt(fresh.player.x,fresh.player.y).id; fresh.activeSummon=SUMMON_DEFS[old.activeSummon]?old.activeSummon:null; fresh.summonAttackElapsed=0; fresh.treeState=old.treeState||{}; fresh.fishingState=old.fishingState||{}; fresh.rockState=old.rockState||{}; fresh.enemyState=old.enemyState||{}; fresh.combat={...fresh.combat,...(old.combat||{})}; fresh.poh=old.poh||{}; fresh.quests=old.quests||{}; fresh.statistics={...fresh.statistics,...(old.statistics||{}),killsByEnemy:{...(old.statistics?.killsByEnemy||{})}};
+      fresh.equipment={...fresh.equipment,...(old.equipment||{})}; fresh.audio={...fresh.audio,...(old.audio||{})}; fresh.autoMode=['off','combat','woodcutting','mining','fishing','explore'].includes(old.autoMode)?old.autoMode:'off'; fresh.autoTargetId=old.autoTargetId||null; fresh.autoBiomeId=old.autoBiomeId||regionAt(fresh.player.x,fresh.player.y).id; fresh.activeSummon=SUMMON_DEFS[old.activeSummon]?old.activeSummon:null; fresh.summonAttackElapsed=0; fresh.summonFoodEnergy=Math.max(0,Number(old.summonFoodEnergy)||0); fresh.summonFoodElapsed=Math.max(0,Number(old.summonFoodElapsed)||0); fresh.treeState=old.treeState||{}; fresh.fishingState=old.fishingState||{}; fresh.rockState=old.rockState||{}; fresh.enemyState=old.enemyState||{}; fresh.combat={...fresh.combat,...(old.combat||{})}; fresh.poh=old.poh||{}; fresh.quests=old.quests||{}; fresh.statistics={...fresh.statistics,...(old.statistics||{}),killsByEnemy:{...(old.statistics?.killsByEnemy||{})}};
       const worldLayoutChanged=old.version && !['0.19.0','0.19.1','0.19.2'].includes(old.version);
       if(!worldLayoutChanged && old.player && isWalkable(old.player.x,old.player.y)) fresh.player={...fresh.player,x:old.player.x,y:old.player.y,targetX:old.player.x,targetY:old.player.y};
       if(worldLayoutChanged){
@@ -877,7 +928,7 @@
     if(enemy.hp<=0)killEnemy(enemy);
   }
   function summonAttack(enemy){
-    const d=activeSummonDef();if(!d||!enemy||enemy.hp<=0)return;
+    const d=summonIsFed()?activeSummonDef():null;if(!d||!enemy||enemy.hp<=0)return;
     const level=levelFromXp(state.skills.summoning?.xp||0),maxHit=Math.max(1,Math.floor(d.baseDamage*(1+level/100))),dmg=randomInt(1,maxHit);
     enemy.hp=Math.max(0,enemy.hp-dmg);floaters.push({x:enemy.x+18,y:enemy.y-42,text:`${d.name} ${dmg}`,life:1.1,damage:true,miss:false});
     if(enemy.hp<=0)killEnemy(enemy);
@@ -968,10 +1019,10 @@
     if(mode==='woodcutting'||mode==='mining'||mode==='fishing'){
       const defs=mode==='woodcutting'?TREE_TYPES:mode==='mining'?ROCK_TYPES:FISH_TYPES, tool=mode==='woodcutting'?'axe':mode==='mining'?'pickaxe':'fishingRod';if(!bestOwnedTool(tool))return;
       const type=types.sort((a,b)=>defs[b].level-defs[a].level)[0],def=defs[type],duration=gatheringDuration(def,tool),count=Math.max(0,Math.floor(seconds/duration*.82));if(!count)return;
-      const item=mode==='woodcutting'?def.log:def.item,gained=xpWithSummonBonus(mode,def.xp)*count;state.inventory[item]=(state.inventory[item]||0)+count;summary.items[item]=(summary.items[item]||0)+count;addOfflineXp(mode,gained,summary);addOfflineXp('summoning',Math.max(1,Math.round(gained/3)),summary);
+      const item=mode==='woodcutting'?def.log:def.item,gained=xpWithSummonBonus(mode,def.xp)*count;state.inventory[item]=(state.inventory[item]||0)+count;summary.items[item]=(summary.items[item]||0)+count;addOfflineXp(mode,gained,summary);if(summonIsFed())addOfflineXp('summoning',Math.max(1,Math.round(gained/3)),summary);
     }else if(mode==='combat'){
       const type=types.sort((a,b)=>ENEMY_TYPES[a].hp-ENEMY_TYPES[b].hp)[0],enemy=ENEMY_TYPES[type],ps=playerCombatStats(),hitRate=hitChance(ps.accuracy,enemy.defence),avgHit=Math.max(.5,(1+ps.maxHit)/2*hitRate),killTime=Math.max(4,enemy.hp/avgHit*ps.ticks*TICK_SECONDS),kills=Math.min(5000,Math.floor(seconds/killTime*.62));if(!kills)return;
-      const dmg=Math.round(kills*enemy.hp),skill=ps.style==='range'?'range':'melee',combatXp=xpWithSummonBonus(skill,dmg*4),fortXp=xpWithSummonBonus('fortitude',dmg*2);addOfflineXp(skill,combatXp,summary);addOfflineXp('fortitude',fortXp,summary);addOfflineXp('summoning',Math.max(1,Math.round(combatXp/3)),summary);
+      const dmg=Math.round(kills*enemy.hp),skill=ps.style==='range'?'range':'melee',combatXp=xpWithSummonBonus(skill,dmg*4),fortXp=xpWithSummonBonus('fortitude',dmg*2);addOfflineXp(skill,combatXp,summary);addOfflineXp('fortitude',fortXp,summary);if(summonIsFed())addOfflineXp('summoning',Math.max(1,Math.round(combatXp/3)),summary);
       for(const [key,min,max,chance] of enemy.drops||[]){const qty=Math.floor(kills*((min+max)/2)*chance);if(qty>0){state.inventory[key]=(state.inventory[key]||0)+qty;if(key==='coins')recordGoldEarned(qty);if(UNIQUE_DROP_KEYS.has(key))state.statistics.uniqueDropsFound=(state.statistics.uniqueDropsFound||0)+qty;summary.items[key]=(summary.items[key]||0)+qty;}}
       summary.kills=(summary.kills||0)+kills;state.statistics.totalKills=(state.statistics.totalKills||0)+kills;state.statistics.killsByEnemy[type]=(state.statistics.killsByEnemy[type]||0)+kills;
     }
@@ -1107,6 +1158,14 @@
     animationClock+=dt;
     if(holdWalk.pressed&&!holdWalk.active&&performance.now()-holdWalk.startedAt>=HOLD_WALK_DELAY_MS)activateHoldWalk();
     if(defeatActive){ui.actionProgress.style.width='0%';return;}
+    if(state.activeSummon&&(state.summonFoodEnergy||0)>0){
+      state.summonFoodElapsed=(state.summonFoodElapsed||0)+dt;
+      while(state.summonFoodElapsed>=SUMMON_FOOD_SECONDS_PER_ENERGY&&(state.summonFoodEnergy||0)>0){
+        state.summonFoodElapsed-=SUMMON_FOOD_SECONDS_PER_ENERGY;
+        state.summonFoodEnergy=Math.max(0,(state.summonFoodEnergy||0)-1);
+        if(state.summonFoodEnergy<=0){state.summonFoodElapsed=0;showToast(`${activeSummonDef()?.name||'Your summon'} is hungry and has stopped helping`);renderSkills();saveGame(false);}
+      }
+    }
     const now=Date.now(); for(const t of trees){if(t.remaining<=0&&t.respawnAt&&now>=t.respawnAt){const def=TREE_TYPES[t.type];t.max=randomInt(def.capacity[0],def.capacity[1]);t.remaining=t.max;t.respawnAt=0;}}
     for(const r of rocks){if(r.hp<=0&&r.respawnAt&&now>=r.respawnAt){r.hp=r.maxHp;r.respawnAt=0;}}
     for(const f of fishingSpots){if(f.remaining<=0&&f.respawnAt&&now>=f.respawnAt){f.remaining=randomInt(12,20);f.respawnAt=0;}}
@@ -1127,7 +1186,7 @@
       else {p.x=p.targetX;p.y=p.targetY;if(queuedNPC && Math.hypot(p.x-queuedNPC.x,p.y-queuedNPC.y)<70){const npc=queuedNPC;queuedNPC=null;openNPCConversation(npc);}else if(queuedEnemy && queuedEnemy.hp>0 && Math.hypot(p.x-queuedEnemy.x,p.y-queuedEnemy.y)<=playerCombatStats().range+12){beginCombat(queuedEnemy);}else if(queuedTown && Math.hypot(p.x-queuedTown.x,p.y-queuedTown.y)<105){const town=queuedTown;queuedTown=null;openTown(town);}else if(queuedRock && queuedRock.hp>0 && Math.hypot(p.x-queuedRock.x,p.y-queuedRock.y)<90)beginMining(queuedRock);else if(queuedFishingSpot && queuedFishingSpot.remaining>0 && Math.hypot(p.x-queuedFishingSpot.standX,p.y-queuedFishingSpot.standY)<20)beginFishing(queuedFishingSpot);else if(queuedTree && queuedTree.remaining>0 && Math.hypot(p.x-queuedTree.x,p.y-queuedTree.y)<78)beginChopping(queuedTree);else if(!activeTree&&!activeFishingSpot&&!activeRock&&!activeEnemy){ui.status.textContent='Tap the ground, a resource, a creature, or a town.';ui.actionName.textContent='Exploring';}}
     }
     if(activeEnemy){
-      const ps=playerCombatStats(),summon=activeSummonDef(),dist=Math.hypot(p.x-activeEnemy.x,p.y-activeEnemy.y);if(activeEnemy.hp<=0)endCombat('Victory');else if(dist>ps.range+25){queuedEnemy=activeEnemy;activeEnemy=null;}else{combatElapsed+=dt;if(summon)state.summonAttackElapsed=(state.summonAttackElapsed||0)+dt;ui.actionProgress.style.width=`${Math.min(100,combatElapsed/(ps.ticks*TICK_SECONDS)*100)}%`;if(combatElapsed>=ps.ticks*TICK_SECONDS){combatElapsed=0;playerAttack(activeEnemy);}if(activeEnemy&&summon&&state.summonAttackElapsed>=summon.ticks*TICK_SECONDS){state.summonAttackElapsed=0;summonAttack(activeEnemy);}}
+      const ps=playerCombatStats(),summon=summonIsFed()?activeSummonDef():null,dist=Math.hypot(p.x-activeEnemy.x,p.y-activeEnemy.y);if(activeEnemy.hp<=0)endCombat('Victory');else if(dist>ps.range+25){queuedEnemy=activeEnemy;activeEnemy=null;}else{combatElapsed+=dt;if(summon)state.summonAttackElapsed=(state.summonAttackElapsed||0)+dt;ui.actionProgress.style.width=`${Math.min(100,combatElapsed/(ps.ticks*TICK_SECONDS)*100)}%`;if(combatElapsed>=ps.ticks*TICK_SECONDS){combatElapsed=0;playerAttack(activeEnemy);}if(activeEnemy&&summon&&state.summonAttackElapsed>=summon.ticks*TICK_SECONDS){state.summonAttackElapsed=0;summonAttack(activeEnemy);}}
     } else if(activeTree){
       if(activeTree.remaining<=0 || Math.hypot(p.x-activeTree.x,p.y-activeTree.y)>85)stopAction(false);
       else {const def=TREE_TYPES[activeTree.type],duration=gatheringDuration(def,'axe');actionElapsed+=dt;ui.actionProgress.style.width=`${Math.min(100,actionElapsed/duration*100)}%`;if(actionElapsed>=duration)awardLog(activeTree);}
@@ -1326,10 +1385,11 @@
     renderHeader();
   }
   function renderSkills(){
-    ui.skills.innerHTML=`<div class="skill-grid">${Object.entries(SKILL_DEFS).map(([key,def])=>{const xp=state.skills[key]?.xp||0,level=levelFromXp(xp),progress=currentLevelProgress(xp);return `<button class="skill-card ${key==='woodcutting'?'active-skill':''}" data-skill="${key}"><strong>${def.name}</strong><span>Level ${level} · ${xp.toLocaleString()} XP</span><div class="progress-track"><div class="progress-fill" style="width:${progress*100}%"></div></div></button>`}).join('')}</div>`;
+    ui.skills.innerHTML=`<button id="summonFoodBoxButton" class="summon-food-card ${summonIsFed()?'fed':'hungry'}"><span>Companion Food Box</span><strong>${Math.floor(state.summonFoodEnergy||0)} energy · ${summonFoodDuration()}</strong><small>${activeSummonDef()?(summonIsFed()?`${activeSummonDef().name} is helping`:`${activeSummonDef().name} is hungry — no attacks, bonuses, or XP`):'Summon a companion, then keep provisions stocked here.'}</small></button><div class="skill-grid">${Object.entries(SKILL_DEFS).map(([key,def])=>{const xp=state.skills[key]?.xp||0,level=levelFromXp(xp),progress=currentLevelProgress(xp);return `<button class="skill-card ${key==='woodcutting'?'active-skill':''}" data-skill="${key}"><strong>${def.name}</strong><span>Level ${level} · ${xp.toLocaleString()} XP</span><div class="progress-track"><div class="progress-fill" style="width:${progress*100}%"></div></div></button>`}).join('')}</div>`;
     ui.skills.querySelectorAll('[data-skill]').forEach(b=>b.addEventListener('click',()=>showSkill(b.dataset.skill)));
+    document.getElementById('summonFoodBoxButton')?.addEventListener('click',openSummonFoodBox);
   }
-  function showSkill(key){const def=SKILL_DEFS[key],xp=state.skills[key]?.xp||0,level=levelFromXp(xp),next=level>=100?xpForLevel(100):xpForLevel(level+1);selectedItemKey=null;ui.itemType.textContent='Skill';ui.itemName.textContent=def.name;ui.itemDescription.textContent=def.description;ui.itemStats.innerHTML=`<div><span>Level</span><strong>${level}${level>=100?' · MAX':''}</strong></div><div><span>Experience</span><strong>${xp.toLocaleString()} XP</strong></div>${level<100?`<div><span>Next level</span><strong>${Math.max(0,next-xp).toLocaleString()} XP</strong></div>`:''}`;ui.itemAction.hidden=true;ui.dialog.showModal();}
+  function showSkill(key){const def=SKILL_DEFS[key],xp=state.skills[key]?.xp||0,level=levelFromXp(xp),next=level>=100?xpForLevel(100):xpForLevel(level+1);selectedItemKey=null;ui.itemType.textContent='Skill';ui.itemName.textContent=def.name;ui.itemDescription.textContent=def.description;ui.itemStats.innerHTML=`<div><span>Level</span><strong>${level}${level>=100?' · MAX':''}</strong></div><div><span>Experience</span><strong>${xp.toLocaleString()} XP</strong></div>${level<100?`<div><span>Next level</span><strong>${Math.max(0,next-xp).toLocaleString()} XP</strong></div>`:''}`;if(key==='summoning'){ui.itemAction.hidden=false;ui.itemAction.disabled=false;ui.itemAction.textContent='Open Food Box';ui.itemAction.dataset.action='foodBox';}else{ui.itemAction.hidden=true;ui.itemAction.dataset.action='';}ui.dialog.showModal();}
   let currentTown = null;
   function totalLevel(){return Object.values(state.skills).reduce((sum,v)=>sum+levelFromXp(v?.xp||0),0);}
   function openTown(town){
@@ -1411,7 +1471,7 @@
   function openPOH(town){const total=totalLevel();openService('Player-Owned Home','Your Home',`Total level ${total} · Coins ${state.inventory.coins||0}`,POH_UPGRADES.map(u=>{const built=state.poh[u.id],items=Object.entries(u.items).map(([k,n])=>`${ITEM_DEFS[k]?.name||k} ${state.inventory[k]||0}/${n}`).join(' · '),can=total>=u.total&&(state.inventory.coins||0)>=u.coins&&Object.entries(u.items).every(([k,n])=>(state.inventory[k]||0)>=n);return `<article class="service-card ${built?'built':can?'':'locked'}"><div><strong>${u.name}</strong><span>Total level ${u.total} · ${u.coins} coins</span><small>${u.description}<br>${items}</small></div><button data-build="${u.id}" ${built||!can?'disabled':''}>${built?'Built':'Build'}</button></article>`}).join(''));ui.serviceContent.querySelectorAll('[data-build]').forEach(b=>b.addEventListener('click',()=>{const u=POH_UPGRADES.find(x=>x.id===b.dataset.build);if(!u)return;state.inventory.coins-=u.coins;recordGoldSpent(u.coins);for(const[k,n]of Object.entries(u.items))state.inventory[k]-=n;state.poh[u.id]=true;renderAll();openPOH(town);saveGame(false);}));}
   function itemValue(key){const item=ITEM_DEFS[key];if(!item||key==='coins')return 0;const name=item.name.toLowerCase();let v=2;if(name.includes('crystal'))v=240;else if(name.includes('gold'))v=120;else if(name.includes('pyrite'))v=80;else if(name.includes('silver'))v=55;else if(name.includes('iron'))v=30;else if(name.includes('copper'))v=16;else if(name.includes('redwood'))v=90;else if(name.includes('mahogany'))v=65;else if(name.includes('shark'))v=75;else if(name.includes('grouper'))v=45;else if(name.includes('tuna'))v=30;else if(item.slot)v=20;return v;}
   function merchModifiers(){const level=levelFromXp(state.skills.merching?.xp||0);return{level,buy:Math.max(.75,1-level*.0025),sell:Math.min(1.25,.5+level*.005)};}
-  function openShop(town){const m=merchModifiers(),stock=['stoneAxe','stonePickaxe','basicFishingRod','cedarLog','stone','rawMinnow','copperOre'];const buy=stock.map(k=>{const price=Math.max(1,Math.ceil(itemValue(k)*2*m.buy));return `<article class="shop-row"><div><strong>${ITEM_DEFS[k].name}</strong><span>${price} coins</span></div><button data-buy="${k}" data-price="${price}">Buy</button></article>`}).join('');const sell=Object.entries(state.inventory).filter(([k,q])=>q>0&&k!=='coins'&&ITEM_DEFS[k]).map(([k,q])=>{const price=Math.max(1,Math.floor(itemValue(k)*m.sell));return `<article class="shop-row"><div><strong>${ITEM_DEFS[k].name} ×${q}</strong><span>${price} coins each</span></div><div class="service-actions"><button data-sell="${k}" data-price="${price}">Sell 1</button><button data-sellall="${k}" data-price="${price}">Sell All</button></div></article>`}).join('');openService('Shop',`${town.name} Shop`,`Merching level ${m.level} · ${state.inventory.coins||0} coins`,`<details class="shop-group" open><summary>Buy basic supplies</summary>${buy}</details><details class="shop-group"><summary>Sell owned items</summary>${sell||'<p class="item-description">Nothing to sell.</p>'}</details>`);ui.serviceContent.querySelectorAll('[data-buy]').forEach(b=>b.addEventListener('click',()=>{const p=+b.dataset.price;if((state.inventory.coins||0)<p)return showToast('Not enough coins');state.inventory.coins-=p;recordGoldSpent(p);state.inventory[b.dataset.buy]=(state.inventory[b.dataset.buy]||0)+1;awardSkillXp('merching',Math.max(1,Math.round(p*XP_RATE)));renderAll();openShop(town);saveGame(false);}));const sellFn=(b,all)=>{const k=b.dataset.sell||b.dataset.sellall,q=all?(state.inventory[k]||0):1;if(q<1||!confirm(`Sell ${all?'all ':''}${ITEM_DEFS[k].name}${all?` ×${q}`:''}?`))return;const gain=q*(+b.dataset.price);state.inventory[k]-=q;state.inventory.coins=(state.inventory.coins||0)+gain;recordGoldEarned(gain);awardSkillXp('merching',Math.max(1,Math.round(gain*XP_RATE)));renderAll();openShop(town);saveGame(false);};ui.serviceContent.querySelectorAll('[data-sell]').forEach(b=>b.addEventListener('click',()=>sellFn(b,false)));ui.serviceContent.querySelectorAll('[data-sellall]').forEach(b=>b.addEventListener('click',()=>sellFn(b,true)));}
+  function openShop(town){const m=merchModifiers(),stock=['stoneAxe','stonePickaxe','basicFishingRod','cedarLog','stone','rawMinnow','copperOre'];const buy=stock.map(k=>{const price=Math.max(1,Math.ceil(itemValue(k)*2*m.buy));return `<article class="shop-row"><div><strong>${ITEM_DEFS[k].name}</strong><span>${price} coins</span></div><button data-buy="${k}" data-price="${price}">Buy</button></article>`}).join('');const sell=Object.entries(state.inventory).filter(([k,q])=>q>0&&k!=='coins'&&ITEM_DEFS[k]).map(([k,q])=>{const price=Math.max(1,Math.floor(itemValue(k)*m.sell)),equipped=Object.values(state.equipment).includes(k);return `<article class="shop-row ${equipped?'locked':''}"><div><strong>${ITEM_DEFS[k].name} ×${q}</strong><span>${equipped?'Equipped · unequip before selling':`${price} coins each`}</span></div><div class="service-actions"><button data-sell="${k}" data-price="${price}" ${equipped?'disabled':''}>${equipped?'Equipped':'Sell 1'}</button><button data-sellall="${k}" data-price="${price}" ${equipped?'disabled':''}>Sell All</button></div></article>`}).join('');openService('Shop',`${town.name} Shop`,`Merching level ${m.level} · ${state.inventory.coins||0} coins`,`<details class="shop-group" open><summary>Buy basic supplies</summary>${buy}</details><details class="shop-group"><summary>Sell owned items</summary>${sell||'<p class="item-description">Nothing to sell.</p>'}</details>`);ui.serviceContent.querySelectorAll('[data-buy]').forEach(b=>b.addEventListener('click',()=>{const p=+b.dataset.price;if((state.inventory.coins||0)<p)return showToast('Not enough coins');state.inventory.coins-=p;recordGoldSpent(p);state.inventory[b.dataset.buy]=(state.inventory[b.dataset.buy]||0)+1;awardSkillXp('merching',Math.max(1,Math.round(p*XP_RATE)));renderAll();openShop(town);saveGame(false);}));const sellFn=(b,all)=>{const k=b.dataset.sell||b.dataset.sellall;if(Object.values(state.equipment).includes(k))return showToast('Unequip that item before selling');const q=all?(state.inventory[k]||0):1;if(q<1||!confirm(`Sell ${all?'all ':''}${ITEM_DEFS[k].name}${all?` ×${q}`:''}?`))return;const gain=q*(+b.dataset.price);state.inventory[k]-=q;state.inventory.coins=(state.inventory.coins||0)+gain;recordGoldEarned(gain);awardSkillXp('merching',Math.max(1,Math.round(gain*XP_RATE)));renderAll();openShop(town);saveGame(false);};ui.serviceContent.querySelectorAll('[data-sell]').forEach(b=>b.addEventListener('click',()=>sellFn(b,false)));ui.serviceContent.querySelectorAll('[data-sellall]').forEach(b=>b.addEventListener('click',()=>sellFn(b,true)));}
   function openInn(town){const rumours={"Starting Town":'Mira says the cedar pond is the safest place to begin.',"Swamp Town":'The catfish bite more often when the marsh is quiet.',"North Town":'Crystal deposits glitter beyond the arctic pines.',"Desert Town":'Pyrite is often mistaken for gold by hurried travellers.',"East Town":'Willows favour the wet ground near the eastern water.',"South Town":'The jungle trees provide the most valuable hardwood.',"Jungle Town":'Ancient redwoods grow slowly, but their timber is prized.'};openService('Inn',`${town.name} Inn`,'A quiet place to rest.',`<article class="service-card"><strong>Local rumour</strong><span>${rumours[town.name]||'Travellers speak of resources across the continent.'}</span></article>`);}
   function materialText(materials){
     return Object.entries(materials).map(([key,need])=>`${ITEM_DEFS[key]?.name||key} ${state.inventory[key]||0}/${need}`).join(' · ');
@@ -1463,8 +1523,8 @@
   function clampMiniMap(){const halfW=WORLD.width/(2*miniMapView.zoom),halfH=WORLD.height/(2*miniMapView.zoom);miniMapView.centerX=clamp(miniMapView.centerX,halfW,WORLD.width-halfW);miniMapView.centerY=clamp(miniMapView.centerY,halfH,WORLD.height-halfH);}
   function drawMiniMap(){const mini=document.getElementById('miniMapCanvas');if(!mini)return;const m=mini.getContext('2d'),viewW=WORLD.width/miniMapView.zoom,viewH=WORLD.height/miniMapView.zoom,left=miniMapView.centerX-viewW/2,top=miniMapView.centerY-viewH/2,sx=mini.width/viewW,sy=mini.height/viewH,toX=x=>(x-left)*sx,toY=y=>(y-top)*sy;m.clearRect(0,0,mini.width,mini.height);m.fillStyle='#397f9f';m.fillRect(0,0,mini.width,mini.height);const poly=(pts,color)=>{m.beginPath();m.moveTo(toX(pts[0][0]),toY(pts[0][1]));for(const [x,y] of pts.slice(1))m.lineTo(toX(x),toY(y));m.closePath();m.fillStyle=color;m.fill();};poly(continent,'#72ae61');for(const r of regions)poly(r.points,r.color);for(const w of waters){m.beginPath();m.ellipse(toX(w.x),toY(w.y),w.rx*sx,w.ry*sy,0,0,Math.PI*2);m.fillStyle=w.color;m.fill();}for(const t of towns){m.fillStyle='#f0e9d2';m.fillRect(toX(t.x)-5,toY(t.y)-5,10,10);}m.fillStyle='#ffdf65';m.beginPath();m.arc(toX(state.player.x),toY(state.player.y),9,0,Math.PI*2);m.fill();m.strokeStyle='#1d232b';m.lineWidth=4;m.stroke();}
 
-  function showItem(key){const item=ITEM_DEFS[key];if(!item)return;selectedItemKey=key;ui.itemType.textContent=item.type;ui.itemName.textContent=item.name;ui.itemDescription.textContent=item.description;const rows=[];if(item.uses)rows.push(['Used for',item.uses]);for(const [k,v] of Object.entries(item.stats||{}))rows.push([k,v]);if(item.summonType)rows.push(['Current status',state.activeSummon===item.summonType?'Active summon':'Available to summon']);ui.itemStats.innerHTML=rows.map(([k,v])=>`<div><span>${k}</span><strong>${v}</strong></div>`).join('');const equipped=Object.keys(state.equipment).find(s=>state.equipment[s]===key);if(item.summonType&&state.inventory[key]>0){ui.itemAction.hidden=false;ui.itemAction.textContent=state.activeSummon===item.summonType?'Already Summoned':'Summon';ui.itemAction.disabled=state.activeSummon===item.summonType;}else if(item.slot&&state.inventory[key]>0){ui.itemAction.hidden=false;ui.itemAction.disabled=false;ui.itemAction.textContent=equipped?'Unequip':'Equip';}else{ui.itemAction.hidden=true;ui.itemAction.disabled=false;}ui.dialog.showModal();}
-  function toggleSelectedEquipment(){const key=selectedItemKey,item=ITEM_DEFS[key];if(item?.summonType){if(state.activeSummon===item.summonType)return;state.activeSummon=item.summonType;state.summonAttackElapsed=0;ui.dialog.close();showToast(`${SUMMON_DEFS[item.summonType].name} answers your call`);audioEngine.sfx('summon');renderAll();saveGame(false);return;}if(!item?.slot)return;const existing=Object.keys(state.equipment).find(s=>state.equipment[s]===key);if(existing)state.equipment[existing]=null;else state.equipment[item.slot]=key;ui.dialog.close();renderEquipment();renderCombatHud();saveGame(false);}
+  function showItem(key){const item=ITEM_DEFS[key];if(!item)return;selectedItemKey=key;ui.itemAction.dataset.action='';ui.itemType.textContent=item.type;ui.itemName.textContent=item.name;ui.itemDescription.textContent=item.description;const rows=[];if(item.uses)rows.push(['Used for',item.uses]);for(const [k,v] of Object.entries(item.stats||{}))rows.push([k,v]);if(item.summonType)rows.push(['Current status',state.activeSummon===item.summonType?(summonIsFed()?'Active and fed':'Active but hungry'):'Available to summon']);ui.itemStats.innerHTML=rows.map(([k,v])=>`<div><span>${k}</span><strong>${v}</strong></div>`).join('');const equipped=Object.keys(state.equipment).find(s=>state.equipment[s]===key);if(item.summonType&&state.inventory[key]>0){ui.itemAction.hidden=false;ui.itemAction.textContent=state.activeSummon===item.summonType?'Already Summoned':'Summon';ui.itemAction.disabled=state.activeSummon===item.summonType;}else if(item.slot&&state.inventory[key]>0){ui.itemAction.hidden=false;ui.itemAction.disabled=false;ui.itemAction.textContent=equipped?'Unequip':'Equip';}else{ui.itemAction.hidden=true;ui.itemAction.disabled=false;}ui.dialog.showModal();}
+  function toggleSelectedEquipment(){if(ui.itemAction.dataset.action==='foodBox'){ui.dialog.close();openSummonFoodBox();return;}const key=selectedItemKey,item=ITEM_DEFS[key];if(item?.summonType){if(state.activeSummon===item.summonType)return;state.activeSummon=item.summonType;state.summonAttackElapsed=0;ui.dialog.close();showToast(`${SUMMON_DEFS[item.summonType].name} answers your call${summonIsFed()?'':' — stock the Food Box'}`);audioEngine.sfx('summon');renderAll();saveGame(false);return;}if(!item?.slot)return;const existing=Object.keys(state.equipment).find(s=>state.equipment[s]===key);if(existing)state.equipment[existing]=null;else state.equipment[item.slot]=key;ui.dialog.close();renderEquipment();renderCombatHud();saveGame(false);}
   function renderAll(){renderInventory();renderSkills();renderEquipment();renderMapPanel();renderCombatHud();renderHeader();if(ui.leaderboards?.classList.contains('active'))renderLeaderboards(leaderboardSort);}
   function frame(now){updateMultiplayer(now);const dt=Math.min((now-lastFrame)/1000,.05);lastFrame=now;update(dt);draw();if(now-miniMapView.lastDraw>180&&document.getElementById('map')?.classList.contains('active')){miniMapView.lastDraw=now;drawMiniMap();}requestAnimationFrame(frame);}
 
