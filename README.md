@@ -1,12 +1,14 @@
-# Idle Wanderer v0.19.1 — Continuous Walking
+# Idle Wanderer v0.19.2 — Continuous Walking Fix
 
 ## Walking controls
-- Tap-to-walk remains unchanged for ground, creatures, resources, fishing spots, and towns.
-- Press and hold on the world to begin continuous walking.
+- Tap the world to use the existing tap-to-walk movement.
+- Hold for 120 ms to begin continuous walking.
 - Drag while holding to steer in real time.
-- Movement speed scales with finger distance for precise slow movement near the player and full speed farther away.
-- Releasing the pointer always stops the player immediately.
-- Continuous walking cancels active actions and Auto mode so manual steering remains predictable.
+- Movement speed scales from precise slow movement near the player to full speed farther away.
+- Releasing or cancelling the touch stops the player immediately.
+- Pointer release is also captured outside the canvas to prevent stuck movement.
+- Continuous movement activation is checked by the game loop instead of relying on a mobile browser timer.
 
-## Existing systems
-All Arsenal & Forge content from v0.19.0 remains intact. No saves, inventories, creature stats, map positions, multiplayer behavior, or progression were reset.
+## Compatibility
+- Existing v0.19.0 and v0.19.1 saves preserve player position and progression.
+- No creature stats, items, map layout, multiplayer behavior, or progression values were changed.
