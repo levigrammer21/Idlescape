@@ -1,12 +1,17 @@
 (() => {
   'use strict';
 
-  const VERSION = '0.22.0';
+  const VERSION = '0.23.0';
   const XP_RATE = 1.5;
   const SAVE_KEY = window.IdleCloud?.localSaveKey;
   if (!SAVE_KEY) throw new Error('No authenticated account save key is available.');
   const TICK_SECONDS = 0.6;
-  const WORLD = { width: 3800, height: 4300 };
+  const BASE_WORLD = { width: 3800, height: 4300 };
+  const WORLD = { width: 6000, height: 6000 };
+  const MAP_SCALE_X = WORLD.width / BASE_WORLD.width;
+  const MAP_SCALE_Y = WORLD.height / BASE_WORLD.height;
+  const mapX = value => Math.round(value * MAP_SCALE_X);
+  const mapY = value => Math.round(value * MAP_SCALE_Y);
   const canvas = document.getElementById('gameCanvas');
   const ctx = canvas.getContext('2d');
   ctx.imageSmoothingEnabled = false;
@@ -444,15 +449,15 @@
 
     // Tundra.
     ['iceWolf',1240,620],['iceWolf',2440,760],['frostTroll',1840,410],['frostDragon',2740,430]
-  ];
+  ].map(([type,x,y])=>[type,mapX(x),mapY(y)]);
   function makeEnemies(saved={}){
     return enemySeeds.map(([type,x,y],index)=>{const id=`enemy-${type}-${index}`,d=ENEMY_TYPES[type],old=saved[id]||{};return {id,type,x:old.x??x,y:old.y??y,homeX:x,homeY:y,hp:Math.min(old.hp??d.hp,d.hp),maxHp:d.hp,respawnAt:old.respawnAt||0,target:null,returning:false,attackElapsed:0,wanderElapsed:Math.random()*3,wanderX:x,wanderY:y};});
   }
 
   // A broad, continuous continent with squared biome boundaries.
-  const continent = [[260,180],[3540,180],[3660,320],[3660,3980],[3500,4140],[300,4140],[140,3980],[140,320]];
+  const continent = [[260,180],[3540,180],[3660,320],[3660,3980],[3500,4140],[300,4140],[140,3980],[140,320]].map(([x,y])=>[mapX(x),mapY(y)]);
 
-  const rect = (x1,y1,x2,y2) => [[x1,y1],[x2,y1],[x2,y2],[x1,y2]];
+  const rect = (x1,y1,x2,y2) => [[mapX(x1),mapY(y1)],[mapX(x2),mapY(y1)],[mapX(x2),mapY(y2)],[mapX(x1),mapY(y2)]];
   const regions = [
     // Cardinal biomes.
     { id: 'tundra', name: 'Tundra', color: '#a9c4cb', points: rect(900,180,2900,1120) },
@@ -477,7 +482,7 @@
     { name: 'Jungle Lagoon', kind: 'lake', x: 640, y: 2320, rx: 260, ry: 330, color: '#3e8fa0' },
     { name: 'Tundra Lake', kind: 'lake', x: 2060, y: 720, rx: 270, ry: 150, color: '#6fa7bd' },
     { name: 'Desert Oasis', kind: 'lake', x: 2040, y: 3670, rx: 235, ry: 125, color: '#4f9fb5' }
-  ];
+  ].map(w=>({...w,x:mapX(w.x),y:mapY(w.y),rx:mapX(w.rx),ry:mapY(w.ry)}));
 
   // Two usable spots for every fish type. Coastal fish sit offshore with safe stand points on land.
   const fishingSeeds = [
@@ -495,7 +500,7 @@
     ['grouper', 3100, 4200, 2820, 4000, 'Southeastern Reef'],
     ['shark', 60, 2840, 310, 2840, 'Deep Western Ocean'],
     ['shark', 3740, 2860, 3500, 2860, 'Deep Eastern Ocean']
-  ];
+  ].map(([type,x,y,standX,standY,location])=>[type,mapX(x),mapY(y),mapX(standX),mapY(standY),location]);
   function makeFishingSpots(saved = {}) {
     return fishingSeeds.map(([type,x,y,standX,standY,location], index) => {
       const id = `fish-${type}-${index}`; const prior=saved[id]||{};
@@ -509,7 +514,7 @@
     { name: 'Jungle Town', x: 930, y: 1900, description: 'A raised settlement at the edge of the western jungle.' },
     { name: 'Swamp Town', x: 3090, y: 1800, description: 'A stilt-built settlement overlooking the eastern marsh.' },
     { name: 'Desert Town', x: 1900, y: 3420, description: 'A shaded trading post at the northern edge of the desert.' }
-  ];
+  ].map(t=>({...t,x:mapX(t.x),y:mapY(t.y)}));
 
 
   const WORLD_DECOR_COUNTS = {central:70,deadGrass:105,tundra:105,jungle:125,swamp:110,desert:100};
@@ -517,7 +522,8 @@
   function pointNearWater(x,y,pad=45){return waters.some(w=>Math.hypot((x-w.x)/(w.rx+pad),(y-w.y)/(w.ry+pad))<1);}
   function makeWorldDecor(){
     const rand=seededRandom(20260718),items=[];
-    const bounds={central:[1320,1540,2480,2740],deadGrass:[900,1050,2900,3250],tundra:[900,180,2900,1120],jungle:[140,1050,1120,3250],swamp:[2880,1050,3660,3250],desert:[900,3230,2900,4140]};
+    const rawBounds={central:[1320,1540,2480,2740],deadGrass:[900,1050,2900,3250],tundra:[900,180,2900,1120],jungle:[140,1050,1120,3250],swamp:[2880,1050,3660,3250],desert:[900,3230,2900,4140]};
+    const bounds=Object.fromEntries(Object.entries(rawBounds).map(([key,[x1,y1,x2,y2]])=>[key,[mapX(x1),mapY(y1),mapX(x2),mapY(y2)]]));
     for(const [biome,count] of Object.entries(WORLD_DECOR_COUNTS)){
       const [x1,y1,x2,y2]=bounds[biome];let made=0,tries=0;
       while(made<count&&tries++<count*20){const x=x1+rand()*(x2-x1),y=y1+rand()*(y2-y1);if(regionAt(x,y).id!==biome||towns.some(t=>Math.hypot(x-t.x,y-t.y)<145)||pointNearWater(x,y))continue;
@@ -550,7 +556,7 @@
     // Jungle.
     ['mahogany',370,1360],['mahogany',720,1840],['mahogany',920,2900],
     ['redwood',350,2860],['redwood',780,3160]
-  ];
+  ].map(([type,x,y])=>[type,mapX(x),mapY(y)]);
 
   function makeTrees(saved = {}) {
     return treeSeeds.map(([type,x,y], index) => {
@@ -576,7 +582,7 @@
     ['gold',1570,3970],['gold',2710,3890],
     // Deep tundra deposits.
     ['crystal',1770,360],['crystal',2820,850]
-  ];
+  ].map(([type,x,y])=>[type,mapX(x),mapY(y)]);
 
   function makeRocks(saved = {}) {
     return rockSeeds.map(([type,x,y], index) => {
@@ -588,7 +594,7 @@
   const defaultInventory = () => Object.fromEntries(Object.keys(ITEM_DEFS).map(k => [k, 0]));
   const defaultState = () => ({
     version: VERSION,
-    player: { x: 1900, y: 2320, targetX: 1900, targetY: 2320 },
+    player: { x: mapX(1900), y: mapY(2320), targetX: mapX(1900), targetY: mapY(2320) },
     inventory: { ...defaultInventory(), stoneAxe: 1, stonePickaxe: 1, basicFishingRod: 1, coins: 100 },
     skills: Object.fromEntries(Object.keys(SKILL_DEFS).map(k => [k, { xp: 0 }])),
     equipment: { head: null, body: null, legs: null, boots: null, weapon: null, shield: null, cape: null, ring: null, food: null },
@@ -813,17 +819,14 @@
       for(const key of Object.keys(SKILL_DEFS)) if(old.skills?.[key]) fresh.skills[key]=old.skills[key];
       if(!old.skills?.fortitude || (old.skills.fortitude.xp||0)<xpForLevel(10)) fresh.skills.fortitude={xp:xpForLevel(10)};
       fresh.equipment={...fresh.equipment,...(old.equipment||{})}; fresh.audio={...fresh.audio,...(old.audio||{})}; fresh.autoMode=['off','combat','woodcutting','mining','fishing','explore'].includes(old.autoMode)?old.autoMode:'off'; fresh.autoTargetId=old.autoTargetId||null; fresh.autoBiomeId=old.autoBiomeId||regionAt(fresh.player.x,fresh.player.y).id; fresh.activeSummon=SUMMON_DEFS[old.activeSummon]?old.activeSummon:null; fresh.summonAttackElapsed=0; fresh.summonFoodEnergy=Math.max(0,Number(old.summonFoodEnergy)||0); fresh.summonFoodElapsed=Math.max(0,Number(old.summonFoodElapsed)||0); fresh.treeState=old.treeState||{}; fresh.fishingState=old.fishingState||{}; fresh.rockState=old.rockState||{}; fresh.enemyState=old.enemyState||{}; fresh.combat={...fresh.combat,...(old.combat||{})}; fresh.poh=old.poh||{}; fresh.quests=old.quests||{}; fresh.statistics={...fresh.statistics,...(old.statistics||{}),killsByEnemy:{...(old.statistics?.killsByEnemy||{})},rareDropsByEnemy:{...(old.statistics?.rareDropsByEnemy||{})}}; for(const type of Object.keys(ENEMY_TYPES)){for(const key of rareDropKeysForEnemy(type)){if((fresh.inventory[key]||0)>0){fresh.statistics.rareDropsByEnemy[type] ||= {};fresh.statistics.rareDropsByEnemy[type][key]=true;}}}
-      const worldLayoutChanged=old.version && !['0.19.0','0.19.1','0.19.2'].includes(old.version);
-      if(!worldLayoutChanged && old.player && isWalkable(old.player.x,old.player.y)) fresh.player={...fresh.player,x:old.player.x,y:old.player.y,targetX:old.player.x,targetY:old.player.y};
-      if(worldLayoutChanged){
-        // Preserve all progression, but safely place the player and world actors on the rebuilt map.
-        fresh.player={...fresh.player,x:1900,y:2320,targetX:1900,targetY:2320};
-        fresh.autoMode='off';fresh.autoTargetId=null;fresh.autoBiomeId='central';
-        fresh.enemyState={};
-        for(const [id,node] of Object.entries(fresh.treeState||{})){const type=id.replace(/-\d+$/,'');const def=TREE_TYPES[type];if(def&&node.remaining>0){node.remaining=Math.max(node.remaining,def.capacity[0]);node.max=Math.max(node.max||0,def.capacity[1]);}}
-        for(const node of Object.values(fresh.fishingState||{}))if(node.remaining>0)node.remaining=Math.max(node.remaining,12);
-        for(const [id,node] of Object.entries(fresh.rockState||{})){const type=id.split('-')[1],def=ROCK_TYPES[type];if(def&&node.hp>0)node.hp=Math.max(node.hp,def.hp);}
+      const isPreExpandedWorld=old.version && old.version!=='0.23.0';
+      if(old.player){
+        const px=isPreExpandedWorld?mapX(old.player.x):old.player.x;
+        const py=isPreExpandedWorld?mapY(old.player.y):old.player.y;
+        if(isWalkable(px,py))fresh.player={...fresh.player,x:px,y:py,targetX:px,targetY:py};
       }
+      fresh.autoMode='off';fresh.autoTargetId=null;fresh.autoBiomeId=regionAt(fresh.player.x,fresh.player.y).id||'central';
+      if(isPreExpandedWorld)fresh.enemyState={};
       return fresh;
     } catch(e){ console.error(e); return defaultState(); }
   }
@@ -962,7 +965,7 @@
       activeTree=null;queuedTree=null;activeFishingSpot=null;queuedFishingSpot=null;
       activeRock=null;queuedRock=null;queuedTown=null;queuedNPC=null;actionElapsed=0;
       if(state.autoMode!=='off')setAutoMode('off',false);
-      state.player.x=1900;state.player.y=2320;state.player.targetX=1900;state.player.targetY=2320;
+      state.player.x=mapX(1900);state.player.y=mapY(2320);state.player.targetX=mapX(1900);state.player.targetY=mapY(2320);
       state.combat.hp=maxPlayerHp();
       ui.actionProgress.style.width='0%';
       ui.actionName.textContent='Defeated';
@@ -1314,6 +1317,22 @@
   }
 
 
+  let chatOpen=false,chatUnread=0;
+  function renderChatMessages(messages){
+    const box=document.getElementById('chatMessages');if(!box)return;
+    const nearBottom=box.scrollHeight-box.scrollTop-box.clientHeight<45;
+    box.innerHTML=messages.length?messages.map(message=>`<article class="chat-message ${message.uid===window.IdleCloud?.user?.uid?'mine':''}"><strong>${escapeHtml(message.name||'Wanderer')}</strong><span>${escapeHtml(message.text||'')}</span></article>`).join(''):'<p class="chat-empty">No messages yet.</p>';
+    if(nearBottom||!chatOpen)box.scrollTop=box.scrollHeight;
+    if(!chatOpen&&messages.length){chatUnread=Math.min(99,chatUnread+1);updateChatUnread();}
+  }
+  function updateChatUnread(){const badge=document.getElementById('chatUnread');if(!badge)return;badge.hidden=!chatUnread;badge.textContent=String(chatUnread);}
+  function toggleChat(){chatOpen=!chatOpen;const panel=document.getElementById('chatPanel'),button=document.getElementById('chatToggle');panel.hidden=!chatOpen;button.setAttribute('aria-expanded',String(chatOpen));if(chatOpen){chatUnread=0;updateChatUnread();requestAnimationFrame(()=>{const box=document.getElementById('chatMessages');if(box)box.scrollTop=box.scrollHeight;});}}
+  function initializeChat(){
+    document.getElementById('chatToggle')?.addEventListener('click',toggleChat);
+    document.getElementById('chatForm')?.addEventListener('submit',async event=>{event.preventDefault();const input=document.getElementById('chatInput'),text=input?.value?.trim();if(!text)return;input.disabled=true;try{await window.IdleMultiplayer?.sendChat(text);input.value='';}catch(error){console.warn('Chat send failed',error);showToast('Chat message failed');}finally{input.disabled=false;input.focus();}});
+    try{window.IdleMultiplayer?.connectChat(renderChatMessages);}catch(error){console.warn('Could not open family chat',error);}
+  }
+
   function multiplayerPayload(){
     const dx=state.player.x-multiplayerLastX,dy=state.player.y-multiplayerLastY;
     if(Math.abs(dx)>Math.abs(dy)&&Math.abs(dx)>.15)multiplayerFacing=dx<0?'left':'right';else if(Math.abs(dy)>.15)multiplayerFacing=dy<0?'up':'down';
@@ -1327,7 +1346,7 @@
   }
   function receiveRemotePlayers(players){
     const seen=new Set();
-    for(const [uid,p] of Object.entries(players||{})){seen.add(uid);const old=remotePlayers.get(uid);remotePlayers.set(uid,{...p,renderX:(old?.renderX ?? Number(p.x) ?? 1780),renderY:(old?.renderY ?? Number(p.y) ?? 2340)});}
+    for(const [uid,p] of Object.entries(players||{})){seen.add(uid);const old=remotePlayers.get(uid);remotePlayers.set(uid,{...p,renderX:(old?.renderX ?? Number(p.x) ?? 3000),renderY:(old?.renderY ?? Number(p.y) ?? 3000)});}
     for(const uid of remotePlayers.keys())if(!seen.has(uid))remotePlayers.delete(uid);
     renderOnlinePlayers();
   }
@@ -1552,5 +1571,5 @@
 
   ui.familyWorldToggle?.addEventListener('click',()=>{ui.onlinePlayers.hidden=!ui.onlinePlayers.hidden;});
   canvas.addEventListener('pointerdown',beginCanvasPointer,{passive:false});canvas.addEventListener('pointermove',moveCanvasPointer,{passive:false});canvas.addEventListener('pointerup',endCanvasPointer,{passive:false});canvas.addEventListener('pointercancel',cancelCanvasPointer,{passive:false});canvas.addEventListener('lostpointercapture',event=>{if(holdWalk.pressed&&event.pointerId===holdWalk.pointerId)cancelCanvasPointer(event);});window.addEventListener('pointerup',event=>{if(holdWalk.pressed&&event.pointerId===holdWalk.pointerId)endCanvasPointer(event);},{passive:false});window.addEventListener('pointercancel',event=>{if(holdWalk.pressed&&event.pointerId===holdWalk.pointerId)cancelCanvasPointer(event);},{passive:false});document.addEventListener('pointerdown',()=>audioEngine.unlock(),{passive:true});document.addEventListener('touchstart',()=>audioEngine.unlock(),{passive:true});document.addEventListener('click',()=>audioEngine.unlock(),{passive:true});document.getElementById('stopButton').addEventListener('click',()=>{setAutoMode('off');stopAction(true);});ui.autoMode.addEventListener('change',()=>{stopAction(true);setAutoMode(ui.autoMode.value);});ui.eatButton.addEventListener('click',eatFood);document.querySelectorAll('.tab').forEach(t=>t.addEventListener('click',()=>openPanel(t.dataset.panel)));document.getElementById('closeItemButton').addEventListener('click',()=>ui.dialog.close());document.getElementById('closeTownButton').addEventListener('click',()=>ui.townDialog.close());document.getElementById('closeCraftingButton').addEventListener('click',()=>ui.craftingDialog.close());document.getElementById('closeServiceButton').addEventListener('click',()=>ui.serviceDialog.close());document.getElementById('closeOfflineButton').addEventListener('click',()=>ui.offlineDialog.close());document.getElementById('defeatContinueButton')?.addEventListener('click',()=>{defeatActive=false;ui.defeatDialog.close();ui.actionName.textContent='Exploring';ui.status.textContent='Tap the ground, a resource, a creature, or a town.';});ui.defeatDialog?.addEventListener('cancel',e=>{e.preventDefault();});document.getElementById('closeLeaderboardProfileButton')?.addEventListener('click',()=>ui.leaderboardProfileDialog.close());ui.itemAction.addEventListener('click',toggleSelectedEquipment);ui.dialog.addEventListener('click',e=>{if(e.target===ui.dialog)ui.dialog.close();});ui.townDialog.addEventListener('click',e=>{if(e.target===ui.townDialog)ui.townDialog.close();});ui.craftingDialog.addEventListener('click',e=>{if(e.target===ui.craftingDialog)ui.craftingDialog.close();});ui.serviceDialog.addEventListener('click',e=>{if(e.target===ui.serviceDialog)ui.serviceDialog.close();});document.getElementById('exportButton').addEventListener('click',()=>{saveGame(false);const blob=new Blob([JSON.stringify(state,null,2)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`idle-wanderer-save-${Date.now()}.json`;a.click();URL.revokeObjectURL(a.href);});document.getElementById('importInput').addEventListener('change',async e=>{const file=e.target.files?.[0];if(!file)return;try{const imported=JSON.parse(await file.text());localStorage.setItem(SAVE_KEY,JSON.stringify(imported));await window.IdleCloud?.flush(imported);location.reload();}catch{showToast('Invalid save file');}});document.getElementById('logoutButton')?.addEventListener('click',()=>window.IdleCloud?.signOut());document.getElementById('resetButton').addEventListener('click',()=>{if(confirm('Reset all progress for this account? This will replace the cloud save.')){localStorage.removeItem(SAVE_KEY);sessionStorage.setItem('idle-wanderer-reset','1');location.reload();}});window.addEventListener('pagehide',()=>{saveGame(false);window.IdleCloud?.flush(state);window.IdleMultiplayer?.leave();});setInterval(()=>{state.statistics.playTimeSeconds=(state.statistics.playTimeSeconds||0)+15;saveGame(false);},15000);if('serviceWorker'in navigator)navigator.serviceWorker.register('./service-worker.js').catch(console.error);
-  camera.x=clamp(state.player.x-canvas.width/2,0,WORLD.width-canvas.width);camera.y=clamp(state.player.y-canvas.height/2,0,WORLD.height-canvas.height);renderAll();setAutoMode(state.autoMode,false);processOfflineProgress();queueLeaderboardPublish(true);startMultiplayer();requestAnimationFrame(frame);
+  camera.x=clamp(state.player.x-canvas.width/2,0,WORLD.width-canvas.width);camera.y=clamp(state.player.y-canvas.height/2,0,WORLD.height-canvas.height);renderAll();setAutoMode(state.autoMode,false);processOfflineProgress();queueLeaderboardPublish(true);initializeChat();startMultiplayer();requestAnimationFrame(frame);
 })();

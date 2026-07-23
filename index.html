@@ -16,7 +16,7 @@
       <div class="login-mark" aria-hidden="true">IW</div>
       <p class="login-kicker">A quiet world is waiting</p>
       <h1>Idle Wanderer</h1>
-      <p class="login-version">v0.22.0 · Adventurer Records</p>
+      <p class="login-version">v0.23.0 · Expanded World & Chat</p>
       <button id="googleSignInButton" class="google-button" type="button"><span>G</span> Continue with Google</button>
       <div class="login-divider"><span>or</span></div>
       <form id="authForm" class="auth-form">
@@ -36,7 +36,7 @@
   <main id="app" hidden>
     <header class="topbar">
       <div class="title-block">
-        <h1>Idle Wanderer <span id="headerVersion" class="header-version">v0.22.0</span></h1>
+        <h1>Idle Wanderer <span id="headerVersion" class="header-version">v0.23.0</span></h1>
         <p id="statusText">Tap the ground, a tree, a rock, a fishing spot, or a town.</p>
       </div>
       <div class="topbar-center" aria-label="Coins">
@@ -88,8 +88,19 @@
           <button id="resetButton" class="wide-button muted-button">Reset Game</button>
         </div>
         <p class="hint">Town services are opened from the world itself. Skills will be developed one at a time, beginning with Woodcutting.</p>
-        <p class="version">Version 0.22.0 · Adventurer Records</p>
+        <p class="version">Version 0.23.0 · Expanded World & Chat</p>
       </section>
+    </section>
+
+    <section class="chat-bar" aria-label="Family chat">
+      <button id="chatToggle" class="chat-toggle" type="button" aria-expanded="false">💬 <span>Chat</span><b id="chatUnread" hidden>0</b></button>
+      <div id="chatPanel" class="chat-panel" hidden>
+        <div id="chatMessages" class="chat-messages" aria-live="polite"><p class="chat-empty">No messages yet.</p></div>
+      </div>
+      <form id="chatForm" class="chat-form" autocomplete="off">
+        <input id="chatInput" maxlength="180" placeholder="Message family world…" aria-label="Chat message" />
+        <button type="submit">Send</button>
+      </form>
     </section>
   </main>
 
@@ -145,6 +156,6 @@
     <div id="leaderboardProfileContent" class="leaderboard-profile-content"></div>
   </dialog>
 
-  <script type="module" src="firebase.js?v=0.22.0"></script>
+  <script type="module" src="firebase.js?v=0.23.0"></script>
 </body>
 </html>

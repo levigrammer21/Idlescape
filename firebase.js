@@ -8,10 +8,10 @@ import {
   getFirestore, doc, collection, getDocs, getDoc, setDoc, writeBatch, serverTimestamp, query, orderBy, limit
 } from 'https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js';
 import {
-  getDatabase, ref as databaseRef, set as databaseSet, update as databaseUpdate, onValue, onDisconnect, serverTimestamp as realtimeTimestamp
+  getDatabase, ref as databaseRef, set as databaseSet, update as databaseUpdate, push as databasePush, query as databaseQuery, limitToLast, onValue, onDisconnect, serverTimestamp as realtimeTimestamp
 } from 'https://www.gstatic.com/firebasejs/12.1.0/firebase-database.js';
 
-const VERSION = '0.22.0';
+const VERSION = '0.23.0';
 const SAVE_KEY_PREFIX = 'idle-wanderer-save-v6:';
 const firebaseConfig = {
   apiKey: 'AIzaSyDPS8qby2nMPc0beclK7igZcD-PvVOjviw',
@@ -250,10 +250,10 @@ function safePresenceData(payload = {}) {
   return {
     uid: activeUser?.uid || '',
     name: String(payload.name || fallback).replace(/[<>]/g, '').trim().slice(0, 24) || 'Wanderer',
-    x: Math.max(0, Math.min(3800, Number(payload.x) || 1780)),
-    y: Math.max(0, Math.min(4300, Number(payload.y) || 2340)),
-    targetX: Math.max(0, Math.min(3800, Number(payload.targetX ?? payload.x) || 1780)),
-    targetY: Math.max(0, Math.min(4300, Number(payload.targetY ?? payload.y) || 2340)),
+    x: Math.max(0, Math.min(6000, Number(payload.x) || 3000)),
+    y: Math.max(0, Math.min(6000, Number(payload.y) || 3000)),
+    targetX: Math.max(0, Math.min(6000, Number(payload.targetX ?? payload.x) || 3000)),
+    targetY: Math.max(0, Math.min(6000, Number(payload.targetY ?? payload.y) || 3000)),
     facing: ['left','right','up','down'].includes(payload.facing) ? payload.facing : 'down',
     moving: Boolean(payload.moving),
     activity: String(payload.activity || 'Exploring').slice(0, 40),
@@ -306,10 +306,38 @@ async function updateMultiplayer(payload) {
   lastPresenceWriteAt = now;
 }
 
+let chatUnsubscribe = null;
+
+function connectChat(onMessages) {
+  if (!activeUser) throw new Error('Sign in before opening family chat.');
+  if (chatUnsubscribe) chatUnsubscribe();
+  const chatRef = databaseQuery(databaseRef(realtimeDb, `worlds/${FAMILY_WORLD_ID}/chat`), limitToLast(50));
+  chatUnsubscribe = onValue(chatRef, snapshot => {
+    const rows = [];
+    snapshot.forEach(child => rows.push({ id: child.key, ...(child.val() || {}) }));
+    onMessages?.(rows);
+  }, error => console.warn('Family chat listener failed', error));
+}
+
+async function sendChatMessage(message) {
+  if (!activeUser) throw new Error('Sign in before sending chat messages.');
+  const text = String(message || '').replace(/[<>]/g, '').trim().slice(0, 180);
+  if (!text) return;
+  const messageRef = databasePush(databaseRef(realtimeDb, `worlds/${FAMILY_WORLD_ID}/chat`));
+  await databaseSet(messageRef, {
+    uid: activeUser.uid,
+    name: cleanLeaderboardName(activeUser.displayName || activeUser.email?.split('@')[0] || 'Wanderer'),
+    text,
+    createdAt: realtimeTimestamp()
+  });
+}
+
 async function leaveMultiplayer() {
   multiplayerConnected = false;
   if (multiplayerUnsubscribe) multiplayerUnsubscribe();
   multiplayerUnsubscribe = null;
+  if (chatUnsubscribe) chatUnsubscribe();
+  chatUnsubscribe = null;
   if (multiplayerPlayerRef) await databaseSet(multiplayerPlayerRef, null).catch(() => {});
   multiplayerPlayerRef = null;
   lastPresenceData = null;
@@ -409,6 +437,8 @@ window.IdleMultiplayer = {
   connect: connectMultiplayer,
   update: updateMultiplayer,
   leave: leaveMultiplayer,
+  connectChat,
+  sendChat: sendChatMessage,
   get connected() { return multiplayerConnected; }
 };
 
