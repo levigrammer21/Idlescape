@@ -1,7 +1,7 @@
 (() => {
   'use strict';
 
-  const VERSION = '0.23.0';
+  const VERSION = '0.24.0';
   const XP_RATE = 1.5;
   const SAVE_KEY = window.IdleCloud?.localSaveKey;
   if (!SAVE_KEY) throw new Error('No authenticated account save key is available.');
@@ -614,7 +614,7 @@
   let rocks = makeRocks(state.rockState);
   let enemies = makeEnemies(state.enemyState);
   let lastFrame = performance.now(), toastTimer = null, selectedItemKey = null;
-  let activeTree = null, queuedTree = null, activeFishingSpot = null, queuedFishingSpot = null, activeRock = null, queuedRock = null, queuedTown = null, queuedNPC = null, activeEnemy = null, queuedEnemy = null, combatElapsed = 0, actionElapsed = 0, defeatActive = false;
+  let activeTree = null, queuedTree = null, activeFishingSpot = null, queuedFishingSpot = null, activeRock = null, queuedRock = null, queuedTown = null, queuedNPC = null, activeEnemy = null, queuedEnemy = null, activePvpUid = null, queuedPvpUid = null, pvpElapsed = 0, combatElapsed = 0, actionElapsed = 0, defeatActive = false;
   let animationClock = 0, autoThinkElapsed = 0, hpRegenElapsed = 0;
   const floaters = [];
   const projectiles = [];
@@ -918,6 +918,7 @@
   function playerCombatStats(){const w=weaponData(),skill=w.style==='range'?'range':'melee',level=levelFromXp(state.skills[skill]?.xp||0);return {style:w.style,level,ticks:w.ticks,range:w.range,accuracy:level*2+w.accuracy+(w.style==='range'?armourRangedAccuracy():0)+5,maxHit:Math.max(1,Math.floor(level/8)+w.strength),defence:levelFromXp(state.skills.fortitude?.xp||0)+armourDefence()};}
   function hitChance(attack,defence){return clamp(attack/(attack+defence*1.35+8),.05,.95);}
   function enemyAt(x,y){let best=null,bestD=48;for(const e of enemies){if(e.hp<=0)continue;const d=Math.hypot(x-e.x,y-e.y);if(d<bestD){best=e;bestD=d;}}return best;}
+  function remotePlayerAt(x,y){let best=null,bestD=48;for(const p of remotePlayers.values()){const d=Math.hypot(x-(p.renderX??p.x),y-(p.renderY??p.y));if(d<bestD){best=p;bestD=d;}}return best;}
   function beginCombat(enemy){activeEnemy=enemy;queuedEnemy=null;combatElapsed=0;state.summonAttackElapsed=0;enemy.target='player';enemy.returning=false;ui.actionName.textContent=`Fighting ${ENEMY_TYPES[enemy.type].name}`;ui.status.textContent=`Fighting ${ENEMY_TYPES[enemy.type].name}...`;}
   function endCombat(message='Exploring'){if(activeEnemy)activeEnemy.target=null;activeEnemy=null;queuedEnemy=null;combatElapsed=0;state.summonAttackElapsed=0;ui.actionProgress.style.width='0%';ui.actionName.textContent=message;renderCombatHud();}
   function damageFloater(x,y,amount,hit=true){floaters.push({x,y,text:hit?String(amount):'0',life:1.1,damage:true,miss:!hit});}
@@ -1105,7 +1106,8 @@
 
   function handlePointer(event){
     event.preventDefault(); const rect=canvas.getBoundingClientRect(); const sx=(event.clientX-rect.left)*canvas.width/rect.width, sy=(event.clientY-rect.top)*canvas.height/rect.height; const p=screenToWorld(sx,sy);
-    const npc=npcAt(p.x,p.y), town=townAt(p.x,p.y), tree=treeAt(p.x,p.y), rock=rockAt(p.x,p.y), fishingSpot=fishingSpotAt(p.x,p.y), enemy=enemyAt(p.x,p.y); stopAction(false);
+    const npc=npcAt(p.x,p.y), town=townAt(p.x,p.y), tree=treeAt(p.x,p.y), rock=rockAt(p.x,p.y), fishingSpot=fishingSpotAt(p.x,p.y), enemy=enemyAt(p.x,p.y), remotePlayer=remotePlayerAt(p.x,p.y); stopAction(false);
+    if(remotePlayer){const ps=playerCombatStats(),rx=Number(remotePlayer.x)||remotePlayer.renderX,ry=Number(remotePlayer.y)||remotePlayer.renderY,dist=Math.hypot(state.player.x-rx,state.player.y-ry);queuedPvpUid=remotePlayer.uid;queuedEnemy=queuedTree=queuedRock=queuedFishingSpot=queuedTown=queuedNPC=null;if(dist<=ps.range+10){activePvpUid=remotePlayer.uid;queuedPvpUid=null;state.player.targetX=state.player.x;state.player.targetY=state.player.y;ui.actionName.textContent=`Fighting ${remotePlayer.name||'Wanderer'}`;}else{const dx=state.player.x-rx,dy=state.player.y-ry,len=Math.hypot(dx,dy)||1;state.player.targetX=rx+dx/len*Math.max(28,ps.range-8);state.player.targetY=ry+dy/len*Math.max(28,ps.range-8);ui.actionName.textContent=`Approaching ${remotePlayer.name||'Wanderer'}`;}showToast(`PvP target: ${remotePlayer.name||'Wanderer'} · ${Math.max(0,Number(remotePlayer.hp)||0)}/${Math.max(1,Number(remotePlayer.maxHp)||10)} HP`);return;}
     if(npc){queuedNPC=npc;queuedTown=queuedTree=queuedRock=queuedFishingSpot=queuedEnemy=null;const dx=state.player.x-npc.x,dy=state.player.y-npc.y,d=Math.hypot(dx,dy)||1;state.player.targetX=npc.x+dx/d*48;state.player.targetY=npc.y+dy/d*48;ui.status.textContent=`Walking to ${npc.name}...`;ui.actionName.textContent='Walking';showToast(`${npc.name} · ${npc.role}`);return;}
     if(enemy){if(state.autoMode==='combat')state.autoTargetId=enemy.id;const d=ENEMY_TYPES[enemy.type],ps=playerCombatStats();queuedEnemy=enemy;queuedTree=queuedRock=queuedFishingSpot=queuedTown=null;const dist=Math.hypot(state.player.x-enemy.x,state.player.y-enemy.y);showToast(`${d.name} · ${enemy.hp}/${enemy.maxHp} HP · ${d.behaviour}`);if(dist<=ps.range){beginCombat(enemy);state.player.targetX=state.player.x;state.player.targetY=state.player.y;}else{const dx=state.player.x-enemy.x,dy=state.player.y-enemy.y,len=Math.hypot(dx,dy)||1;state.player.targetX=enemy.x+dx/len*(ps.range-8);state.player.targetY=enemy.y+dy/len*(ps.range-8);ui.actionName.textContent=`Approaching ${d.name}`;}return;}
     if(town){
@@ -1143,7 +1145,7 @@
     queuedTree=null;queuedFishingSpot=null;queuedRock=null;queuedTown=null;state.player.targetX=p.x;state.player.targetY=p.y;ui.status.textContent='Walking...';ui.actionName.textContent='Exploring';
   }
 
-  function stopAction(stopMovement=true){ if(activeEnemy)activeEnemy.target=null;activeEnemy=null;queuedEnemy=null; activeTree=null;queuedTree=null;activeFishingSpot=null;queuedFishingSpot=null;activeRock=null;queuedRock=null;queuedTown=null;queuedNPC=null;actionElapsed=0;ui.actionProgress.style.width='0%';if(stopMovement){state.player.targetX=state.player.x;state.player.targetY=state.player.y;}ui.actionName.textContent='Exploring'; }
+  function stopAction(stopMovement=true){ if(activeEnemy)activeEnemy.target=null;activeEnemy=null;queuedEnemy=null;activePvpUid=null;queuedPvpUid=null;pvpElapsed=0; activeTree=null;queuedTree=null;activeFishingSpot=null;queuedFishingSpot=null;activeRock=null;queuedRock=null;queuedTown=null;queuedNPC=null;actionElapsed=0;ui.actionProgress.style.width='0%';if(stopMovement){state.player.targetX=state.player.x;state.player.targetY=state.player.y;}ui.actionName.textContent='Exploring'; }
   function beginChopping(tree){ activeTree=tree;queuedTree=null;actionElapsed=0;const def=TREE_TYPES[tree.type], tool=ITEM_DEFS[bestOwnedTool('axe')];ui.actionName.textContent=`Chopping ${def.name}`;ui.status.textContent=`Chopping ${def.name} tree with ${tool?.name || 'an axe'}...`; }
   function beginMining(rock){ activeRock=rock;queuedRock=null;actionElapsed=0;const def=ROCK_TYPES[rock.type],tool=ITEM_DEFS[bestOwnedTool('pickaxe')];ui.actionName.textContent=`Mining ${def.name}`;ui.status.textContent=`Mining ${def.name} with ${tool?.name || 'a pickaxe'}...`; }
   function beginFishing(spot){ activeFishingSpot=spot;queuedFishingSpot=null;actionElapsed=0;const def=FISH_TYPES[spot.type],tool=ITEM_DEFS[bestOwnedTool('fishingRod')];ui.actionName.textContent=`Fishing ${def.name}`;ui.status.textContent=`Fishing for ${def.name} with ${tool?.name || 'a fishing rod'}...`; }
@@ -1199,9 +1201,9 @@
     }else{
       const dx=p.targetX-p.x,dy=p.targetY-p.y,dist=Math.hypot(dx,dy);
       if(dist>2){const move=Math.min(dist,190*(1+equipmentBonus('moveSpeed')+summonBonus('moveSpeed'))*dt),nx=p.x+dx/dist*move,ny=p.y+dy/dist*move;if(isWalkable(nx,ny)){p.x=nx;p.y=ny;}else{p.targetX=p.x;p.targetY=p.y;queuedTree=null;queuedFishingSpot=null;queuedRock=null;queuedTown=null;queuedNPC=null;showToast('That route is blocked');}}
-      else {p.x=p.targetX;p.y=p.targetY;if(queuedNPC && Math.hypot(p.x-queuedNPC.x,p.y-queuedNPC.y)<70){const npc=queuedNPC;queuedNPC=null;openNPCConversation(npc);}else if(queuedEnemy && queuedEnemy.hp>0 && Math.hypot(p.x-queuedEnemy.x,p.y-queuedEnemy.y)<=playerCombatStats().range+12){beginCombat(queuedEnemy);}else if(queuedTown && Math.hypot(p.x-queuedTown.x,p.y-queuedTown.y)<105){const town=queuedTown;queuedTown=null;openTown(town);}else if(queuedRock && queuedRock.hp>0 && Math.hypot(p.x-queuedRock.x,p.y-queuedRock.y)<90)beginMining(queuedRock);else if(queuedFishingSpot && queuedFishingSpot.remaining>0 && Math.hypot(p.x-queuedFishingSpot.standX,p.y-queuedFishingSpot.standY)<20)beginFishing(queuedFishingSpot);else if(queuedTree && queuedTree.remaining>0 && Math.hypot(p.x-queuedTree.x,p.y-queuedTree.y)<78)beginChopping(queuedTree);else if(!activeTree&&!activeFishingSpot&&!activeRock&&!activeEnemy){ui.status.textContent='Tap the ground, a resource, a creature, or a town.';ui.actionName.textContent='Exploring';}}
+      else {p.x=p.targetX;p.y=p.targetY;if(queuedPvpUid){const rp=remotePlayers.get(queuedPvpUid);if(rp&&Math.hypot(p.x-Number(rp.x),p.y-Number(rp.y))<=playerCombatStats().range+12){activePvpUid=queuedPvpUid;queuedPvpUid=null;pvpElapsed=0;ui.actionName.textContent=`Fighting ${rp.name||'Wanderer'}`;}}else if(queuedNPC && Math.hypot(p.x-queuedNPC.x,p.y-queuedNPC.y)<70){const npc=queuedNPC;queuedNPC=null;openNPCConversation(npc);}else if(queuedEnemy && queuedEnemy.hp>0 && Math.hypot(p.x-queuedEnemy.x,p.y-queuedEnemy.y)<=playerCombatStats().range+12){beginCombat(queuedEnemy);}else if(queuedTown && Math.hypot(p.x-queuedTown.x,p.y-queuedTown.y)<105){const town=queuedTown;queuedTown=null;openTown(town);}else if(queuedRock && queuedRock.hp>0 && Math.hypot(p.x-queuedRock.x,p.y-queuedRock.y)<90)beginMining(queuedRock);else if(queuedFishingSpot && queuedFishingSpot.remaining>0 && Math.hypot(p.x-queuedFishingSpot.standX,p.y-queuedFishingSpot.standY)<20)beginFishing(queuedFishingSpot);else if(queuedTree && queuedTree.remaining>0 && Math.hypot(p.x-queuedTree.x,p.y-queuedTree.y)<78)beginChopping(queuedTree);else if(!activeTree&&!activeFishingSpot&&!activeRock&&!activeEnemy){ui.status.textContent='Tap the ground, a resource, a creature, or a town.';ui.actionName.textContent='Exploring';}}
     }
-    if(activeEnemy){
+    if(activePvpUid){const target=remotePlayers.get(activePvpUid),ps=playerCombatStats();if(!target){activePvpUid=null;pvpElapsed=0;}else{const dist=Math.hypot(p.x-Number(target.x),p.y-Number(target.y));if(dist>ps.range+30){queuedPvpUid=activePvpUid;activePvpUid=null;}else{pvpElapsed+=dt;ui.actionProgress.style.width=`${Math.min(100,pvpElapsed/(ps.ticks*TICK_SECONDS)*100)}%`;if(pvpElapsed>=ps.ticks*TICK_SECONDS){pvpElapsed=0;const chance=hitChance(ps.accuracy,(Number(target.combatLevel)||1)+5);if(Math.random()<chance){const dmg=randomInt(1,Math.max(1,ps.maxHit));window.IdleMultiplayer?.attackPlayer(target.uid,{damage:dmg}).catch(e=>console.warn('PvP attack failed',e));damageFloater(Number(target.x),Number(target.y)-55,dmg,true);audioEngine.sfx('combat');}else damageFloater(Number(target.x),Number(target.y)-55,0,false);}}}}else if(activeEnemy){
       const ps=playerCombatStats(),summon=summonIsFed()?activeSummonDef():null,dist=Math.hypot(p.x-activeEnemy.x,p.y-activeEnemy.y);if(activeEnemy.hp<=0)endCombat('Victory');else if(dist>ps.range+25){queuedEnemy=activeEnemy;activeEnemy=null;}else{combatElapsed+=dt;if(summon)state.summonAttackElapsed=(state.summonAttackElapsed||0)+dt;ui.actionProgress.style.width=`${Math.min(100,combatElapsed/(ps.ticks*TICK_SECONDS)*100)}%`;if(combatElapsed>=ps.ticks*TICK_SECONDS){combatElapsed=0;playerAttack(activeEnemy);}if(activeEnemy&&summon&&state.summonAttackElapsed>=summon.ticks*TICK_SECONDS){state.summonAttackElapsed=0;summonAttack(activeEnemy);}}
     } else if(activeTree){
       if(activeTree.remaining<=0 || Math.hypot(p.x-activeTree.x,p.y-activeTree.y)>85)stopAction(false);
@@ -1264,15 +1266,15 @@
     const key=state.equipment.weapon;if(!key)return;const item=ITEM_DEFS[key],color=equipmentColor(key),working=activeTree||activeRock;
     const ps=playerCombatStats();
     const attackDuration=Math.max(.3,ps.ticks*TICK_SECONDS);
-    const attackPhase=activeEnemy?Math.min(1,combatElapsed/attackDuration):0;
+    const attackPhase=activeEnemy?Math.min(1,combatElapsed/attackDuration):activePvpUid?Math.min(1,pvpElapsed/attackDuration):0;
     let combatAngle=-Math.PI/4;
-    if(activeEnemy){
+    if(activeEnemy||activePvpUid){
       // Hold the weapon upright, snap it downward, then return cleanly.
       if(attackPhase<.58)combatAngle=-Math.PI/4;
       else if(attackPhase<.72){const t=(attackPhase-.58)/.14;combatAngle=-Math.PI/4+(Math.PI*1.02)*(t*t*(3-2*t));}
       else{const t=(attackPhase-.72)/.28;combatAngle=(-Math.PI/4+Math.PI*1.02)+(Math.PI/4-(-Math.PI/4+Math.PI*1.02))*(t*t*(3-2*t));}
     }
-    ctx.save();ctx.translate(s.x+13,s.y+10);ctx.rotate(working?(-.8+Math.sin(animationClock*8)*.65):(activeEnemy?combatAngle:-.35));ctx.lineCap='round';
+    ctx.save();ctx.translate(s.x+13,s.y+10);ctx.rotate(working?(-.8+Math.sin(animationClock*8)*.65):((activeEnemy||activePvpUid)?combatAngle:-.35));ctx.lineCap='round';
     if(['shortbow','longbow','recurve'].includes(item.weaponClass)||key.endsWith('Bow')){ctx.strokeStyle=color;ctx.lineWidth=3;ctx.beginPath();ctx.arc(9,-4,15,-1.25,1.25);ctx.stroke();ctx.strokeStyle='#e5d9af';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(13,-18);ctx.lineTo(13,10);ctx.stroke();}
     else if(['sword','spear'].includes(item.weaponClass)||key.endsWith('Sword')||key.endsWith('Blade')||key.endsWith('Spear')){ctx.strokeStyle='#76543b';ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(0,2);ctx.lineTo(7,-5);ctx.stroke();ctx.strokeStyle=color;ctx.lineWidth=6;ctx.beginPath();ctx.moveTo(7,-5);ctx.lineTo(29,-27);ctx.stroke();ctx.strokeStyle='#e7eef2';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(9,-7);ctx.lineTo(29,-27);ctx.stroke();}
     else if(item.weaponClass==='dagger'||key.endsWith('Dagger')){ctx.strokeStyle='#76543b';ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(0,2);ctx.lineTo(6,-4);ctx.stroke();ctx.strokeStyle=color;ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(6,-4);ctx.lineTo(18,-16);ctx.stroke();}
@@ -1317,18 +1319,18 @@
   }
 
 
-  let chatOpen=false,chatUnread=0;
+  let chatUnread=0,chatMessageCount=0;
+  function chatIsOpen(){return document.getElementById('chat')?.classList.contains('active');}
   function renderChatMessages(messages){
     const box=document.getElementById('chatMessages');if(!box)return;
-    const nearBottom=box.scrollHeight-box.scrollTop-box.clientHeight<45;
+    const nearBottom=box.scrollHeight-box.scrollTop-box.clientHeight<45,newCount=Math.max(0,messages.length-chatMessageCount);
     box.innerHTML=messages.length?messages.map(message=>`<article class="chat-message ${message.uid===window.IdleCloud?.user?.uid?'mine':''}"><strong>${escapeHtml(message.name||'Wanderer')}</strong><span>${escapeHtml(message.text||'')}</span></article>`).join(''):'<p class="chat-empty">No messages yet.</p>';
-    if(nearBottom||!chatOpen)box.scrollTop=box.scrollHeight;
-    if(!chatOpen&&messages.length){chatUnread=Math.min(99,chatUnread+1);updateChatUnread();}
+    if(nearBottom||chatIsOpen())box.scrollTop=box.scrollHeight;
+    if(!chatIsOpen()&&newCount){chatUnread=Math.min(99,chatUnread+newCount);updateChatUnread();}
+    chatMessageCount=messages.length;
   }
   function updateChatUnread(){const badge=document.getElementById('chatUnread');if(!badge)return;badge.hidden=!chatUnread;badge.textContent=String(chatUnread);}
-  function toggleChat(){chatOpen=!chatOpen;const panel=document.getElementById('chatPanel'),button=document.getElementById('chatToggle');panel.hidden=!chatOpen;button.setAttribute('aria-expanded',String(chatOpen));if(chatOpen){chatUnread=0;updateChatUnread();requestAnimationFrame(()=>{const box=document.getElementById('chatMessages');if(box)box.scrollTop=box.scrollHeight;});}}
   function initializeChat(){
-    document.getElementById('chatToggle')?.addEventListener('click',toggleChat);
     document.getElementById('chatForm')?.addEventListener('submit',async event=>{event.preventDefault();const input=document.getElementById('chatInput'),text=input?.value?.trim();if(!text)return;input.disabled=true;try{await window.IdleMultiplayer?.sendChat(text);input.value='';}catch(error){console.warn('Chat send failed',error);showToast('Chat message failed');}finally{input.disabled=false;input.focus();}});
     try{window.IdleMultiplayer?.connectChat(renderChatMessages);}catch(error){console.warn('Could not open family chat',error);}
   }
@@ -1337,7 +1339,7 @@
     const dx=state.player.x-multiplayerLastX,dy=state.player.y-multiplayerLastY;
     if(Math.abs(dx)>Math.abs(dy)&&Math.abs(dx)>.15)multiplayerFacing=dx<0?'left':'right';else if(Math.abs(dy)>.15)multiplayerFacing=dy<0?'up':'down';
     multiplayerLastX=state.player.x;multiplayerLastY=state.player.y;
-    return {name:window.IdleCloud?.user?.displayName||'Wanderer',x:state.player.x,y:state.player.y,targetX:state.player.targetX,targetY:state.player.targetY,facing:multiplayerFacing,moving:Math.hypot(state.player.targetX-state.player.x,state.player.targetY-state.player.y)>3,activity:ui.actionName?.textContent||'Exploring',area:regionAt(state.player.x,state.player.y).name,combatLevel:combatLevel(),equipment:{...state.equipment}};
+    return {name:window.IdleCloud?.user?.displayName||'Wanderer',x:state.player.x,y:state.player.y,targetX:state.player.targetX,targetY:state.player.targetY,facing:multiplayerFacing,moving:Math.hypot(state.player.targetX-state.player.x,state.player.targetY-state.player.y)>3,activity:ui.actionName?.textContent||'Exploring',area:regionAt(state.player.x,state.player.y).name,combatLevel:combatLevel(),equipment:{...state.equipment},activeSummon:state.activeSummon||'',summonFed:summonIsFed(),hp:state.combat.hp,maxHp:maxPlayerHp()};
   }
   function renderOnlinePlayers(){
     const rows=[{name:window.IdleCloud?.user?.displayName||'You',combatLevel:combatLevel(),area:regionAt(state.player.x,state.player.y).name,self:true},...Array.from(remotePlayers.values())];
@@ -1346,21 +1348,23 @@
   }
   function receiveRemotePlayers(players){
     const seen=new Set();
-    for(const [uid,p] of Object.entries(players||{})){seen.add(uid);const old=remotePlayers.get(uid);remotePlayers.set(uid,{...p,renderX:(old?.renderX ?? Number(p.x) ?? 3000),renderY:(old?.renderY ?? Number(p.y) ?? 3000)});}
+    for(const [uid,p] of Object.entries(players||{})){seen.add(uid);const old=remotePlayers.get(uid);remotePlayers.set(uid,{uid,...p,renderX:(old?.renderX ?? Number(p.x) ?? 3000),renderY:(old?.renderY ?? Number(p.y) ?? 3000)});}
     for(const uid of remotePlayers.keys())if(!seen.has(uid))remotePlayers.delete(uid);
     renderOnlinePlayers();
   }
+  function receivePvpAttack(attack){const damage=Math.max(1,Math.floor(Number(attack.damage)||1));state.combat.hp=Math.max(0,(state.combat.hp??maxPlayerHp())-damage);damageFloater(state.player.x,state.player.y-58,damage,true);showToast(`${attack.attackerName||'A player'} hit you for ${damage}`);renderCombatHud();if(state.combat.hp<=0){state.statistics.deaths=(state.statistics.deaths||0)+1;state.player.x=3000;state.player.y=3237;state.player.targetX=3000;state.player.targetY=3237;state.combat.hp=maxPlayerHp();stopAction(true);showToast(`Defeated by ${attack.attackerName||'another player'} · no items lost`);saveGame(false);}}
   async function startMultiplayer(){
     if(!window.IdleMultiplayer)return;
-    try{await window.IdleMultiplayer.connect(multiplayerPayload(),receiveRemotePlayers);multiplayerReady=true;ui.familyWorldHud?.classList.remove('multiplayer-error');renderOnlinePlayers();showToast('Joined the private family world');}
+    try{await window.IdleMultiplayer.connect(multiplayerPayload(),receiveRemotePlayers);window.IdleMultiplayer.connectPvp?.(receivePvpAttack);multiplayerReady=true;ui.familyWorldHud?.classList.remove('multiplayer-error');renderOnlinePlayers();showToast('Joined the private family world');}
     catch(error){console.warn('Could not join family world',error);ui.familyWorldHud?.classList.add('multiplayer-error');ui.onlineCount.textContent='World offline';}
   }
   function updateMultiplayer(now){if(!multiplayerReady||now-multiplayerLastSent<120)return;multiplayerLastSent=now;window.IdleMultiplayer?.update(multiplayerPayload()).catch(e=>console.warn('Presence update failed',e));}
   function drawRemotePlayer(p){
     p.renderX+=(Number(p.x)-p.renderX)*.22;p.renderY+=(Number(p.y)-p.renderY)*.22;const s=worldToScreen(p.renderX,p.renderY);if(s.x<-60||s.y<-90||s.x>canvas.width+60||s.y>canvas.height+70)return;
     const bob=p.moving?Math.sin(animationClock*10+(p.renderX+p.renderY)*.01)*2:0,eq=p.equipment||{},bodyColor=equipmentColor(eq.body),headColor=equipmentColor(eq.head),legsColor=equipmentColor(eq.legs),bootsColor=equipmentColor(eq.boots);
-    ctx.save();ctx.globalAlpha=.94;ctx.fillStyle='rgba(0,0,0,.2)';ctx.fillRect(s.x-13,s.y+18+bob,26,7);ctx.fillStyle='#d4a16e';ctx.fillRect(s.x-10,s.y-8+bob,20,16);ctx.fillStyle=bodyColor||'#7b62c7';ctx.fillRect(s.x-13,s.y+8+bob,26,25);const step=p.moving&&Math.sin(animationClock*11)>0?3:0;ctx.fillStyle=legsColor||'#252831';ctx.fillRect(s.x-11,s.y+33+bob+step,8,14);ctx.fillRect(s.x+3,s.y+33+bob-step,8,14);ctx.fillStyle=bootsColor||'#20262b';ctx.fillRect(s.x-12,s.y+45+bob+step,9,7);ctx.fillRect(s.x+3,s.y+45+bob-step,9,7);ctx.fillStyle=headColor||'#342b42';ctx.fillRect(s.x-11,s.y-18+bob,22,10);ctx.globalAlpha=1;ctx.font='bold 12px system-ui';ctx.textAlign='center';ctx.lineWidth=4;ctx.strokeStyle='rgba(10,12,15,.88)';ctx.fillStyle='#f4f0d6';const name=String(p.name||'Wanderer').slice(0,24);ctx.strokeText(name,s.x,s.y-31+bob);ctx.fillText(name,s.x,s.y-31+bob);ctx.font='10px system-ui';ctx.fillStyle='#c4d3dc';ctx.strokeText(`Lv ${Number(p.combatLevel)||1}`,s.x,s.y-19+bob);ctx.fillText(`Lv ${Number(p.combatLevel)||1}`,s.x,s.y-19+bob);ctx.textAlign='start';ctx.restore();
+    ctx.save();ctx.globalAlpha=.94;ctx.fillStyle='rgba(0,0,0,.2)';ctx.fillRect(s.x-13,s.y+18+bob,26,7);ctx.fillStyle='#d4a16e';ctx.fillRect(s.x-10,s.y-8+bob,20,16);ctx.fillStyle=bodyColor||'#7b62c7';ctx.fillRect(s.x-13,s.y+8+bob,26,25);const step=p.moving&&Math.sin(animationClock*11)>0?3:0;ctx.fillStyle=legsColor||'#252831';ctx.fillRect(s.x-11,s.y+33+bob+step,8,14);ctx.fillRect(s.x+3,s.y+33+bob-step,8,14);ctx.fillStyle=bootsColor||'#20262b';ctx.fillRect(s.x-12,s.y+45+bob+step,9,7);ctx.fillRect(s.x+3,s.y+45+bob-step,9,7);ctx.fillStyle=headColor||'#342b42';ctx.fillRect(s.x-11,s.y-18+bob,22,10);ctx.globalAlpha=1;ctx.font='bold 12px system-ui';ctx.textAlign='center';ctx.lineWidth=4;ctx.strokeStyle='rgba(10,12,15,.88)';ctx.fillStyle='#f4f0d6';const name=String(p.name||'Wanderer').slice(0,24);ctx.strokeText(name,s.x,s.y-31+bob);ctx.fillText(name,s.x,s.y-31+bob);ctx.font='10px system-ui';ctx.fillStyle='#c4d3dc';ctx.strokeText(`Lv ${Number(p.combatLevel)||1}`,s.x,s.y-19+bob);ctx.fillText(`Lv ${Number(p.combatLevel)||1}`,s.x,s.y-19+bob);ctx.textAlign='start';ctx.restore();drawRemoteSummon(p);
   }
+  function drawRemoteSummon(p){if(!p.activeSummon)return;const d=SUMMON_DEFS[p.activeSummon],enemy=ENEMY_TYPES[p.activeSummon]||{};if(!d)return;const angle=animationClock*1.05+(p.renderX+p.renderY)*.002,x=p.renderX-34+Math.cos(angle)*6,y=p.renderY+28+Math.sin(angle)*3,s=worldToScreen(x,y);ctx.save();ctx.translate(s.x,s.y);ctx.globalAlpha=p.summonFed===false?.45:.9;ctx.fillStyle=enemy.color||'#b8d7de';ctx.strokeStyle='#17232b';ctx.lineWidth=2;ctx.beginPath();ctx.ellipse(0,3,14,9,0,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.beginPath();ctx.arc(10,-3,7,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.font='bold 9px system-ui';ctx.textAlign='center';ctx.lineWidth=3;ctx.strokeStyle='rgba(7,12,16,.9)';ctx.fillStyle='#d9fbff';ctx.strokeText(d.name,0,-18);ctx.fillText(d.name,0,-18);ctx.restore();}
   function drawRemotePlayers(){for(const player of remotePlayers.values())drawRemotePlayer(player);}
 
   function drawSummon(){
@@ -1394,7 +1398,7 @@
   function drawProjectiles(){for(const p of projectiles){const t=Math.min(1,p.life/p.duration),ease=t*(2-t),x=p.x+(p.targetX-p.x)*ease,y=p.y+(p.targetY-p.y)*ease-(p.type==='stone'?Math.sin(Math.PI*t)*28:0),s=worldToScreen(x,y);ctx.save();ctx.translate(s.x,s.y);const angle=Math.atan2(p.targetY-p.y,p.targetX-p.x);ctx.rotate(angle);if(p.type==='stone'){ctx.fillStyle='#8d9297';ctx.strokeStyle='#34393e';ctx.lineWidth=2;ctx.beginPath();ctx.arc(0,0,5,0,Math.PI*2);ctx.fill();ctx.stroke();}else{ctx.strokeStyle=p.type==='heavyArrow'?'#d8ecf4':'#f1dfad';ctx.lineWidth=p.type==='heavyArrow'?4:2;ctx.beginPath();ctx.moveTo(-10,0);ctx.lineTo(10,0);ctx.stroke();ctx.fillStyle=p.type==='heavyArrow'?'#9fd4e7':'#d7c07d';ctx.beginPath();ctx.moveTo(11,0);ctx.lineTo(4,-4);ctx.lineTo(4,4);ctx.closePath();ctx.fill();}ctx.restore();}}
   function draw(){ctx.clearRect(0,0,canvas.width,canvas.height);ctx.fillStyle='#397f9f';ctx.fillRect(0,0,canvas.width,canvas.height);ctx.strokeStyle='rgba(210,240,248,.22)';ctx.lineWidth=3;for(let y=-30+(animationClock*12)%46;y<canvas.height+40;y+=46){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(canvas.width,y+10);ctx.stroke();}fillSmooth(continent,'#72ae61','#d5c68b',8);drawTileTexture(continent);for(const r of regions){fillStraight(r.points,r.color,'rgba(55,50,38,.2)',3);drawTileTexture(r.points,true);}for(const w of waters)drawWater(w);for(const item of worldDecor)drawWorldDecorItem(item);for(const f of fishingSpots)drawFishingSpot(f);for(const t of towns)drawTown(t);for(const npc of worldNPCs)drawNPC(npc);for(const t of trees)drawTree(t);for(const r of rocks)drawRock(r);for(const e of enemies)drawEnemy(e);drawRemotePlayers();drawSummon();drawPlayer();drawProjectiles();for(const f of floaters){const s=worldToScreen(f.x,f.y);ctx.globalAlpha=Math.min(1,f.life*1.4);ctx.fillStyle=f.damage?(f.miss?'#d7dbe2':'#ff6b6b'):'#fff4b8';ctx.strokeStyle='rgba(20,20,20,.8)';ctx.lineWidth=4;ctx.font='bold 14px system-ui';ctx.textAlign='center';ctx.strokeText(f.text,s.x,s.y);ctx.fillText(f.text,s.x,s.y);ctx.textAlign='start';ctx.globalAlpha=1;}}
 
-  function openPanel(name){if(name==='leaderboards')renderLeaderboards(leaderboardSort);if(name==='bestiary')renderBestiary();document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active',t.dataset.panel===name));document.querySelectorAll('.panel').forEach(p=>p.classList.toggle('active',p.id===name));}
+  function openPanel(name){if(name==='leaderboards')renderLeaderboards(leaderboardSort);if(name==='bestiary')renderBestiary();if(name==='chat'){chatUnread=0;updateChatUnread();requestAnimationFrame(()=>{const box=document.getElementById('chatMessages');if(box)box.scrollTop=box.scrollHeight;document.getElementById('chatInput')?.focus();});}document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active',t.dataset.panel===name));document.querySelectorAll('.panel').forEach(p=>p.classList.toggle('active',p.id===name));}
   function itemCategory(key,item){
     if(item.summonType)return 'summons';
     if(item.slot==='weapon'||/weapon|bow/i.test(item.type))return 'weapons';

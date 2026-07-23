@@ -1,4 +1,11 @@
-# Idle Wanderer v0.23.0 — Expanded World & Chat
+# Idle Wanderer v0.24.0 — Family Encounters
+
+- Chat now lives in its own main panel tab.
+- Active summons are visible beside other online players.
+- Tap another online player in the world to approach and attack them.
+- PvP defeats return the defeated player to the center with no item or coin loss.
+
+# Idle Wanderer v0.24.0 — Expanded World & Chat
 
 ## Family chat
 - Added a persistent family-world chat bar at the bottom of the game.

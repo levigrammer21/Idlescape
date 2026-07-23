@@ -8,10 +8,10 @@ import {
   getFirestore, doc, collection, getDocs, getDoc, setDoc, writeBatch, serverTimestamp, query, orderBy, limit
 } from 'https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js';
 import {
-  getDatabase, ref as databaseRef, set as databaseSet, update as databaseUpdate, push as databasePush, query as databaseQuery, limitToLast, onValue, onDisconnect, serverTimestamp as realtimeTimestamp
+  getDatabase, ref as databaseRef, set as databaseSet, update as databaseUpdate, push as databasePush, query as databaseQuery, limitToLast, onValue, onChildAdded, remove as databaseRemove, onDisconnect, serverTimestamp as realtimeTimestamp
 } from 'https://www.gstatic.com/firebasejs/12.1.0/firebase-database.js';
 
-const VERSION = '0.23.0';
+const VERSION = '0.24.0';
 const SAVE_KEY_PREFIX = 'idle-wanderer-save-v6:';
 const firebaseConfig = {
   apiKey: 'AIzaSyDPS8qby2nMPc0beclK7igZcD-PvVOjviw',
@@ -260,6 +260,10 @@ function safePresenceData(payload = {}) {
     area: String(payload.area || 'Central Grass').slice(0, 40),
     combatLevel: Math.max(1, Number(payload.combatLevel) || 1),
     equipment: payload.equipment && typeof payload.equipment === 'object' ? payload.equipment : {},
+    activeSummon: String(payload.activeSummon || '').slice(0, 32),
+    summonFed: Boolean(payload.summonFed),
+    hp: Math.max(0, Number(payload.hp) || 0),
+    maxHp: Math.max(1, Number(payload.maxHp) || 10),
     online: true
   };
 }
@@ -332,12 +336,37 @@ async function sendChatMessage(message) {
   });
 }
 
+let pvpUnsubscribe = null;
+
+function connectPvp(onAttack) {
+  if (!activeUser) throw new Error('Sign in before joining family combat.');
+  if (pvpUnsubscribe) pvpUnsubscribe();
+  const inboxRef = databaseRef(realtimeDb, `worlds/${FAMILY_WORLD_ID}/pvp/${activeUser.uid}`);
+  pvpUnsubscribe = onChildAdded(inboxRef, async snapshot => {
+    const attack = snapshot.val() || {};
+    try { onAttack?.({ id: snapshot.key, ...attack }); } finally { await databaseRemove(snapshot.ref).catch(() => {}); }
+  }, error => console.warn('Family combat listener failed', error));
+}
+
+async function sendPvpAttack(targetUid, payload = {}) {
+  if (!activeUser || !targetUid || targetUid === activeUser.uid) return;
+  const attackRef = databasePush(databaseRef(realtimeDb, `worlds/${FAMILY_WORLD_ID}/pvp/${targetUid}`));
+  await databaseSet(attackRef, {
+    attackerUid: activeUser.uid,
+    attackerName: cleanLeaderboardName(activeUser.displayName || activeUser.email?.split('@')[0] || 'Wanderer'),
+    damage: Math.max(1, Math.min(999, Math.floor(Number(payload.damage) || 1))),
+    createdAt: realtimeTimestamp()
+  });
+}
+
 async function leaveMultiplayer() {
   multiplayerConnected = false;
   if (multiplayerUnsubscribe) multiplayerUnsubscribe();
   multiplayerUnsubscribe = null;
   if (chatUnsubscribe) chatUnsubscribe();
   chatUnsubscribe = null;
+  if (pvpUnsubscribe) pvpUnsubscribe();
+  pvpUnsubscribe = null;
   if (multiplayerPlayerRef) await databaseSet(multiplayerPlayerRef, null).catch(() => {});
   multiplayerPlayerRef = null;
   lastPresenceData = null;
@@ -439,6 +468,8 @@ window.IdleMultiplayer = {
   leave: leaveMultiplayer,
   connectChat,
   sendChat: sendChatMessage,
+  connectPvp,
+  attackPlayer: sendPvpAttack,
   get connected() { return multiplayerConnected; }
 };
 
